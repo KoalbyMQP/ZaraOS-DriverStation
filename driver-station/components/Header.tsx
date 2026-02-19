@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProject } from "@/contexts/ProjectContext";
@@ -29,22 +29,28 @@ function PersonIcon({ className }: { className?: string }) {
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
-  const { selectedProject } = useProject();
+  const { selectedProject, setSelectedProject } = useProject();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const projectDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
+      if (projectDropdownRef.current && !projectDropdownRef.current.contains(e.target as Node)) {
+        setProjectDropdownOpen(false);
+      }
     }
-    if (menuOpen) {
+    if (menuOpen || projectDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [menuOpen]);
+  }, [menuOpen, projectDropdownOpen]);
 
   if (!user) return null;
 
@@ -71,15 +77,46 @@ export function Header() {
         </nav>
       </div>
       <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4">
-        <button
-          type="button"
-          className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-          style={{ boxShadow: BLUE_OUTLINE }}
-        >
-          {selectedProject
-            ? `Project: ${selectedProject.name} (${selectedProject.version})`
-            : "Project: no project selected"}
-        </button>
+        <div className="relative" ref={projectDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setProjectDropdownOpen((o) => !o)}
+            className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+            style={{ boxShadow: BLUE_OUTLINE }}
+            aria-expanded={projectDropdownOpen}
+          >
+            {selectedProject
+              ? `Project: ${selectedProject.name} (${selectedProject.version})`
+              : "Project: no project selected"}
+          </button>
+          {projectDropdownOpen && (
+            <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
+              {selectedProject ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setProjectDropdownOpen(false);
+                  }}
+                  className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                >
+                  Deselect project
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProjectDropdownOpen(false);
+                    router.push("/apps");
+                  }}
+                  className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                >
+                  Select project
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"

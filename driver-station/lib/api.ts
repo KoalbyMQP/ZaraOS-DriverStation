@@ -171,3 +171,45 @@ export async function getAppsReleases(): Promise<{ releases: Release[] }> {
   const releases = await fetchGitHubReleases(APPS_REPO);
   return { releases };
 }
+
+export type ReleaseWithSource = Release & { source: "core" | "apps" };
+
+export async function getCombinedReleases(): Promise<ReleaseWithSource[]> {
+  const [core, apps] = await Promise.all([
+    getCoreReleases().then((r) => r.releases.map((rel) => ({ ...rel, source: "core" as const }))),
+    getAppsReleases().then((r) => r.releases.map((rel) => ({ ...rel, source: "apps" as const }))),
+  ]);
+  return [...core, ...apps];
+}
+
+/**
+ * Derive a group name from a release so that "chess-v1.0" and "chess-v2.0" group under "chess".
+ * Strips a trailing version (tag_name) from the release name when present.
+ */
+export function getReleaseGroupName(release: Release): string {
+  const name = release.name || release.tag_name;
+  const tag = release.tag_name;
+  if (tag && name.endsWith(tag)) {
+    return name.slice(0, -tag.length).replace(/-+$/, "").trim() || name;
+  }
+  return name;
+}
+
+export type ReleaseGroup = {
+  groupName: string;
+  versions: ReleaseWithSource[];
+};
+
+export function groupReleasesByTitle(releases: ReleaseWithSource[]): ReleaseGroup[] {
+  const byGroup = new Map<string, ReleaseWithSource[]>();
+  for (const r of releases) {
+    const key = getReleaseGroupName(r);
+    const list = byGroup.get(key) ?? [];
+    list.push(r);
+    byGroup.set(key, list);
+  }
+  return Array.from(byGroup.entries(), ([groupName, versions]) => ({
+    groupName,
+    versions,
+  })).sort((a, b) => a.groupName.localeCompare(b.groupName));
+}
