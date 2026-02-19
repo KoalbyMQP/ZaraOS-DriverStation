@@ -8,16 +8,13 @@ export default function HomePage() {
   const router = useRouter();
   const { user, token, loading, logout } = useAuth();
 
+  // Middleware handles missing token; only redirect unverified users here
   useEffect(() => {
     if (loading) return;
-    if (!token) {
-      router.replace("/authenticate");
-      return;
-    }
     if (user && !user.email_verified) {
       router.replace("/authenticate");
     }
-  }, [loading, token, user, router]);
+  }, [loading, user, router]);
 
   if (loading || !user) {
     return (
