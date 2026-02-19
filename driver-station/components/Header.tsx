@@ -4,6 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
+
+const BLUE_OUTLINE =
+  "0 0 0 1px rgba(59, 130, 246, 0.5), 0 0 20px 2px rgba(59, 130, 246, 0.25), 0 0 40px 4px rgba(59, 130, 246, 0.15)";
 
 function PersonIcon({ className }: { className?: string }) {
   return (
@@ -26,6 +30,7 @@ function PersonIcon({ className }: { className?: string }) {
 export function Header() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { selectedProject } = useProject();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -65,10 +70,20 @@ export function Header() {
           {navLink("/apps", "Apps")}
         </nav>
       </div>
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4">
         <button
           type="button"
-          className="cursor-pointer rounded-md border border-blue-400/60 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 shadow-[0_0_14px_rgba(59,130,246,0.35)] ring-2 ring-blue-400/50 hover:border-blue-400 hover:bg-zinc-700 hover:shadow-[0_0_18px_rgba(59,130,246,0.45)] hover:ring-blue-400/60"
+          className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+          style={{ boxShadow: BLUE_OUTLINE }}
+        >
+          {selectedProject
+            ? `Project: ${selectedProject.name} (${selectedProject.version})`
+            : "Project: no project selected"}
+        </button>
+        <button
+          type="button"
+          className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+          style={{ boxShadow: BLUE_OUTLINE }}
         >
           Connect
         </button>

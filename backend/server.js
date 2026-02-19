@@ -414,47 +414,6 @@ app.get('/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/api/core/releases', authenticateToken, async (req, res) => {
-  try {
-    const githubApiUrl = 'https://api.github.com/repos/KoalbyMQP/Core/releases?per_page=50';
-    const headers = {
-      'Accept': 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      'User-Agent': 'driver-station-server',
-    };
-
-    if (process.env.GITHUB_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-    }
-
-    const response = await fetch(githubApiUrl, { headers });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('GitHub releases API failed:', response.status, errorText);
-      return res.status(502).json({ error: 'Failed to fetch Core releases from GitHub' });
-    }
-
-    const releases = await response.json();
-    res.json({
-      releases: releases.map((release) => ({
-        id: release.id,
-        tag_name: release.tag_name,
-        name: release.name,
-        body: release.body,
-        html_url: release.html_url,
-        created_at: release.created_at,
-        published_at: release.published_at,
-        draft: release.draft,
-        prerelease: release.prerelease,
-      })),
-    });
-  } catch (error) {
-    console.error('Error fetching Core releases:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
 app.post('/api/terminal/command', authenticateToken, async (req, res) => {
   const { command } = req.body;
   if (!command || typeof command !== 'string') {

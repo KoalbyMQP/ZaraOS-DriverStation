@@ -104,3 +104,70 @@ export async function sendTerminalCommand(command: string): Promise<{ output?: s
   }
   return data as { output?: string; error?: string };
 }
+
+export type Release = {
+  id: number;
+  tag_name: string;
+  name: string;
+  body: string | null;
+  html_url: string;
+  created_at: string;
+  published_at: string;
+  draft: boolean;
+  prerelease: boolean;
+};
+
+const GITHUB_API = "https://api.github.com";
+const GITHUB_HEADERS: HeadersInit = {
+  Accept: "application/vnd.github+json",
+  "X-GitHub-Api-Version": "2022-11-28",
+};
+
+const APPS_REPO =
+  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) ||
+  "KoalbyMQP/Apps";
+
+function mapGitHubRelease(raw: {
+  id: number;
+  tag_name: string;
+  name: string | null;
+  body: string | null;
+  html_url: string;
+  created_at: string;
+  published_at: string | null;
+  draft: boolean;
+  prerelease: boolean;
+}): Release {
+  return {
+    id: raw.id,
+    tag_name: raw.tag_name,
+    name: raw.name ?? raw.tag_name,
+    body: raw.body,
+    html_url: raw.html_url,
+    created_at: raw.created_at,
+    published_at: raw.published_at ?? raw.created_at,
+    draft: raw.draft,
+    prerelease: raw.prerelease,
+  };
+}
+
+async function fetchGitHubReleases(ownerRepo: string): Promise<Release[]> {
+  const url = `${GITHUB_API}/repos/${ownerRepo}/releases?per_page=50`;
+  const res = await fetch(url, { headers: GITHUB_HEADERS });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = (data as { message?: string }).message || res.statusText;
+    throw new Error(msg);
+  }
+  return (Array.isArray(data) ? data : []).map(mapGitHubRelease);
+}
+
+export async function getCoreReleases(): Promise<{ releases: Release[] }> {
+  const releases = await fetchGitHubReleases("KoalbyMQP/Core");
+  return { releases };
+}
+
+export async function getAppsReleases(): Promise<{ releases: Release[] }> {
+  const releases = await fetchGitHubReleases(APPS_REPO);
+  return { releases };
+}
