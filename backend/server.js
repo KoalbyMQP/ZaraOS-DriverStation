@@ -455,7 +455,14 @@ app.get('/api/core/releases', authenticateToken, async (req, res) => {
   }
 });
 
-
+app.post('/api/terminal/command', authenticateToken, async (req, res) => {
+  const { command } = req.body;
+  if (!command || typeof command !== 'string') {
+    return res.status(400).json({ error: 'No command provided' });
+  }
+  // TODO: wire to SSH (e.g. uncomment /api/ssh/run logic) or run locally
+  res.json({ output: `$ ${command}\n(terminal backend not yet connected)` });
+});
 
 app.get('/api/projects', authenticateToken, async (req, res) => {
   try {

@@ -4,12 +4,12 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
+import { SSHTerminal } from "@/components/SSHTerminal";
 
-export default function HomePage() {
+export default function ConsolePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  // Middleware handles missing token; only redirect unverified users here
   useEffect(() => {
     if (loading) return;
     if (user && !user.email_verified) {
@@ -28,6 +28,9 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <Header />
+      <main className="p-6">
+        <SSHTerminal />
+      </main>
     </div>
   );
 }

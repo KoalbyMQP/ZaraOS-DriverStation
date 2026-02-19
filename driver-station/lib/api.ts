@@ -90,3 +90,17 @@ export async function forgotPassword(email: string): Promise<{ message?: string 
   const data = await res.json().catch(() => ({}));
   return data as { message?: string };
 }
+
+export async function sendTerminalCommand(command: string): Promise<{ output?: string; error?: string }> {
+  const res = await fetch(`${API_URL}/api/terminal/command`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ command }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = (data as { error?: string }).error || res.statusText;
+    return { error: err };
+  }
+  return data as { output?: string; error?: string };
+}
