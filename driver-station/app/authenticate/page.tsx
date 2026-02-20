@@ -156,7 +156,11 @@ export default function AuthenticatePage() {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mb-3 w-full rounded border border-cyan-500/50 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+            className="mb-3 w-full rounded border bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+            style={{
+              boxShadow: "var(--blue-outline)",
+              borderColor: "rgb(var(--blue-glow))",
+            }}
           />
         )}
 
@@ -166,7 +170,11 @@ export default function AuthenticatePage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mb-3 w-full rounded border border-cyan-500/50 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+            className="mb-3 w-full rounded border bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+            style={{
+              boxShadow: "var(--blue-outline)",
+              borderColor: "rgb(var(--blue-glow))",
+            }}
           />
         )}
 
@@ -177,14 +185,14 @@ export default function AuthenticatePage() {
               placeholder="First name"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="mb-3 w-full rounded border border-cyan-500/50 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              className="focus-blue-glow mb-3 w-full rounded border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
             />
             <input
               type="text"
               placeholder="Last name"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="mb-3 w-full rounded border border-cyan-500/50 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+              className="focus-blue-glow mb-3 w-full rounded border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
             />
           </>
         )}
@@ -210,7 +218,7 @@ export default function AuthenticatePage() {
                 setState("forgot-password");
                 setBtnText("Send reset link");
               }}
-              className="text-sm text-cyan-400 hover:underline"
+              className="text-sm text-blue-glow hover:underline"
             >
               Forgot password?
             </button>
@@ -231,7 +239,7 @@ export default function AuthenticatePage() {
                   setFirstName("");
                   setLastName("");
                 }}
-                className="text-sm text-cyan-400 hover:underline"
+                className="text-sm text-blue-glow hover:underline"
               >
                 ← Back
               </button>
@@ -240,7 +248,8 @@ export default function AuthenticatePage() {
           <button
             type="button"
             onClick={() => handleSubmit()}
-            className="rounded bg-cyan-500/20 px-6 py-2 font-medium text-cyan-300 shadow-[0_0_12px_rgba(0,238,255,0.4)] transition hover:bg-cyan-500/30"
+            className="rounded bg-blue-glow px-6 py-2 font-medium text-white transition-transform hover:scale-105"
+            style={{ boxShadow: "var(--blue-outline)" }}
           >
             {btnText}
           </button>
@@ -257,7 +266,7 @@ export default function AuthenticatePage() {
               <button
                 type="button"
                 onClick={() => setPopupShown(false)}
-                className="mt-4 w-full rounded bg-cyan-500/30 py-2 text-cyan-300 hover:bg-cyan-500/40"
+                className="mt-4 w-full rounded bg-blue-glow py-2 font-medium text-white transition-transform hover:scale-105"
               >
                 OK
               </button>

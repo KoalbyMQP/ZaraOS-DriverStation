@@ -8,9 +8,6 @@ import { useConnection } from "@/contexts/ConnectionContext";
 import { IpConnectModal } from "@/components/IpConnectModal";
 import { useProject } from "@/contexts/ProjectContext";
 
-const BLUE_OUTLINE =
-  "0 0 0 1px rgba(59, 130, 246, 0.5), 0 0 20px 2px rgba(59, 130, 246, 0.25), 0 0 40px 4px rgba(59, 130, 246, 0.15)";
-
 function PersonIcon({ className }: { className?: string }) {
   return (
     <svg
@@ -91,7 +88,7 @@ export function Header() {
             type="button"
             onClick={() => setProjectDropdownOpen((o) => !o)}
             className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-            style={{ boxShadow: BLUE_OUTLINE }}
+            style={{ boxShadow: "var(--blue-outline)" }}
             aria-expanded={projectDropdownOpen}
           >
             {selectedProject
@@ -133,7 +130,7 @@ export function Header() {
               connection ? setConnectDropdownOpen((o) => !o) : setIpConnectModalOpen(true)
             }
             className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-            style={{ boxShadow: BLUE_OUTLINE }}
+            style={{ boxShadow: "var(--blue-outline)" }}
             aria-expanded={connectDropdownOpen}
           >
             {connection ? `Connected: ${connection.name}` : "Connect"}

@@ -61,9 +61,7 @@ export function SSHTerminal() {
   return (
     <div
       className="overflow-hidden rounded-lg font-mono text-sm"
-      style={{
-        boxShadow: "0 0 0 1px rgba(59, 130, 246, 0.5), 0 0 20px 2px rgba(59, 130, 246, 0.25), 0 0 40px 4px rgba(59, 130, 246, 0.15)",
-      }}
+      style={{ boxShadow: "var(--blue-outline)" }}
     >
       {/* Title bar */}
       <div className="flex items-center gap-2 border-b border-zinc-700 bg-zinc-900/90 px-3 py-2">

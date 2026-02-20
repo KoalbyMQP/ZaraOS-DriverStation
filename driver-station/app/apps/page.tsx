@@ -13,9 +13,6 @@ import {
   type ReleaseWithSource,
 } from "@/lib/api";
 
-const BLUE_OUTLINE =
-  "0 0 0 1px rgba(59, 130, 246, 0.5), 0 0 20px 2px rgba(59, 130, 246, 0.25), 0 0 40px 4px rgba(59, 130, 246, 0.15)";
-
 function VersionMenu({
   group,
   onSelectVersion,
@@ -176,7 +173,7 @@ export default function AppsPage() {
                 className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
                 style={{
                   boxShadow: selectedProject?.url && group.versions.some((v) => v.html_url === selectedProject.url)
-                    ? BLUE_OUTLINE
+                    ? "var(--blue-outline)"
                     : "none",
                 }}
               >

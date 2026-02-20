@@ -12,7 +12,7 @@ function WifiIcon({ connected }: { connected: boolean }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={connected ? "text-emerald-500" : "text-zinc-500"}
+      className={`h-8 w-8 shrink-0 ${connected ? "text-blue-glow" : "text-zinc-500"}`}
     >
       <path d="M5 13a10 10 0 0 1 14 0" />
       <path d="M8.5 16.429a5 5 0 0 1 7 0" />
@@ -27,9 +27,12 @@ export function ConnectionStatusWidget() {
   const connected = connection !== null;
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+    <div
+      className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3"
+      style={connected ? { boxShadow: "var(--blue-outline)" } : undefined}
+    >
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-zinc-800">
+        <div className="flex shrink-0 items-center justify-center">
           <WifiIcon connected={connected} />
         </div>
         <div className="min-w-0 flex-1">
@@ -46,7 +49,7 @@ export function ConnectionStatusWidget() {
           )}
         </div>
         <div
-          className={`h-2 w-2 shrink-0 rounded-full ${connected ? "bg-emerald-500" : "bg-zinc-600"}`}
+          className={`h-2 w-2 shrink-0 rounded-full ${connected ? "bg-blue-glow" : "bg-zinc-600"}`}
           title={connected ? "Connected" : "Disconnected"}
         />
       </div>
