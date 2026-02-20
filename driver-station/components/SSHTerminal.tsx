@@ -33,7 +33,7 @@ export function SSHTerminal() {
     try {
       const result = await sendTerminalCommand(cmd);
       if (result.error) {
-        setLines((prev) => [...prev, { type: "error", text: result.error }]);
+        setLines((prev) => [...prev, { type: "error", text: result.error ?? "Unknown error" }]);
       } else {
         const out = result.output ?? "";
         if (out) setLines((prev) => [...prev, { type: "output", text: out }]);
