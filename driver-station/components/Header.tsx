@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
 
 const BLUE_OUTLINE =
@@ -32,10 +33,16 @@ export function Header() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { selectedProject, setSelectedProject } = useProject();
+  const { connection, connect, disconnect } = useConnection();
   const [menuOpen, setMenuOpen] = useState(false);
   const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+  const [connectDropdownOpen, setConnectDropdownOpen] = useState(false);
+  const [ipConnectModalOpen, setIpConnectModalOpen] = useState(false);
+  const [deviceNameInput, setDeviceNameInput] = useState("Robot");
+  const [ipAddressInput, setIpAddressInput] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
   const projectDropdownRef = useRef<HTMLDivElement>(null);
+  const connectDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -45,12 +52,15 @@ export function Header() {
       if (projectDropdownRef.current && !projectDropdownRef.current.contains(e.target as Node)) {
         setProjectDropdownOpen(false);
       }
+      if (connectDropdownRef.current && !connectDropdownRef.current.contains(e.target as Node)) {
+        setConnectDropdownOpen(false);
+      }
     }
-    if (menuOpen || projectDropdownOpen) {
+    if (menuOpen || projectDropdownOpen || connectDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [menuOpen, projectDropdownOpen]);
+  }, [menuOpen, projectDropdownOpen, connectDropdownOpen]);
 
   if (!user) return null;
 
@@ -76,7 +86,7 @@ export function Header() {
           {navLink("/apps", "Apps")}
         </nav>
       </div>
-      <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4">
+      <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4">
         <div className="relative" ref={projectDropdownRef}>
           <button
             type="button"
@@ -117,13 +127,56 @@ export function Header() {
             </div>
           )}
         </div>
-        <button
-          type="button"
-          className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-          style={{ boxShadow: BLUE_OUTLINE }}
-        >
-          Connect
-        </button>
+        <div className="relative" ref={connectDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setConnectDropdownOpen((o) => !o)}
+            className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+            style={{ boxShadow: BLUE_OUTLINE }}
+            aria-expanded={connectDropdownOpen}
+          >
+            {connection ? `Connected: ${connection.name}` : "Connect"}
+          </button>
+          {connectDropdownOpen && (
+            <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
+              {connection ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    disconnect();
+                    setConnectDropdownOpen(false);
+                  }}
+                  className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                >
+                  Disconnect
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConnectDropdownOpen(false);
+                      // TODO: Connect with Bluetooth
+                    }}
+                    className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                  >
+                    Connect with Bluetooth
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConnectDropdownOpen(false);
+                      setIpConnectModalOpen(true);
+                    }}
+                    className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                  >
+                    Connect with IP
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
       <div className="relative" ref={menuRef}>
         <button
@@ -158,6 +211,66 @@ export function Header() {
           </div>
         )}
       </div>
+
+      {ipConnectModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setIpConnectModalOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ip-connect-title"
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-zinc-700 bg-zinc-800 p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="ip-connect-title" className="text-lg font-semibold text-zinc-100">
+              Connect with IP
+            </h2>
+            <p className="mt-1 text-sm text-zinc-400">Enter a name and IP address for the device.</p>
+            <label className="mt-4 block text-sm font-medium text-zinc-300">
+              Device name
+            </label>
+            <input
+              type="text"
+              value={deviceNameInput}
+              onChange={(e) => setDeviceNameInput(e.target.value)}
+              placeholder="Robot"
+              className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+            <label className="mt-4 block text-sm font-medium text-zinc-300">
+              IP address
+            </label>
+            <input
+              type="text"
+              value={ipAddressInput}
+              onChange={(e) => setIpAddressInput(e.target.value)}
+              placeholder="e.g. 192.168.1.1"
+              className="mt-1 w-full rounded-md border border-zinc-600 bg-zinc-700 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIpConnectModalOpen(false)}
+                className="rounded-md border border-zinc-600 bg-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  connect(deviceNameInput.trim() || "Robot", ipAddressInput.trim());
+                  setIpConnectModalOpen(false);
+                }}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
