@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
+import { connectBLEAndGetIP } from "@/lib/ble-get-ip";
 
 type IpConnectModalProps = {
   open: boolean;
@@ -20,6 +21,26 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
   const handleClose = () => {
     setError(null);
     onClose();
+  };
+
+  const handleFindIPWithBluetooth = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { name, ip } = await connectBLEAndGetIP();
+      if (!ip?.trim()) {
+        setError("Robot did not return an IP address.");
+        return;
+      }
+      connect(name, ip.trim());
+      handleClose();
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Bluetooth connection failed.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleConnect = async () => {
@@ -74,9 +95,9 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="ip-connect-title" className="text-lg font-semibold text-zinc-100">
-          Connect with IP
+          Connect to robot
         </h2>
-        <p className="mt-1 text-sm text-zinc-400">Enter a name and IP address for the device.</p>
+        <p className="mt-1 text-sm text-zinc-400">Enter a name and IP address, or find the IP with Bluetooth.</p>
         {error && (
           <div
             className="mt-4 rounded-md border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-200"
@@ -85,6 +106,16 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
             {error}
           </div>
         )}
+        <button
+          type="button"
+          onClick={handleFindIPWithBluetooth}
+          disabled={loading}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-zinc-600 bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Connecting…" : "Find IP with Bluetooth"}
+        </button>
+        <div className="mt-4 border-t border-zinc-700 pt-4">
+          <p className="text-sm font-medium text-zinc-300">Or enter IP manually</p>
         <label className="mt-4 block text-sm font-medium text-zinc-300">Device name</label>
         <input
           type="text"
@@ -127,6 +158,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
           >
             {loading ? "Connecting…" : "Connect"}
           </button>
+        </div>
         </div>
       </div>
     </div>

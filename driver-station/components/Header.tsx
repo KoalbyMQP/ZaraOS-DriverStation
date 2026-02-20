@@ -129,50 +129,27 @@ export function Header() {
         <div className="relative" ref={connectDropdownRef}>
           <button
             type="button"
-            onClick={() => setConnectDropdownOpen((o) => !o)}
+            onClick={() =>
+              connection ? setConnectDropdownOpen((o) => !o) : setIpConnectModalOpen(true)
+            }
             className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
             style={{ boxShadow: BLUE_OUTLINE }}
             aria-expanded={connectDropdownOpen}
           >
             {connection ? `Connected: ${connection.name}` : "Connect"}
           </button>
-          {connectDropdownOpen && (
+          {connectDropdownOpen && connection && (
             <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
-              {connection ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    disconnect();
-                    setConnectDropdownOpen(false);
-                  }}
-                  className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
-                >
-                  Disconnect
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConnectDropdownOpen(false);
-                      // TODO: Connect with Bluetooth
-                    }}
-                    className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
-                  >
-                    Connect with Bluetooth
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConnectDropdownOpen(false);
-                      setIpConnectModalOpen(true);
-                    }}
-                    className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
-                  >
-                    Connect with IP
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  disconnect();
+                  setConnectDropdownOpen(false);
+                }}
+                className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+              >
+                Disconnect
+              </button>
             </div>
           )}
         </div>
