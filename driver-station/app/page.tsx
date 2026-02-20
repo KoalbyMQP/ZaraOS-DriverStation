@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
+import { ConnectionStatusWidget } from "@/components/ConnectionStatusWidget";
+import { ProjectStatusWidget } from "@/components/ProjectStatusWidget";
 
 export default function HomePage() {
   const router = useRouter();
@@ -28,6 +30,12 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <Header />
+      <main className="p-6">
+        <div className="flex flex-wrap gap-4">
+          <ConnectionStatusWidget />
+          <ProjectStatusWidget />
+        </div>
+      </main>
     </div>
   );
 }
