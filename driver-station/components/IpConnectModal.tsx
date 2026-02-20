@@ -23,34 +23,18 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
     onClose();
   };
 
-  const handleFindIPWithBluetooth = async () => {
+  /**
+   * Single path for connecting with a name and IP: POST to robot auth/pair/start,
+   * then persist connection and close. Used by both manual entry and Bluetooth discovery.
+   */
+  const submitConnection = async (name: string, ip: string) => {
+    const trimmedName = name.trim() || "Robot";
+    const trimmedIp = ip.trim();
+    if (!trimmedIp) return;
     setError(null);
     setLoading(true);
     try {
-      const { name, ip } = await connectBLEAndGetIP();
-      if (!ip?.trim()) {
-        setError("Robot did not return an IP address.");
-        return;
-      }
-      connect(name, ip.trim());
-      handleClose();
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Bluetooth connection failed.";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConnect = async () => {
-    const name = deviceNameInput.trim() || "Robot";
-    const ip = ipAddressInput.trim();
-    if (!ip) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const baseUrl = `http://${ip}:8080`;
+      const baseUrl = `http://${trimmedIp}:8080`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
       const res = await fetch(`${baseUrl}/auth/pair/start`, {
@@ -71,7 +55,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
         setError(message);
         return;
       }
-      connect(name, ip);
+      connect(trimmedName, trimmedIp);
       handleClose();
     } catch {
       setError(
@@ -80,6 +64,29 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFindIPWithBluetooth = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { name, ip } = await connectBLEAndGetIP();
+      if (!ip?.trim()) {
+        setError("Robot did not return an IP address.");
+        return;
+      }
+      await submitConnection(name, ip);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Bluetooth connection failed.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnect = async () => {
+    await submitConnection(deviceNameInput, ipAddressInput);
   };
 
   return (
