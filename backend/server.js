@@ -66,8 +66,7 @@ const initProjectsDB = async () => {
   `);
 };
 
-initDB();
-initProjectsDB();
+initDB().then(() => initProjectsDB());
 
 // Email transporter
 const transporter = nodemailer.createTransport({
