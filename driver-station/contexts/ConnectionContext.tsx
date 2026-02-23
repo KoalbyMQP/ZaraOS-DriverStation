@@ -14,11 +14,13 @@ const CONNECTION_KEY = "driver-station-connection";
 export type Connection = {
   name: string;
   ip: string;
+  /** Robot pairing token (HMAC-derived); used to sign requests to the robot API. */
+  token?: string;
 };
 
 type ConnectionContextValue = {
   connection: Connection | null;
-  connect: (name: string, ip: string) => void;
+  connect: (name: string, ip: string, token?: string) => void;
   disconnect: () => void;
 };
 
@@ -53,8 +55,8 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     setConnectionState(loadFromStorage());
   }, []);
 
-  const connect = useCallback((name: string, ip: string) => {
-    const value: Connection = { name, ip };
+  const connect = useCallback((name: string, ip: string, token?: string) => {
+    const value: Connection = { name, ip, ...(token ? { token } : {}) };
     setConnectionState(value);
     if (typeof window !== "undefined") {
       localStorage.setItem(CONNECTION_KEY, JSON.stringify(value));
