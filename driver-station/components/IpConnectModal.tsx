@@ -34,7 +34,10 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
     setError(null);
     setLoading(true);
     try {
-      const baseUrl = `http://${trimmedIp}:8080`;
+      // If user already included a port (e.g. 127.0.0.1:8080), don't append :8080 again
+      const baseUrl = trimmedIp.includes(":")
+        ? `http://${trimmedIp}`
+        : `http://${trimmedIp}:8080`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
       const res = await fetch(`${baseUrl}/auth/pair/start`, {
