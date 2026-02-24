@@ -13,6 +13,9 @@ import {
   type ReleaseWithSource,
 } from "@/lib/api";
 
+/** Prevents duplicate Core/Apps fetches when React Strict Mode double-invokes the effect. */
+let releasesFetchInFlight = false;
+
 function VersionMenu({
   group,
   onSelectVersion,
@@ -116,6 +119,9 @@ export default function AppsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
+    // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
+    if (releasesFetchInFlight) return;
+    releasesFetchInFlight = true;
     setLoadingReleases(true);
     setError(null);
     getCombinedReleases()
@@ -126,7 +132,10 @@ export default function AppsPage() {
         setError(e instanceof Error ? e.message : "Failed to load releases");
         setGroups([]);
       })
-      .finally(() => setLoadingReleases(false));
+      .finally(() => {
+        setLoadingReleases(false);
+        releasesFetchInFlight = false;
+      });
   }, []);
 
   const handleSelectVersion = (release: ReleaseWithSource) => {
