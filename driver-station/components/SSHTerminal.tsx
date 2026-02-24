@@ -27,67 +27,79 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
     fitAddon.fit();
 
     let ws: WebSocket | null = null;
+    let cancelled = false;
+
+    const ro = new ResizeObserver(() => {
+      fitAddon.fit(); // triggers term.onResize which calls sendResize
+    });
+    if (containerRef.current) ro.observe(containerRef.current);
 
     (async () => {
       // 1. Get a signed ticket from Cortex
       let ticket: string;
       try {
         const res = await signedFetch(`${robotUrl}/shell/ticket`, { method: "POST" });
+        if (cancelled) return;
         if (!res.ok) throw new Error(`ticket request failed: ${res.status}`);
         const data = await res.json();
         ticket = data.ticket;
       } catch (err) {
+        if (cancelled) return;
         term.writeln(`\r\n\x1b[31mFailed to connect: ${err}\x1b[0m`);
         return;
       }
+
+      if (cancelled) return;
 
       // 2. Open WebSocket directly — ticket in query param
       const wsUrl = robotUrl.replace(/^http/, "ws") + `/shell?ticket=${encodeURIComponent(ticket)}`;
       ws = new WebSocket(wsUrl);
       ws.binaryType = "arraybuffer";
 
-      ws.onopen = () => fitAddon.fit(); // trigger initial resize
+      ws.onopen = () => {
+        if (cancelled) return;
+        fitAddon.fit(); // trigger initial resize
+      };
 
       ws.onmessage = (e) => {
+        if (cancelled) return;
         if (e.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(e.data));
         }
       };
 
       ws.onclose = () => {
+        if (cancelled) return;
         term.writeln("\r\n\x1b[33m[disconnected]\x1b[0m");
         onClose?.();
       };
 
       ws.onerror = () => {
+        if (cancelled) return;
         term.writeln("\r\n\x1b[31m[connection error]\x1b[0m");
       };
 
       // 3. Terminal input → WS
       term.onData((data) => {
-        if (ws?.readyState === WebSocket.OPEN) {
-          ws.send(new TextEncoder().encode(data));
-        }
+        if (cancelled || ws?.readyState !== WebSocket.OPEN) return;
+        ws.send(new TextEncoder().encode(data));
       });
 
       // 4. Resize → send control message
       const sendResize = () => {
-        if (ws?.readyState !== WebSocket.OPEN) return;
+        if (cancelled || ws?.readyState !== WebSocket.OPEN) return;
         ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
       };
 
       term.onResize(sendResize);
-
-      const ro = new ResizeObserver(() => {
-        fitAddon.fit(); // triggers term.onResize which calls sendResize
-      });
-      ro.observe(containerRef.current!);
 
       // send initial size once open
       ws.addEventListener("open", sendResize, { once: true });
     })();
 
     return () => {
+      cancelled = true;
+      ro.disconnect();
       ws?.close();
       term.dispose();
     };
