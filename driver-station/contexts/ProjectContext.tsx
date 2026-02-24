@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 
-const SELECTED_PROJECT_KEY = "driver-station-selected-project";
+const ACTIVE_PROJECTS_KEY = "driver-station-active-projects";
 
 export type SelectedProject = {
   url: string;
@@ -18,55 +18,81 @@ export type SelectedProject = {
 };
 
 type ProjectContextValue = {
-  selectedProject: SelectedProject | null;
-  setSelectedProject: (project: SelectedProject | null) => void;
+  activeProjects: SelectedProject[];
+  addActiveProject: (project: SelectedProject) => void;
+  removeActiveProject: (url: string) => void;
+  isActive: (url: string) => boolean;
 };
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
-function loadFromStorage(): SelectedProject | null {
-  if (typeof window === "undefined") return null;
+function loadFromStorage(): SelectedProject[] {
+  if (typeof window === "undefined") return [];
   try {
-    const raw = localStorage.getItem(SELECTED_PROJECT_KEY);
-    if (!raw) return null;
+    const raw = localStorage.getItem(ACTIVE_PROJECTS_KEY);
+    if (!raw) return [];
     const data = JSON.parse(raw) as unknown;
-    if (
-      data &&
-      typeof data === "object" &&
-      "url" in data &&
-      "name" in data &&
-      "version" in data &&
-      typeof (data as SelectedProject).url === "string" &&
-      typeof (data as SelectedProject).name === "string" &&
-      typeof (data as SelectedProject).version === "string"
-    ) {
-      return data as SelectedProject;
-    }
+    if (!Array.isArray(data)) return [];
+    return data.filter(
+      (item): item is SelectedProject =>
+        item &&
+        typeof item === "object" &&
+        "url" in item &&
+        "name" in item &&
+        "version" in item &&
+        typeof (item as SelectedProject).url === "string" &&
+        typeof (item as SelectedProject).name === "string" &&
+        typeof (item as SelectedProject).version === "string"
+    );
   } catch {
-    // ignore
+    return [];
   }
-  return null;
 }
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [selectedProject, setSelectedProjectState] = useState<SelectedProject | null>(null);
+  const [activeProjects, setActiveProjectsState] = useState<SelectedProject[]>([]);
 
   useEffect(() => {
-    setSelectedProjectState(loadFromStorage());
+    setActiveProjectsState(loadFromStorage());
   }, []);
 
-  const setSelectedProject = useCallback((project: SelectedProject | null) => {
-    setSelectedProjectState(project);
-    if (typeof window === "undefined") return;
-    if (project) {
-      localStorage.setItem(SELECTED_PROJECT_KEY, JSON.stringify(project));
-    } else {
-      localStorage.removeItem(SELECTED_PROJECT_KEY);
+  const persist = useCallback((list: SelectedProject[]) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(ACTIVE_PROJECTS_KEY, JSON.stringify(list));
     }
   }, []);
 
+  const addActiveProject = useCallback(
+    (project: SelectedProject) => {
+      setActiveProjectsState((prev) => {
+        if (prev.some((p) => p.url === project.url)) return prev;
+        const next = [...prev, project];
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  const removeActiveProject = useCallback(
+    (url: string) => {
+      setActiveProjectsState((prev) => {
+        const next = prev.filter((p) => p.url !== url);
+        persist(next);
+        return next;
+      });
+    },
+    [persist]
+  );
+
+  const isActive = useCallback((url: string) => {
+    return activeProjects.some((p) => p.url === url);
+  }, [activeProjects]);
+
   return (
-    <ProjectContext.Provider value={{ selectedProject, setSelectedProject }}>
+    <ProjectContext.Provider
+      value={{ activeProjects, addActiveProject, removeActiveProject, isActive }}
+    >
       {children}
     </ProjectContext.Provider>
   );
