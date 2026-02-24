@@ -107,8 +107,14 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
 
   return (
     <div
-      ref={containerRef}
-      style={{ width: "100%", height: "100%", background: "#0d1117" }}
-    />
+      className="blue-outline rounded-lg overflow-hidden p-2 flex flex-col w-full h-full"
+      style={{ background: "#0d1117" }}
+    >
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0 overflow-hidden"
+        style={{ background: "#0d1117" }}
+      />
+    </div>
   );
 }
