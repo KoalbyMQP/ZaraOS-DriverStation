@@ -1,106 +1,114 @@
-"use client";
+import { useEffect, useRef } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 
-import { useCallback, useRef, useEffect, useState } from "react";
-import { sendTerminalCommand } from "@/lib/api";
+interface Props {
+  robotUrl: string; // e.g. "http://192.168.1.10:8080"
+  signedFetch: (url: string, init?: RequestInit) => Promise<Response>;
+  onClose?: () => void;
+}
 
-const PROMPT = "user@driver-station:~$ ";
-
-type Line = { type: "command"; text: string } | { type: "output"; text: string } | { type: "error"; text: string };
-
-export function SSHTerminal() {
-  const [lines, setLines] = useState<Line[]>([
-    { type: "output", text: "SSH session connected. Type a command and press Enter." },
-  ]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const scrollToBottom = useCallback(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [lines, input, scrollToBottom]);
+    if (!containerRef.current) return;
 
-  const sendCommand = useCallback(async () => {
-    const cmd = input.trim();
-    if (!cmd || sending) return;
-    setInput("");
-    setLines((prev) => [...prev, { type: "command", text: cmd }]);
-    setSending(true);
-    try {
-      const result = await sendTerminalCommand(cmd);
-      if (result.error) {
-        setLines((prev) => [...prev, { type: "error", text: result.error ?? "Unknown error" }]);
-      } else {
-        const out = result.output ?? "";
-        if (out) setLines((prev) => [...prev, { type: "output", text: out }]);
-      }
-    } catch (err) {
-      setLines((prev) => [
-        ...prev,
-        { type: "error", text: err instanceof Error ? err.message : "Request failed" },
-      ]);
-    } finally {
-      setSending(false);
-    }
-  }, [input, sending]);
+    const term = new Terminal({
+      cursorBlink: true,
+      fontFamily: "monospace",
+      fontSize: 14,
+      theme: { background: "#0d1117" },
+    });
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(containerRef.current);
+    fitAddon.fit();
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        sendCommand();
+    let ws: WebSocket | null = null;
+    let cancelled = false;
+
+    const ro = new ResizeObserver(() => {
+      fitAddon.fit(); // triggers term.onResize which calls sendResize
+    });
+    if (containerRef.current) ro.observe(containerRef.current);
+
+    (async () => {
+      // 1. Get a signed ticket from Cortex
+      let ticket: string;
+      try {
+        const res = await signedFetch(`${robotUrl}/shell/ticket`, { method: "POST" });
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`ticket request failed: ${res.status}`);
+        const data = await res.json();
+        ticket = data.ticket;
+      } catch (err) {
+        if (cancelled) return;
+        term.writeln(`\r\n\x1b[31mFailed to connect: ${err}\x1b[0m`);
+        return;
       }
-    },
-    [sendCommand]
-  );
+
+      if (cancelled) return;
+
+      // 2. Open WebSocket directly — ticket in query param
+      const wsUrl = robotUrl.replace(/^http/, "ws") + `/shell?ticket=${encodeURIComponent(ticket)}`;
+      ws = new WebSocket(wsUrl);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = () => {
+        if (cancelled) return;
+        fitAddon.fit(); // trigger initial resize
+      };
+
+      ws.onmessage = (e) => {
+        if (cancelled) return;
+        if (e.data instanceof ArrayBuffer) {
+          term.write(new Uint8Array(e.data));
+        }
+      };
+
+      ws.onclose = () => {
+        if (cancelled) return;
+        term.writeln("\r\n\x1b[33m[disconnected]\x1b[0m");
+        onClose?.();
+      };
+
+      ws.onerror = () => {
+        if (cancelled) return;
+        term.writeln("\r\n\x1b[31m[connection error]\x1b[0m");
+      };
+
+      // 3. Terminal input → WS
+      term.onData((data) => {
+        if (cancelled || ws?.readyState !== WebSocket.OPEN) return;
+        ws.send(new TextEncoder().encode(data));
+      });
+
+      // 4. Resize → send control message
+      const sendResize = () => {
+        if (cancelled || ws?.readyState !== WebSocket.OPEN) return;
+        ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+      };
+
+      term.onResize(sendResize);
+
+      // send initial size once open
+      ws.addEventListener("open", sendResize, { once: true });
+    })();
+
+    return () => {
+      cancelled = true;
+      ro.disconnect();
+      ws?.close();
+      term.dispose();
+    };
+  }, [robotUrl]);
 
   return (
     <div
-      className="overflow-hidden rounded-lg font-mono text-sm"
-      style={{ boxShadow: "var(--blue-outline)" }}
-    >
-      {/* Title bar */}
-      <div className="flex items-center gap-2 border-b border-zinc-700 bg-zinc-900/90 px-3 py-2">
-        <div className="flex gap-1.5">
-          <div className="h-2.5 w-2.5 rounded-full bg-red-600/90" />
-          <div className="h-2.5 w-2.5 rounded-full bg-amber-500/90" />
-          <div className="h-2.5 w-2.5 rounded-full bg-emerald-500/90" />
-        </div>
-        <span className="text-xs text-zinc-500">ssh — driver-station</span>
-      </div>
-      {/* Terminal body */}
-      <div className="max-h-[420px] min-h-[320px] overflow-y-auto bg-[#0c0c0c] p-4">
-        {lines.map((line, i) => (
-          <div key={i} className="whitespace-pre-wrap break-all">
-            {line.type === "command" && (
-              <span className="text-amber-400/95">{PROMPT}</span>
-            )}
-            {line.type === "command" && <span className="text-emerald-300/95">{line.text}</span>}
-            {line.type === "output" && <span className="text-zinc-400">{line.text}</span>}
-            {line.type === "error" && <span className="text-red-400">{line.text}</span>}
-            {(line.type === "output" || line.type === "error") && line.text && !line.text.endsWith("\n") && "\n"}
-          </div>
-        ))}
-        <div className="flex items-center gap-0" ref={bottomRef}>
-          <span className="text-amber-400/95">{PROMPT}</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={sending}
-            className="min-w-[12ch] flex-1 border-none bg-transparent py-0 pr-0 pl-1 text-emerald-300/95 caret-emerald-400 outline-none placeholder:text-zinc-600 disabled:opacity-60"
-            placeholder={sending ? "..." : ""}
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
-      </div>
-    </div>
+      ref={containerRef}
+      style={{ width: "100%", height: "100%", background: "#0d1117" }}
+    />
   );
 }
