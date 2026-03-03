@@ -124,7 +124,17 @@ function VersionMenu({
   );
 }
 
-type RunningInstance = { id: string; app: string; version: string };
+type InstanceState = "running" | "starting" | "stopping";
+
+type Instance = {
+  id: string;
+  app: string;
+  version: string;
+  state: InstanceState;
+  /** When state is "starting": used to add to activeProjects once running */
+  displayName?: string;
+  projectUrl?: string;
+};
 
 export default function AppsPage() {
   const router = useRouter();
@@ -135,20 +145,26 @@ export default function AppsPage() {
   const [loadingReleases, setLoadingReleases] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
-  const [runningInstances, setRunningInstances] = useState<RunningInstance[]>([]);
-  const [stoppingInstanceId, setStoppingInstanceId] = useState<string | null>(null);
-  /** Apps we've POSTed to /instances and are polling until state === "running". */
-  const [pendingStarts, setPendingStarts] = useState<
-    { url: string; name: string; version: string; instanceId: string }[]
-  >([]);
+  /** Single source of truth for all instance states (running, starting, stopping). */
+  const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
+  const setInstanceState = (id: string, state: InstanceState, extra?: { displayName?: string; projectUrl?: string }) => {
+    setInstances((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, state, ...extra } : i))
+    );
+  };
+
+  const removeInstance = (id: string) => {
+    setInstances((prev) => prev.filter((i) => i.id !== id));
+  };
+
   // Fetch GET /instances when robot is connected, then every 60s
   useEffect(() => {
     if (!connection?.token) {
-      setRunningInstances([]);
+      setInstances([]);
       return;
     }
     const fetchInstances = (isInitial = false) => {
@@ -156,12 +172,31 @@ export default function AppsPage() {
       if (isInitial) instancesFetchInFlight = true;
       getInstances(connection)
         .then((data) => {
-          const running = data.instances
-            .filter((i: RobotAppInstance) => i.state === "running")
-            .map((i: RobotAppInstance) => ({ id: i.id, app: i.app, version: i.version }));
-          setRunningInstances(running);
+          const apiList = data.instances
+            .filter(
+              (i: RobotAppInstance) => i.state === "running" || i.state === "starting"
+            )
+            .map((i: RobotAppInstance) => ({
+              id: i.id,
+              app: i.app,
+              version: i.version,
+              state: i.state as InstanceState,
+            }));
+          setInstances((prev) => {
+            const stoppingIds = new Set(
+              prev.filter((p) => p.state === "stopping").map((p) => p.id)
+            );
+            const apiIds = new Set(apiList.map((a) => a.id));
+            const merged = apiList.map((api) =>
+              stoppingIds.has(api.id) ? { ...api, state: "stopping" as const } : api
+            );
+            const localStarting = prev.filter(
+              (p) => p.state === "starting" && !apiIds.has(p.id)
+            );
+            return [...merged, ...localStarting];
+          });
         })
-        .catch(() => setRunningInstances([]))
+        .catch(() => setInstances([]))
         .finally(() => {
           if (isInitial) instancesFetchInFlight = false;
         });
@@ -198,13 +233,20 @@ export default function AppsPage() {
       });
   }, []);
 
-  // Running instances not already represented in user's active list (by app+version)
-  const runningOnly = runningInstances.filter(
-    (ri) =>
+  const runningInstances = instances.filter((i) => i.state === "running");
+  const startingInstances = instances.filter((i) => i.state === "starting");
+  const stoppingInstanceIds = new Set(
+    instances.filter((i) => i.state === "stopping").map((i) => i.id)
+  );
+
+  // Running (or stopping) instances not in user's active list — show as "on robot" cards
+  const runningOnly = instances.filter(
+    (i) =>
+      (i.state === "running" || i.state === "stopping") &&
       !activeProjects.some(
         (p) =>
-          p.version === ri.version &&
-          (groupNameToSlug(p.name) === ri.app || p.name === ri.app)
+          p.version === i.version &&
+          (groupNameToSlug(p.name) === i.app || p.name === i.app)
       )
   );
 
@@ -223,30 +265,39 @@ export default function AppsPage() {
     if (connection?.token) {
       setStartError(null);
       createInstance(connection, appSlug, version)
-        .then((instance) => {
-          setPendingStarts((prev) => [
+        .then((created) => {
+          setInstances((prev) => [
             ...prev,
-            { url, name, version, instanceId: instance.id },
+            {
+              id: created.id,
+              app: appSlug,
+              version: created.version,
+              state: "starting",
+              displayName: name,
+              projectUrl: url,
+            },
           ]);
           const pollUntilRunning = () => {
-            getInstance(connection!, instance.id).then((updated) => {
+            getInstance(connection!, created.id).then((updated) => {
               if (updated.state === "running") {
-                setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+                setInstances((prev) =>
+                  prev.map((i) =>
+                    i.id === created.id
+                      ? { ...i, state: "running" as const, displayName: undefined, projectUrl: undefined }
+                      : i
+                  )
+                );
                 addActiveProject({ url, name, version });
-                setRunningInstances((prev) => [
-                  ...prev,
-                  { id: updated.id, app: appSlug, version: updated.version },
-                ]);
                 return;
               }
               if (updated.state === "crashed" || updated.state === "stopped") {
-                setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+                removeInstance(created.id);
                 setStartError(`${name} ${version} failed to start (${updated.state})`);
                 return;
               }
               setTimeout(pollUntilRunning, 800);
             }).catch(() => {
-              setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+              removeInstance(created.id);
               setStartError(`Failed to check status for ${name}`);
             });
           };
@@ -260,45 +311,32 @@ export default function AppsPage() {
     }
   };
 
-  const findRunningInstanceForProject = (project: { name: string; version: string }) =>
-    runningInstances.find(
-      (ri) =>
-        ri.version === project.version &&
-        (groupNameToSlug(project.name) === ri.app || project.name === ri.app)
+  const findInstanceForProject = (project: { name: string; version: string }) =>
+    instances.find(
+      (i) =>
+        (i.state === "running" || i.state === "stopping") &&
+        i.version === project.version &&
+        (groupNameToSlug(project.name) === i.app || project.name === i.app)
     );
 
-  const handleStopInstance = (ri: RunningInstance) => {
-    if (!connection?.token || stoppingInstanceId) return;
-    setStoppingInstanceId(ri.id);
-    deleteInstance(connection, ri.id)
-      .then(() => {
-        return getInstances(connection).then((data) => {
-          const running = data.instances
-            .filter((i: RobotAppInstance) => i.state === "running")
-            .map((i: RobotAppInstance) => ({ id: i.id, app: i.app, version: i.version }));
-          setRunningInstances(running);
-        });
-      })
-      .catch(() => {})
-      .finally(() => setStoppingInstanceId(null));
+  const handleStopInstance = (instance: Instance) => {
+    if (!connection?.token || stoppingInstanceIds.has(instance.id)) return;
+    setInstanceState(instance.id, "stopping");
+    deleteInstance(connection, instance.id)
+      .then(() => removeInstance(instance.id))
+      .catch(() => setInstanceState(instance.id, "running"));
   };
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
-    const ri = findRunningInstanceForProject(project);
-    if (connection?.token && ri) {
-      setStoppingInstanceId(ri.id);
-      deleteInstance(connection, ri.id)
+    const instance = findInstanceForProject(project);
+    if (connection?.token && instance) {
+      setInstanceState(instance.id, "stopping");
+      deleteInstance(connection, instance.id)
         .then(() => {
-          return getInstances(connection).then((data) => {
-            const running = data.instances
-              .filter((i: RobotAppInstance) => i.state === "running")
-              .map((i: RobotAppInstance) => ({ id: i.id, app: i.app, version: i.version }));
-            setRunningInstances(running);
-          });
+          removeInstance(instance.id);
+          removeActiveProject(project.url);
         })
-        .then(() => removeActiveProject(project.url))
-        .catch(() => {})
-        .finally(() => setStoppingInstanceId(null));
+        .catch(() => setInstanceState(instance.id, "running"));
     } else {
       removeActiveProject(project.url);
     }
@@ -333,21 +371,21 @@ export default function AppsPage() {
               </button>
             </div>
           )}
-          {activeProjects.length === 0 && runningOnly.length === 0 && pendingStarts.length === 0 ? (
+          {activeProjects.length === 0 && runningOnly.length === 0 && startingInstances.length === 0 ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
               No active apps. Select an app from Available to add it here, or connect to a robot to see running apps.
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {pendingStarts.map((pending) => (
+              {startingInstances.map((inst) => (
                 <div
-                  key={pending.instanceId}
+                  key={inst.id}
                   className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
                   style={{ boxShadow: "var(--blue-outline)" }}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{pending.name}</div>
-                    <div className="mt-0.5 font-mono text-sm text-zinc-400">{pending.version}</div>
+                    <div className="font-medium text-zinc-100">{inst.displayName ?? inst.app}</div>
+                    <div className="mt-0.5 font-mono text-sm text-zinc-400">{inst.version}</div>
                   </div>
                   <div
                     className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
@@ -373,8 +411,8 @@ export default function AppsPage() {
                 </div>
               ))}
               {activeProjects.map((project) => {
-                const matchingInstance = findRunningInstanceForProject(project);
-                const isStopping = matchingInstance && stoppingInstanceId === matchingInstance.id;
+                const matchingInstance = findInstanceForProject(project);
+                const isStopping = matchingInstance?.state === "stopping";
                 return (
                   <div
                     key={project.url}
@@ -418,24 +456,24 @@ export default function AppsPage() {
                   </div>
                 );
               })}
-              {runningOnly.map((ri) => {
-                const isStopping = stoppingInstanceId === ri.id;
+              {runningOnly.map((inst) => {
+                const isStopping = inst.state === "stopping";
                 return (
                   <div
-                    key={ri.id}
+                    key={inst.id}
                     className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
                     style={{ boxShadow: "var(--blue-outline)" }}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-100">{ri.app}</div>
+                      <div className="font-medium text-zinc-100">{inst.app}</div>
                       <div className="mt-0.5 flex items-center gap-2">
-                        <span className="font-mono text-sm text-zinc-400">{ri.version}</span>
+                        <span className="font-mono text-sm text-zinc-400">{inst.version}</span>
                         <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">on robot</span>
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => handleStopInstance(ri)}
+                      onClick={() => handleStopInstance(inst)}
                       disabled={isStopping}
                       className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
                       aria-label="Stop on robot"
