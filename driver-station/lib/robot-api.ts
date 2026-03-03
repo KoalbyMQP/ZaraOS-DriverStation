@@ -107,3 +107,48 @@ export async function getSessions(
   }
   return res.json() as Promise<SessionsResponse>;
 }
+
+export type RobotAppInstance = {
+  id: string;
+  app: string;
+  version: string;
+  state: string;
+  started_at: string | null;
+  stopped_at: string | null;
+};
+
+export type InstancesResponse = {
+  instances: RobotAppInstance[];
+};
+
+/**
+ * GET /instances — list all instances (running and recently stopped).
+ */
+export async function getInstances(
+  connection: Connection
+): Promise<InstancesResponse> {
+  const res = await signedFetch(connection, "GET", "/instances");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `instances failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<InstancesResponse>;
+}
+
+/**
+ * DELETE /instances/:id — stop a running instance. Resolves when response is 200.
+ */
+export async function deleteInstance(
+  connection: Connection,
+  instanceId: string
+): Promise<void> {
+  const res = await signedFetch(connection, "DELETE", `/instances/${instanceId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `stop instance failed: ${res.status}`
+    );
+  }
+}
