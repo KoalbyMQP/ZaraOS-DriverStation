@@ -138,6 +138,43 @@ export async function getInstances(
 }
 
 /**
+ * POST /instances — start an app. Returns the created instance (state may be "starting").
+ * Use getInstance to poll until state === "running".
+ */
+export async function createInstance(
+  connection: Connection,
+  app: string,
+  version: string
+): Promise<RobotAppInstance> {
+  const body = JSON.stringify({ app, version });
+  const res = await signedFetch(connection, "POST", "/instances", body);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `start instance failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<RobotAppInstance>;
+}
+
+/**
+ * GET /instances/:id — get status of a single instance. Use to poll until state === "running".
+ */
+export async function getInstance(
+  connection: Connection,
+  instanceId: string
+): Promise<RobotAppInstance> {
+  const res = await signedFetch(connection, "GET", `/instances/${instanceId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `get instance failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<RobotAppInstance>;
+}
+
+/**
  * DELETE /instances/:id — stop a running instance. Resolves when response is 200.
  */
 export async function deleteInstance(

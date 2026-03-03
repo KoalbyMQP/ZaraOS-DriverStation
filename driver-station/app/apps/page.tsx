@@ -13,7 +13,13 @@ import {
   type ReleaseGroup,
   type ReleaseWithSource,
 } from "@/lib/api";
-import { getInstances, deleteInstance, type RobotAppInstance } from "@/lib/robot-api";
+import {
+  getInstances,
+  getInstance,
+  createInstance,
+  deleteInstance,
+  type RobotAppInstance,
+} from "@/lib/robot-api";
 
 /** Prevents duplicate Core/Apps fetches when React Strict Mode double-invokes the effect. */
 let releasesFetchInFlight = false;
@@ -32,6 +38,7 @@ function groupNameToSlug(name: string): string {
 
 function VersionMenu({
   group,
+  appSlug,
   onSelectVersion,
   activeProjectUrls,
   isVersionRunningOnRobot,
@@ -40,7 +47,8 @@ function VersionMenu({
   onClose,
 }: {
   group: ReleaseGroup;
-  onSelectVersion: (release: ReleaseWithSource) => void;
+  appSlug: string;
+  onSelectVersion: (release: ReleaseWithSource, appSlug: string) => void;
   activeProjectUrls: Set<string>;
   isVersionRunningOnRobot: (tagName: string) => boolean;
   open: boolean;
@@ -87,7 +95,7 @@ function VersionMenu({
                 key={`${r.source}-${r.id}`}
                 type="button"
                 onClick={() => {
-                  onSelectVersion(r);
+                  onSelectVersion(r, appSlug);
                   onClose();
                 }}
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
@@ -129,6 +137,11 @@ export default function AppsPage() {
   const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   const [runningInstances, setRunningInstances] = useState<RunningInstance[]>([]);
   const [stoppingInstanceId, setStoppingInstanceId] = useState<string | null>(null);
+  /** Apps we've POSTed to /instances and are polling until state === "running". */
+  const [pendingStarts, setPendingStarts] = useState<
+    { url: string; name: string; version: string; instanceId: string }[]
+  >([]);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -202,12 +215,49 @@ export default function AppsPage() {
         (groupNameToSlug(groupName) === ri.app || groupName === ri.app)
     );
 
-  const handleSelectVersion = (release: ReleaseWithSource) => {
-    addActiveProject({
-      url: release.html_url,
-      name: getReleaseGroupName(release),
-      version: release.tag_name,
-    });
+  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
+    const name = getReleaseGroupName(release);
+    const version = release.tag_name;
+    const url = release.html_url;
+
+    if (connection?.token) {
+      setStartError(null);
+      createInstance(connection, appSlug, version)
+        .then((instance) => {
+          setPendingStarts((prev) => [
+            ...prev,
+            { url, name, version, instanceId: instance.id },
+          ]);
+          const pollUntilRunning = () => {
+            getInstance(connection!, instance.id).then((updated) => {
+              if (updated.state === "running") {
+                setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+                addActiveProject({ url, name, version });
+                setRunningInstances((prev) => [
+                  ...prev,
+                  { id: updated.id, app: appSlug, version: updated.version },
+                ]);
+                return;
+              }
+              if (updated.state === "crashed" || updated.state === "stopped") {
+                setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+                setStartError(`${name} ${version} failed to start (${updated.state})`);
+                return;
+              }
+              setTimeout(pollUntilRunning, 800);
+            }).catch(() => {
+              setPendingStarts((p) => p.filter((x) => x.instanceId !== instance.id));
+              setStartError(`Failed to check status for ${name}`);
+            });
+          };
+          pollUntilRunning();
+        })
+        .catch((err) => {
+          setStartError(err instanceof Error ? err.message : "Failed to start app");
+        });
+    } else {
+      setStartError("Connect to a device to add apps to Active");
+    }
   };
 
   const handleStopInstance = (ri: RunningInstance) => {
@@ -240,12 +290,60 @@ export default function AppsPage() {
       <main className="p-6">
         <section className="mb-8">
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Active</h2>
-          {activeProjects.length === 0 && runningOnly.length === 0 ? (
+          {startError && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <span className="flex-1">{startError}</span>
+              <button
+                type="button"
+                onClick={() => setStartError(null)}
+                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                aria-label="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+          {activeProjects.length === 0 && runningOnly.length === 0 && pendingStarts.length === 0 ? (
             <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
               No active apps. Select an app from Available to add it here, or connect to a robot to see running apps.
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {pendingStarts.map((pending) => (
+                <div
+                  key={pending.instanceId}
+                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                  style={{ boxShadow: "var(--blue-outline)" }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-zinc-100">{pending.name}</div>
+                    <div className="mt-0.5 font-mono text-sm text-zinc-400">{pending.version}</div>
+                  </div>
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
+                    aria-label="Starting…"
+                  >
+                    <svg
+                      className="h-5 w-5 animate-spin"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="3"
+                        strokeDasharray="24 48"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              ))}
               {activeProjects.map((project) => (
                 <div
                   key={project.url}
@@ -330,8 +428,18 @@ export default function AppsPage() {
           )}
 
           {error && (
-            <div className="rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              {error}
+            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <span className="flex-1">{error}</span>
+              <button
+                type="button"
+                onClick={() => setError(null)}
+                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                aria-label="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           )}
 
@@ -361,6 +469,7 @@ export default function AppsPage() {
                   </div>
                   <VersionMenu
                     group={group}
+                    appSlug={groupNameToSlug(group.groupName)}
                     onSelectVersion={handleSelectVersion}
                     activeProjectUrls={activeProjectUrls}
                     isVersionRunningOnRobot={(tagName) =>
