@@ -161,6 +161,7 @@ export default function AuthenticatePage() {
               boxShadow: "var(--blue-outline)",
               borderColor: "rgb(var(--blue-glow))",
             }}
+            suppressHydrationWarning
           />
         )}
 
@@ -175,6 +176,7 @@ export default function AuthenticatePage() {
               boxShadow: "var(--blue-outline)",
               borderColor: "rgb(var(--blue-glow))",
             }}
+            suppressHydrationWarning
           />
         )}
 
@@ -186,6 +188,7 @@ export default function AuthenticatePage() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="focus-blue-glow mb-3 w-full rounded border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              suppressHydrationWarning
             />
             <input
               type="text"
@@ -193,6 +196,7 @@ export default function AuthenticatePage() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="focus-blue-glow mb-3 w-full rounded border border-zinc-600 bg-zinc-700 px-3 py-2 text-zinc-100 placeholder-zinc-500 focus:outline-none"
+              suppressHydrationWarning
             />
           </>
         )}
