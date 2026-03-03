@@ -260,6 +260,13 @@ export default function AppsPage() {
     }
   };
 
+  const findRunningInstanceForProject = (project: { name: string; version: string }) =>
+    runningInstances.find(
+      (ri) =>
+        ri.version === project.version &&
+        (groupNameToSlug(project.name) === ri.app || project.name === ri.app)
+    );
+
   const handleStopInstance = (ri: RunningInstance) => {
     if (!connection?.token || stoppingInstanceId) return;
     setStoppingInstanceId(ri.id);
@@ -274,6 +281,27 @@ export default function AppsPage() {
       })
       .catch(() => {})
       .finally(() => setStoppingInstanceId(null));
+  };
+
+  const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
+    const ri = findRunningInstanceForProject(project);
+    if (connection?.token && ri) {
+      setStoppingInstanceId(ri.id);
+      deleteInstance(connection, ri.id)
+        .then(() => {
+          return getInstances(connection).then((data) => {
+            const running = data.instances
+              .filter((i: RobotAppInstance) => i.state === "running")
+              .map((i: RobotAppInstance) => ({ id: i.id, app: i.app, version: i.version }));
+            setRunningInstances(running);
+          });
+        })
+        .then(() => removeActiveProject(project.url))
+        .catch(() => {})
+        .finally(() => setStoppingInstanceId(null));
+    } else {
+      removeActiveProject(project.url);
+    }
   };
 
   if (loading || !user) {
@@ -344,28 +372,52 @@ export default function AppsPage() {
                   </div>
                 </div>
               ))}
-              {activeProjects.map((project) => (
-                <div
-                  key={project.url}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                  style={{ boxShadow: "var(--blue-outline)" }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{project.name}</div>
-                    <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeActiveProject(project.url)}
-                    className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300"
-                    aria-label="Remove from active"
+              {activeProjects.map((project) => {
+                const matchingInstance = findRunningInstanceForProject(project);
+                const isStopping = matchingInstance && stoppingInstanceId === matchingInstance.id;
+                return (
+                  <div
+                    key={project.url}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{ boxShadow: "var(--blue-outline)" }}
                   >
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{project.name}</div>
+                      <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveActive(project)}
+                      disabled={isStopping}
+                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                      aria-label="Stop and remove from active"
+                    >
+                      {isStopping ? (
+                        <svg
+                          className="h-5 w-5 animate-spin text-zinc-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          aria-hidden
+                        >
+                          <circle
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeDasharray="24 48"
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
               {runningOnly.map((ri) => {
                 const isStopping = stoppingInstanceId === ri.id;
                 return (
