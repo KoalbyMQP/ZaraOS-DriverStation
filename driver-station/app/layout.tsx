@@ -4,6 +4,7 @@ import MsalWrapper from "@/components/MsalWrapper";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import "./globals.css";
+import {AuthProvider} from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,9 +32,11 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
       <MsalWrapper>
-        <ProjectProvider>
-          <ConnectionProvider>{children}</ConnectionProvider>
-        </ProjectProvider>
+          <AuthProvider>
+            <ProjectProvider>
+              <ConnectionProvider>{children}</ConnectionProvider>
+            </ProjectProvider>
+          </AuthProvider>
       </MsalWrapper>
       </body>
       </html>
