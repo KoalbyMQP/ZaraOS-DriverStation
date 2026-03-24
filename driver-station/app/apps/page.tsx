@@ -112,8 +112,7 @@ export default function AppsPage() {
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
   useEffect(() => {
-    if (loading) return;
-    if (user && !user.email_verified) {
+    if (!loading && !user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);
