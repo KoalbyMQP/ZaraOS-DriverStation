@@ -54,8 +54,14 @@ function baseUrl(connection: Connection): string {
   return `http://${connection.ip}:8080`;
 }
 
+/** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
+export function isLocalRobotHost(connection: Connection): boolean {
+  const ip = connection.ip.trim().toLowerCase();
+  return ip === "127.0.0.1" || ip === "localhost" || ip === "::1";
+}
+
 /**
- * Perform a signed request to the robot API. Requires connection with token.
+ * Perform a signed request to the robot API. Localhost connections use unsigned requests (no token).
  */
 export async function signedFetch(
   connection: Connection,
@@ -63,11 +69,19 @@ export async function signedFetch(
   path: string,
   body?: string
 ): Promise<Response> {
+  const b = body ?? "";
+  if (isLocalRobotHost(connection)) {
+    const url = `${baseUrl(connection)}${path}`;
+    return fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      ...(b ? { body: b } : {}),
+    });
+  }
   const token = connection.token;
   if (!token) {
     throw new Error("Connection has no token; cannot sign request");
   }
-  const b = body ?? "";
   const { timestamp, signature } = await signRequest(token, method, path, b);
   const url = `${baseUrl(connection)}${path}`;
   return fetch(url, {
@@ -106,4 +120,86 @@ export async function getSessions(
     );
   }
   return res.json() as Promise<SessionsResponse>;
+}
+
+export type RobotAppInstance = {
+  id: string;
+  app: string;
+  version: string;
+  state: string;
+  started_at: string | null;
+  stopped_at: string | null;
+};
+
+export type InstancesResponse = {
+  instances: RobotAppInstance[];
+};
+
+/**
+ * GET /instances — list all instances (running and recently stopped).
+ */
+export async function getInstances(
+  connection: Connection
+): Promise<InstancesResponse> {
+  const res = await signedFetch(connection, "GET", "/instances");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `instances failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<InstancesResponse>;
+}
+
+/**
+ * POST /instances — start an app. Returns the created instance (state may be "starting").
+ * Use getInstance to poll until state === "running".
+ */
+export async function createInstance(
+  connection: Connection,
+  app: string,
+  version: string
+): Promise<RobotAppInstance> {
+  const body = JSON.stringify({ app, version });
+  const res = await signedFetch(connection, "POST", "/instances", body);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `start instance failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<RobotAppInstance>;
+}
+
+/**
+ * GET /instances/:id — get status of a single instance. Use to poll until state === "running".
+ */
+export async function getInstance(
+  connection: Connection,
+  instanceId: string
+): Promise<RobotAppInstance> {
+  const res = await signedFetch(connection, "GET", `/instances/${instanceId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `get instance failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<RobotAppInstance>;
+}
+
+/**
+ * DELETE /instances/:id — stop a running instance. Resolves when response is 200.
+ */
+export async function deleteInstance(
+  connection: Connection,
+  instanceId: string
+): Promise<void> {
+  const res = await signedFetch(connection, "DELETE", `/instances/${instanceId}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `stop instance failed: ${res.status}`
+    );
+  }
 }
