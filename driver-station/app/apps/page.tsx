@@ -18,6 +18,7 @@ import {
   getInstance,
   createInstance,
   deleteInstance,
+  isLocalRobotHost,
   type RobotAppInstance,
 } from "@/lib/robot-api";
 
@@ -163,7 +164,10 @@ export default function AppsPage() {
 
   // Fetch GET /instances when robot is connected, then every 60s
   useEffect(() => {
-    if (!connection?.token) {
+    if (
+      !connection ||
+      (!connection.token && !isLocalRobotHost(connection))
+    ) {
       setInstances([]);
       return;
     }
@@ -262,7 +266,7 @@ export default function AppsPage() {
     const version = release.tag_name;
     const url = release.html_url;
 
-    if (connection?.token) {
+    if (connection && (connection.token || isLocalRobotHost(connection))) {
       setStartError(null);
       createInstance(connection, appSlug, version)
         .then((created) => {
@@ -320,7 +324,12 @@ export default function AppsPage() {
     );
 
   const handleStopInstance = (instance: Instance) => {
-    if (!connection?.token || stoppingInstanceIds.has(instance.id)) return;
+    if (
+      !connection ||
+      (!connection.token && !isLocalRobotHost(connection)) ||
+      stoppingInstanceIds.has(instance.id)
+    )
+      return;
     setInstanceState(instance.id, "stopping");
     deleteInstance(connection, instance.id)
       .then(() => removeInstance(instance.id))
@@ -329,7 +338,11 @@ export default function AppsPage() {
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
     const instance = findInstanceForProject(project);
-    if (connection?.token && instance) {
+    if (
+      connection &&
+      (connection.token || isLocalRobotHost(connection)) &&
+      instance
+    ) {
       setInstanceState(instance.id, "stopping");
       deleteInstance(connection, instance.id)
         .then(() => {
