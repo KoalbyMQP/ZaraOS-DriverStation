@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const TENANT_ID = process.env.AZURE_TENANT_ID || "589c76f5-ca15-41f9-884b-55ec15a0672a";
+const TENANT_ID = process.env.AZURE_TENANT_ID || "";
 const CLIENT_SECRET = process.env.AZURE_CLIENT_SECRET || "";
 
 export async function POST(request: NextRequest) {
