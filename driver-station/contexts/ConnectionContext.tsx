@@ -53,9 +53,9 @@ function loadFromStorage(): Connection | null {
 export function ConnectionProvider({ children }: { children: ReactNode }) {
   const [connection, setConnectionState] = useState<Connection | null>(null);
 
-  useEffect(() => {
-    setConnectionState(loadFromStorage());
-  }, []);
+  // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setConnectionState(loadFromStorage()); }, []);
 
   const connect = useCallback((name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => {
     const value: Connection = {

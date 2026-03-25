@@ -168,6 +168,7 @@ export default function AppsPage() {
       !connection ||
       (!connection.token && !isLocalRobotHost(connection))
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstances([]);
       return;
     }
@@ -220,6 +221,7 @@ export default function AppsPage() {
     // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
     if (releasesFetchInFlight) return;
     releasesFetchInFlight = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingReleases(true);
     setError(null);
     getCombinedReleases()

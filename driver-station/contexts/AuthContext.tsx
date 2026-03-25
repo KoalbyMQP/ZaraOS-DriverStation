@@ -3,8 +3,7 @@
 import {
     createContext,
     useContext,
-    useEffect,
-    useState,
+    useMemo,
     type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -21,19 +20,14 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-    const { instance, accounts } = useMsal();
-    const [user, setUser] = useState<AccountInfo | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { instance, accounts, inProgress } = useMsal();
     const router = useRouter();
 
-    useEffect(() => {
-        if (accounts.length > 0) {
-            setUser(accounts[0]);
-        } else {
-            setUser(null);
-        }
-        setLoading(false);
-    }, [accounts]);
+    const user = useMemo<AccountInfo | null>(
+        () => (accounts.length > 0 ? accounts[0] : null),
+        [accounts],
+    );
+    const loading = inProgress !== "none";
 
     const login = async () => {
         await instance.loginRedirect({
@@ -43,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = async () => {
         await instance.logoutRedirect();
-        setUser(null);
         router.push("/authenticate");
     };
 

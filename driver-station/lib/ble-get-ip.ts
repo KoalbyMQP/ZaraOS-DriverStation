@@ -50,6 +50,7 @@ async function sendGetIP(
   return new Promise((resolve, reject) => {
     let fullMessage = "";
     let success = true;
+    // eslint-disable-next-line prefer-const
     let responseTimeout: ReturnType<typeof setTimeout>;
     let isComplete = false;
 
