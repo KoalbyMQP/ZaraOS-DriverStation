@@ -166,9 +166,9 @@ export function Header() {
           <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
             <div className="border-b border-zinc-700 px-4 py-3">
               <p className="text-sm font-medium text-zinc-100">
-                {user.first_name} {user.last_name}
+                {user.name ?? user.username}
               </p>
-              <p className="mt-0.5 truncate text-sm text-zinc-400">{user.email}</p>
+              <p className="mt-0.5 truncate text-sm text-zinc-400">{user.username}</p>
             </div>
             <div className="px-2 pt-2">
               <button

@@ -1,3 +1,22 @@
-backend/node_modules/
+# Dependencies
+node_modules/
+
+# Environment / secrets
+.env
+.env.local
+.env.production
 backend/.env
+driver-station/.env
+driver-station/.env.local
+
+# SSH keys / credentials
+cyberstation_key
+cyberstation_key.pub
+sudo_pass.txt
+
+# Build output
+driver-station/.next/
+
+# Misc
 RobotAPI.md
+.DS_Store

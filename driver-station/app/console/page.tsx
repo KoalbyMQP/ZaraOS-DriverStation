@@ -16,7 +16,7 @@ export default function ConsolePage() {
 
   useEffect(() => {
     if (loading) return;
-    if (user && !user.email_verified) {
+    if (!user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);

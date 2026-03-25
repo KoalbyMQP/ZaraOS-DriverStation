@@ -15,7 +15,37 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// Proxy Azure AD token requests to avoid cross-origin rejection
+// Azure rejects browser-originated token requests for "Web" platform redirect URIs
+// By proxying through the backend, the Origin header is stripped
+app.post('/auth/azure-token-proxy', async (req, res) => {
+  try {
+    const tenantId = req.query.tenant || '589c76f5-ca15-41f9-884b-55ec15a0672a';
+    const tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+    // Inject client_secret for confidential client (Web platform) apps
+    // The browser can't send this (it's a secret), so we add it server-side
+    const params = new URLSearchParams(req.body);
+    if (process.env.AZURE_CLIENT_SECRET && !params.has('client_secret')) {
+      params.set('client_secret', process.env.AZURE_CLIENT_SECRET);
+    }
+
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('Azure token proxy error:', err);
+    res.status(500).json({ error: 'token_proxy_error', error_description: err.message });
+  }
+});
 // app.use(passport.initialize());
 
 const PORT = process.env.PORT || 3001;

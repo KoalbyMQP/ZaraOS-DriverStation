@@ -1,36 +1,39 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useMsal } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
 import { loginRequest } from "@/lib/msalConfig";
 
 export default function AuthenticatePage() {
-    const { instance, accounts } = useMsal();
+    const { instance, accounts, inProgress } = useMsal();
+    const router = useRouter();
+    const loginTriggered = useRef(false);
 
-    const login = async () => {
-        await instance.loginRedirect(loginRequest);
-    };
+    // If already logged in, redirect straight to the dashboard
+    useEffect(() => {
+        if (accounts.length > 0) {
+            router.replace("/");
+        }
+    }, [accounts, router]);
 
-    const logout = async () => {
-        await instance.logoutRedirect();
-    };
+    // Auto-launch login when an unauthenticated user lands here
+    useEffect(() => {
+        if (
+            accounts.length === 0 &&
+            inProgress === InteractionStatus.None &&
+            !loginTriggered.current
+        ) {
+            loginTriggered.current = true;
+            instance.loginRedirect(loginRequest);
+        }
+    }, [accounts, inProgress, instance]);
 
+    // Show a brief loading state while MSAL initialises or redirects
     return (
         <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
-            {!accounts.length ? (
-                <button
-                    onClick={login}
-                    className="rounded bg-blue-500 px-6 py-3"
-                >
-                    Sign in with Microsoft
-                </button>
-            ) : (
-                <button
-                    onClick={logout}
-                    className="rounded bg-red-500 px-6 py-3"
-                >
-                    Logout
-                </button>
-            )}
+            <p className="text-zinc-400">Redirecting to sign-in…</p>
         </div>
     );
 }
