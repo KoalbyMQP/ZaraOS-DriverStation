@@ -135,6 +135,32 @@ export type InstancesResponse = {
   instances: RobotAppInstance[];
 };
 
+export type LocalContainerImage = {
+  repository: string;
+  tags: string[];
+  id: string;
+  size: string;
+  created_at: string;
+};
+
+export type ImagesResponse = {
+  images: LocalContainerImage[];
+};
+
+/**
+ * GET /images — list locally available container images (grouped by repository in the payload).
+ */
+export async function getImages(connection: Connection): Promise<ImagesResponse> {
+  const res = await signedFetch(connection, "GET", "/images");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `images failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<ImagesResponse>;
+}
+
 /**
  * GET /instances — list all instances (running and recently stopped).
  */
