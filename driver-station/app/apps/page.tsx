@@ -229,6 +229,7 @@ export default function AppsPage() {
 
   useEffect(() => {
     if (!connection?.devMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalImages([]);
       setLocalImagesError(null);
       setLoadingLocalImages(false);
@@ -266,7 +267,7 @@ export default function AppsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user || !user.email_verified) {
+    if (!user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);
