@@ -16,11 +16,13 @@ export type Connection = {
   ip: string;
   /** Robot pairing token (HMAC-derived); used to sign requests to the robot API. */
   token?: string;
+  /** Local dev: connected via GET /health on localhost without pairing. */
+  devMode?: boolean;
 };
 
 type ConnectionContextValue = {
   connection: Connection | null;
-  connect: (name: string, ip: string, token?: string) => void;
+  connect: (name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => void;
   disconnect: () => void;
 };
 
@@ -55,8 +57,13 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     setConnectionState(loadFromStorage());
   }, []);
 
-  const connect = useCallback((name: string, ip: string, token?: string) => {
-    const value: Connection = { name, ip, ...(token ? { token } : {}) };
+  const connect = useCallback((name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => {
+    const value: Connection = {
+      name,
+      ip,
+      ...(token ? { token } : {}),
+      ...(opts?.devMode ? { devMode: true } : {}),
+    };
     setConnectionState(value);
     if (typeof window !== "undefined") {
       localStorage.setItem(CONNECTION_KEY, JSON.stringify(value));

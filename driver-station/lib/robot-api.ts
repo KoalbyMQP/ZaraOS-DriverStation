@@ -54,8 +54,14 @@ function baseUrl(connection: Connection): string {
   return `http://${connection.ip}:8080`;
 }
 
+/** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
+export function isLocalRobotHost(connection: Connection): boolean {
+  const ip = connection.ip.trim().toLowerCase();
+  return ip === "127.0.0.1" || ip === "localhost" || ip === "::1";
+}
+
 /**
- * Perform a signed request to the robot API. Requires connection with token.
+ * Perform a signed request to the robot API. Localhost connections use unsigned requests (no token).
  */
 export async function signedFetch(
   connection: Connection,
@@ -63,11 +69,19 @@ export async function signedFetch(
   path: string,
   body?: string
 ): Promise<Response> {
+  const b = body ?? "";
+  if (isLocalRobotHost(connection)) {
+    const url = `${baseUrl(connection)}${path}`;
+    return fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      ...(b ? { body: b } : {}),
+    });
+  }
   const token = connection.token;
   if (!token) {
     throw new Error("Connection has no token; cannot sign request");
   }
-  const b = body ?? "";
   const { timestamp, signature } = await signRequest(token, method, path, b);
   const url = `${baseUrl(connection)}${path}`;
   return fetch(url, {
