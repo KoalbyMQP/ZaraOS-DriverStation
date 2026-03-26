@@ -52,9 +52,9 @@ function loadFromStorage(): SelectedProject[] {
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const [activeProjects, setActiveProjectsState] = useState<SelectedProject[]>([]);
 
-  useEffect(() => {
-    setActiveProjectsState(loadFromStorage());
-  }, []);
+  // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setActiveProjectsState(loadFromStorage()); }, []);
 
   const persist = useCallback((list: SelectedProject[]) => {
     if (typeof window !== "undefined") {

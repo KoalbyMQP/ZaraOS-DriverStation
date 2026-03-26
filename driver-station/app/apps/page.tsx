@@ -18,6 +18,9 @@ import {
   getInstance,
   createInstance,
   deleteInstance,
+  getImages,
+  isLocalRobotHost,
+  type LocalContainerImage,
   type RobotAppInstance,
 } from "@/lib/robot-api";
 
@@ -26,6 +29,17 @@ let releasesFetchInFlight = false;
 
 /** Prevents duplicate GET /instances when React Strict Mode double-invokes the effect. */
 let instancesFetchInFlight = false;
+
+function groupLocalImagesByRepository(images: LocalContainerImage[]): Map<string, LocalContainerImage[]> {
+  const map = new Map<string, LocalContainerImage[]>();
+  for (const img of images) {
+    const key = img.repository;
+    const list = map.get(key);
+    if (list) list.push(img);
+    else map.set(key, [img]);
+  }
+  return map;
+}
 
 /** Normalize group/release name to match robot instance app slug (e.g. "ROS2 Nav" → "ros2-nav"). */
 function groupNameToSlug(name: string): string {
@@ -148,6 +162,9 @@ export default function AppsPage() {
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
+  const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
+  const [loadingLocalImages, setLoadingLocalImages] = useState(false);
+  const [localImagesError, setLocalImagesError] = useState<string | null>(null);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -163,7 +180,11 @@ export default function AppsPage() {
 
   // Fetch GET /instances when robot is connected, then every 60s
   useEffect(() => {
-    if (!connection?.token) {
+    if (
+      !connection ||
+      (!connection.token && !isLocalRobotHost(connection))
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstances([]);
       return;
     }
@@ -207,8 +228,46 @@ export default function AppsPage() {
   }, [connection]);
 
   useEffect(() => {
+    if (!connection?.devMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalImages([]);
+      setLocalImagesError(null);
+      setLoadingLocalImages(false);
+      return;
+    }
+    let cancelled = false;
+    const c = connection;
+    const fetchLocalImages = (isInitial: boolean) => {
+      if (isInitial) {
+        setLoadingLocalImages(true);
+        setLocalImagesError(null);
+      }
+      getImages(c)
+        .then((data) => {
+          if (cancelled) return;
+          setLocalImages(Array.isArray(data.images) ? data.images : []);
+          setLocalImagesError(null);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setLocalImages([]);
+          setLocalImagesError(e instanceof Error ? e.message : "Failed to load local images");
+        })
+        .finally(() => {
+          if (!cancelled && isInitial) setLoadingLocalImages(false);
+        });
+    };
+    fetchLocalImages(true);
+    const interval = setInterval(() => fetchLocalImages(false), 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [connection]);
+
+  useEffect(() => {
     if (loading) return;
-    if (user && !user.email_verified) {
+    if (!user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);
@@ -217,6 +276,7 @@ export default function AppsPage() {
     // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
     if (releasesFetchInFlight) return;
     releasesFetchInFlight = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingReleases(true);
     setError(null);
     getCombinedReleases()
@@ -262,7 +322,7 @@ export default function AppsPage() {
     const version = release.tag_name;
     const url = release.html_url;
 
-    if (connection?.token) {
+    if (connection && (connection.token || isLocalRobotHost(connection))) {
       setStartError(null);
       createInstance(connection, appSlug, version)
         .then((created) => {
@@ -320,7 +380,12 @@ export default function AppsPage() {
     );
 
   const handleStopInstance = (instance: Instance) => {
-    if (!connection?.token || stoppingInstanceIds.has(instance.id)) return;
+    if (
+      !connection ||
+      (!connection.token && !isLocalRobotHost(connection)) ||
+      stoppingInstanceIds.has(instance.id)
+    )
+      return;
     setInstanceState(instance.id, "stopping");
     deleteInstance(connection, instance.id)
       .then(() => removeInstance(instance.id))
@@ -329,7 +394,11 @@ export default function AppsPage() {
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
     const instance = findInstanceForProject(project);
-    if (connection?.token && instance) {
+    if (
+      connection &&
+      (connection.token || isLocalRobotHost(connection)) &&
+      instance
+    ) {
       setInstanceState(instance.id, "stopping");
       deleteInstance(connection, instance.id)
         .then(() => {
@@ -507,6 +576,82 @@ export default function AppsPage() {
             </div>
           )}
         </section>
+
+        {connection?.devMode && (
+          <section className="mb-8">
+            <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Locally</h2>
+            <p className="mb-4 text-sm text-zinc-500">
+              Container images on this machine from your local Cortex server.
+            </p>
+            {loadingLocalImages && (
+              <div className="flex items-center justify-center py-8 text-zinc-400">Loading local images…</div>
+            )}
+            {localImagesError && (
+              <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                <span className="flex-1">{localImagesError}</span>
+                <button
+                  type="button"
+                  onClick={() => setLocalImagesError(null)}
+                  className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                  aria-label="Dismiss"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && localImages.length === 0 && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
+                No local container images reported.
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && localImages.length > 0 && (
+              <div className="space-y-6">
+                {Array.from(groupLocalImagesByRepository(localImages).entries())
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([repository, entries]) => (
+                    <div
+                      key={repository}
+                      className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50"
+                    >
+                      <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-3">
+                        <h3 className="break-all font-mono text-sm font-medium text-zinc-100">{repository}</h3>
+                      </div>
+                      <ul className="divide-y divide-zinc-800">
+                        {entries.map((img) => (
+                          <li key={img.id} className="px-4 py-3">
+                            <div className="flex flex-wrap items-baseline gap-2">
+                              {img.tags.length > 0 ? (
+                                img.tags.map((tag, ti) => (
+                                  <span
+                                    key={`${tag}-${ti}`}
+                                    className="rounded bg-zinc-700 px-2 py-0.5 font-mono text-xs text-zinc-200"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs text-zinc-500">(untagged)</span>
+                              )}
+                            </div>
+                            <div className="mt-2 grid gap-1 text-xs text-zinc-500 sm:grid-cols-[auto_1fr] sm:gap-x-4">
+                              <span className="text-zinc-600">Image ID</span>
+                              <span className="break-all font-mono text-zinc-400">{img.id}</span>
+                              <span className="text-zinc-600">Size</span>
+                              <span className="text-zinc-400">{img.size}</span>
+                              <span className="text-zinc-600">Created</span>
+                              <span className="text-zinc-400">{img.created_at}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </section>
+        )}
 
         <section>
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Available</h2>

@@ -41,7 +41,7 @@ export function ConnectionStatusWidget() {
           </p>
           {connected ? (
             <p className="truncate text-sm font-medium text-zinc-100">
-              {connection!.name}
+              {connection!.devMode ? "Dev Mode" : connection!.name}
               <span className="ml-2 font-mono text-zinc-400">{connection!.ip}</span>
             </p>
           ) : (
