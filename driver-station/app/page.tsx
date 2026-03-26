@@ -20,7 +20,7 @@ export default function HomePage() {
     if (!isAuthenticated) {
       router.replace("/authenticate");
     }
-  }, [loading, user, router]);
+  }, [loading, user, router, isAuthenticated]);
 
   if (loading || !user) {
     return (
