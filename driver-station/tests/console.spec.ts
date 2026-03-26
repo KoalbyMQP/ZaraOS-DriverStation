@@ -71,7 +71,7 @@ test.describe.serial("Console tests", () => {
         await page.getByRole('link', { name: 'Add from Apps' }).click();
         await page.getByRole('button', { name: 'Select version' }).click();
         await page.getByRole('button', { name: 'v0.0.1' }).click();
-        await expect(page.getByText('Connect to a device to add')).toBeVisible();
+        await expect(page.getByText('Connect to a device to add')).toBeVisible();   // this wording might be wrong 
     });
     
     */
