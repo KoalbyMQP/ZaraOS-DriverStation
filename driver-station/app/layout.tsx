@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AuthProvider } from "@/contexts/AuthContext";
+import MsalWrapper from "@/components/MsalWrapper";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import "./globals.css";
+import {AuthProvider} from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,21 +22,23 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({
-  children,
-}: Readonly<{
+                                     children,
+                                   }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+      <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <ProjectProvider>
-            <ConnectionProvider>{children}</ConnectionProvider>
-          </ProjectProvider>
-        </AuthProvider>
+      <MsalWrapper>
+          <AuthProvider>
+            <ProjectProvider>
+              <ConnectionProvider>{children}</ConnectionProvider>
+            </ProjectProvider>
+          </AuthProvider>
+      </MsalWrapper>
       </body>
-    </html>
+      </html>
   );
 }

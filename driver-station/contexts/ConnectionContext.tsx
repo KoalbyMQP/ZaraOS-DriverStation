@@ -16,11 +16,13 @@ export type Connection = {
   ip: string;
   /** Robot pairing token (HMAC-derived); used to sign requests to the robot API. */
   token?: string;
+  /** Local dev: connected via GET /health on localhost without pairing. */
+  devMode?: boolean;
 };
 
 type ConnectionContextValue = {
   connection: Connection | null;
-  connect: (name: string, ip: string, token?: string) => void;
+  connect: (name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => void;
   disconnect: () => void;
 };
 
@@ -51,12 +53,17 @@ function loadFromStorage(): Connection | null {
 export function ConnectionProvider({ children }: { children: ReactNode }) {
   const [connection, setConnectionState] = useState<Connection | null>(null);
 
-  useEffect(() => {
-    setConnectionState(loadFromStorage());
-  }, []);
+  // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setConnectionState(loadFromStorage()); }, []);
 
-  const connect = useCallback((name: string, ip: string, token?: string) => {
-    const value: Connection = { name, ip, ...(token ? { token } : {}) };
+  const connect = useCallback((name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => {
+    const value: Connection = {
+      name,
+      ip,
+      ...(token ? { token } : {}),
+      ...(opts?.devMode ? { devMode: true } : {}),
+    };
     setConnectionState(value);
     if (typeof window !== "undefined") {
       localStorage.setItem(CONNECTION_KEY, JSON.stringify(value));

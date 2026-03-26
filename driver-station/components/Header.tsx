@@ -28,10 +28,12 @@ function PersonIcon({ className }: { className?: string }) {
 export function Header() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const { connection, disconnect } = useConnection();
+  const { connection, connect, disconnect } = useConnection();
   const [menuOpen, setMenuOpen] = useState(false);
   const [connectDropdownOpen, setConnectDropdownOpen] = useState(false);
   const [ipConnectModalOpen, setIpConnectModalOpen] = useState(false);
+  const [devModeLoading, setDevModeLoading] = useState(false);
+  const [devModeError, setDevModeError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const connectDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -51,6 +53,28 @@ export function Header() {
   }, [menuOpen, connectDropdownOpen]);
 
   if (!user) return null;
+
+  const DEV_HEALTH_URL = "http://127.0.0.1:8080/health";
+
+  const handleDevMode = async () => {
+    setDevModeError(null);
+    setDevModeLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const res = await fetch(DEV_HEALTH_URL, { method: "GET", signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        setDevModeError(`Health check failed (${res.status}). Is Cortex running on port 8080?`);
+        return;
+      }
+      connect("Dev Mode", "127.0.0.1", undefined, { devMode: true });
+    } catch {
+      setDevModeError("Could not reach localhost:8080. Start Cortex locally and try again.");
+    } finally {
+      setDevModeLoading(false);
+    }
+  };
 
   const navLink = (href: string, label: string) => {
     const isActive = pathname === href;
@@ -74,34 +98,59 @@ export function Header() {
           {navLink("/apps", "Apps")}
         </nav>
       </div>
-      <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center gap-4">
-        <div className="relative" ref={connectDropdownRef}>
-          <button
-            type="button"
-            onClick={() =>
-              connection ? setConnectDropdownOpen((o) => !o) : setIpConnectModalOpen(true)
-            }
-            className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
-            style={{ boxShadow: "var(--blue-outline)" }}
-            aria-expanded={connectDropdownOpen}
-          >
-            {connection ? `Connected: ${connection.name}` : "Connect"}
-          </button>
-          {connectDropdownOpen && connection && (
-            <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
-              <button
-                type="button"
-                onClick={() => {
-                  disconnect();
-                  setConnectDropdownOpen(false);
-                }}
-                className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
-              >
-                Disconnect
-              </button>
-            </div>
+      <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
+        <div className="flex items-center gap-2">
+          <div className="relative" ref={connectDropdownRef}>
+            <button
+              type="button"
+            onClick={() => {
+              if (connection) setConnectDropdownOpen((o) => !o);
+              else {
+                setDevModeError(null);
+                setIpConnectModalOpen(true);
+              }
+            }}
+              className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
+              style={{ boxShadow: "var(--blue-outline)" }}
+              aria-expanded={connectDropdownOpen}
+            >
+              {connection
+                ? connection.devMode
+                  ? "Connected in Dev Mode"
+                  : `Connected: ${connection.name}`
+                : "Connect to Robot"}
+            </button>
+            {connectDropdownOpen && connection && (
+              <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
+                <button
+                  type="button"
+                  onClick={() => {
+                    disconnect();
+                    setConnectDropdownOpen(false);
+                  }}
+                  className="w-full cursor-pointer px-4 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
+          </div>
+          {!connection && (
+            <button
+              type="button"
+              onClick={handleDevMode}
+              disabled={devModeLoading}
+              className="cursor-pointer rounded-md border border-zinc-600 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {devModeLoading ? "Checking…" : "Dev Mode"}
+            </button>
           )}
         </div>
+        {devModeError && (
+          <p className="max-w-sm text-center text-xs text-red-400" role="alert">
+            {devModeError}
+          </p>
+        )}
       </div>
       <div className="relative" ref={menuRef}>
         <button
@@ -117,9 +166,9 @@ export function Header() {
           <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
             <div className="border-b border-zinc-700 px-4 py-3">
               <p className="text-sm font-medium text-zinc-100">
-                {user.first_name} {user.last_name}
+                {user.name ?? user.username}
               </p>
-              <p className="mt-0.5 truncate text-sm text-zinc-400">{user.email}</p>
+              <p className="mt-0.5 truncate text-sm text-zinc-400">{user.username}</p>
             </div>
             <div className="px-2 pt-2">
               <button

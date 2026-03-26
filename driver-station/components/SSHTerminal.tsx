@@ -103,6 +103,7 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
       ws?.close();
       term.dispose();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [robotUrl]);
 
   return (

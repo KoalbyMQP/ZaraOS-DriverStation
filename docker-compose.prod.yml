@@ -1,0 +1,20 @@
+services:
+  frontend:
+    image: ghcr.io/koalbymqp/zaraos-driverstation/driver-station:latest
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/admin/.docker/config.json:/config.json:ro
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=30
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+    restart: unless-stopped
