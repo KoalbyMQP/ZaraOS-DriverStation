@@ -184,6 +184,18 @@ type Instance = {
   projectUrl?: string;
 };
 
+/** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
+function dedupeInstancesById(instances: Instance[]): Instance[] {
+  const seen = new Set<string>();
+  const out: Instance[] = [];
+  for (const inst of instances) {
+    if (seen.has(inst.id)) continue;
+    seen.add(inst.id);
+    out.push(inst);
+  }
+  return out;
+}
+
 export default function AppsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -251,7 +263,7 @@ export default function AppsPage() {
             const localStarting = prev.filter(
               (p) => p.state === "starting" && !apiIds.has(p.id)
             );
-            return [...merged, ...localStarting];
+            return dedupeInstancesById([...merged, ...localStarting]);
           });
         })
         .catch(() => setInstances([]))
@@ -380,17 +392,20 @@ export default function AppsPage() {
     setStartError(null);
     createInstance(connection, appSlug, version, image)
       .then((created) => {
-        setInstances((prev) => [
-          ...prev,
-          {
-            id: created.id,
-            app: appSlug,
-            version: created.version,
-            state: "starting",
-            displayName,
-            projectUrl,
-          },
-        ]);
+        setInstances((prev) => {
+          if (prev.some((i) => i.id === created.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: created.id,
+              app: appSlug,
+              version: created.version,
+              state: "starting",
+              displayName,
+              projectUrl,
+            },
+          ];
+        });
         const pollUntilRunning = () => {
           getInstance(connection!, created.id)
             .then((updated) => {
