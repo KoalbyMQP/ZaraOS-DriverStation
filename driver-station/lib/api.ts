@@ -25,6 +25,10 @@ const GITHUB_HEADERS: HeadersInit = {
 const APPS_REPO =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) ||
   "KoalbyMQP/Apps";
+const CORE_REPO = "KoalbyMQP/Core";
+const DRIVERS_REPO = "KoalbyMQP/Drivers";
+const CONTROL_REPO = "KoalbyMQP/Control";
+const SENSING_REPO = "KoalbyMQP/Sensing";
 
 function mapGitHubRelease(raw: {
   id: number;
@@ -62,7 +66,7 @@ async function fetchGitHubReleases(ownerRepo: string): Promise<Release[]> {
 }
 
 export async function getCoreReleases(): Promise<{ releases: Release[] }> {
-  const releases = await fetchGitHubReleases("KoalbyMQP/Core");
+  const releases = await fetchGitHubReleases(CORE_REPO);
   return { releases };
 }
 
@@ -71,14 +75,32 @@ export async function getAppsReleases(): Promise<{ releases: Release[] }> {
   return { releases };
 }
 
-export type ReleaseWithSource = Release & { source: "core" | "apps" };
+export type ReleaseSource = "apps" | "core" | "drivers" | "control" | "sensing";
+
+export type ReleaseWithSource = Release & {
+  source: ReleaseSource;
+  repo: string;
+};
+
+function mapWithSource(releases: Release[], source: ReleaseSource, repo: string): ReleaseWithSource[] {
+  return releases.map((rel) => ({ ...rel, source, repo }));
+}
 
 export async function getCombinedReleases(): Promise<ReleaseWithSource[]> {
   const [core, apps] = await Promise.all([
-    getCoreReleases().then((r) => r.releases.map((rel) => ({ ...rel, source: "core" as const }))),
-    getAppsReleases().then((r) => r.releases.map((rel) => ({ ...rel, source: "apps" as const }))),
+    getCoreReleases().then((r) => mapWithSource(r.releases, "core", CORE_REPO)),
+    getAppsReleases().then((r) => mapWithSource(r.releases, "apps", APPS_REPO)),
   ]);
   return [...core, ...apps];
+}
+
+export async function getComponentsReleases(): Promise<ReleaseWithSource[]> {
+  const [drivers, control, sensing] = await Promise.all([
+    fetchGitHubReleases(DRIVERS_REPO).then((releases) => mapWithSource(releases, "drivers", DRIVERS_REPO)),
+    fetchGitHubReleases(CONTROL_REPO).then((releases) => mapWithSource(releases, "control", CONTROL_REPO)),
+    fetchGitHubReleases(SENSING_REPO).then((releases) => mapWithSource(releases, "sensing", SENSING_REPO)),
+  ]);
+  return [...drivers, ...control, ...sensing];
 }
 
 /**

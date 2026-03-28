@@ -8,6 +8,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { Header } from "@/components/Header";
 import {
   getCombinedReleases,
+  getComponentsReleases,
   getReleaseGroupName,
   groupReleasesByTitle,
   type ReleaseGroup,
@@ -48,6 +49,17 @@ function groupNameToSlug(name: string): string {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
+}
+
+function repoNameFromOwnerRepo(ownerRepo: string): string {
+  const [, repo] = ownerRepo.split("/");
+  return repo || ownerRepo;
+}
+
+function uniqueReposForGroup(group: ReleaseGroup): string[] {
+  return Array.from(new Set(group.versions.map((v) => repoNameFromOwnerRepo(v.repo)))).sort((a, b) =>
+    a.localeCompare(b)
+  );
 }
 
 function VersionMenu({
@@ -155,9 +167,12 @@ export default function AppsPage() {
   const { user, loading } = useAuth();
   const { connection } = useConnection();
   const { activeProjects, addActiveProject, removeActiveProject, isActive } = useProject();
-  const [groups, setGroups] = useState<ReleaseGroup[]>([]);
-  const [loadingReleases, setLoadingReleases] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<ReleaseGroup[]>([]);
+  const [componentGroups, setComponentGroups] = useState<ReleaseGroup[]>([]);
+  const [loadingAvailableReleases, setLoadingAvailableReleases] = useState(true);
+  const [loadingComponentReleases, setLoadingComponentReleases] = useState(true);
+  const [availableError, setAvailableError] = useState<string | null>(null);
+  const [componentsError, setComponentsError] = useState<string | null>(null);
   const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
@@ -273,22 +288,34 @@ export default function AppsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
+    // Guard against double-invocation in React Strict Mode (dev) so we don't call release endpoints twice
     if (releasesFetchInFlight) return;
     releasesFetchInFlight = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingReleases(true);
-    setError(null);
-    getCombinedReleases()
-      .then((releases) => {
-        setGroups(groupReleasesByTitle(releases));
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "Failed to load releases");
-        setGroups([]);
+    setLoadingAvailableReleases(true);
+    setLoadingComponentReleases(true);
+    setAvailableError(null);
+    setComponentsError(null);
+    Promise.allSettled([getCombinedReleases(), getComponentsReleases()])
+      .then(([availableResult, componentsResult]) => {
+        if (availableResult.status === "fulfilled") {
+          setAvailableGroups(groupReleasesByTitle(availableResult.value));
+        } else {
+          const reason = availableResult.reason;
+          setAvailableError(reason instanceof Error ? reason.message : "Failed to load available releases");
+          setAvailableGroups([]);
+        }
+        if (componentsResult.status === "fulfilled") {
+          setComponentGroups(groupReleasesByTitle(componentsResult.value));
+        } else {
+          const reason = componentsResult.reason;
+          setComponentsError(reason instanceof Error ? reason.message : "Failed to load component releases");
+          setComponentGroups([]);
+        }
       })
       .finally(() => {
-        setLoadingReleases(false);
+        setLoadingAvailableReleases(false);
+        setLoadingComponentReleases(false);
         releasesFetchInFlight = false;
       });
   }, []);
@@ -656,18 +683,18 @@ export default function AppsPage() {
         <section>
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Available</h2>
 
-          {loadingReleases && (
+          {loadingAvailableReleases && (
             <div className="flex items-center justify-center py-12 text-zinc-400">
               Loading releases…
             </div>
           )}
 
-          {error && (
+          {availableError && (
             <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{error}</span>
+              <span className="flex-1">{availableError}</span>
               <button
                 type="button"
-                onClick={() => setError(null)}
+                onClick={() => setAvailableError(null)}
                 className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
                 aria-label="Dismiss"
               >
@@ -678,46 +705,137 @@ export default function AppsPage() {
             </div>
           )}
 
-          {!loadingReleases && !error && groups.length === 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length === 0 && (
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingReleases && !error && groups.length > 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
-                <div
-                  key={group.groupName}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                  style={{
-                    boxShadow:
-                      group.versions.some((v) => isActive(v.html_url)) ||
-                      group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
-                        ? "var(--blue-outline)"
-                        : "none",
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{group.groupName}</div>
-                    <div className="mt-0.5 text-sm text-zinc-400">
-                      {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+              {availableGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const menuKey = `available:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {cardRepos.map((repo) => (
+                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repo}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
                   </div>
-                  <VersionMenu
-                    group={group}
-                    appSlug={groupNameToSlug(group.groupName)}
-                    onSelectVersion={handleSelectVersion}
-                    activeProjectUrls={activeProjectUrls}
-                    isVersionRunningOnRobot={(tagName) =>
-                      isVersionRunningOnRobot(group.groupName, tagName)
-                    }
-                    open={openMenuGroup === group.groupName}
-                    onToggle={() =>
-                      setOpenMenuGroup((prev) => (prev === group.groupName ? null : group.groupName))
-                    }
-                    onClose={() => setOpenMenuGroup(null)}
-                  />
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8">
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Components</h2>
+
+          {loadingComponentReleases && (
+            <div className="flex items-center justify-center py-12 text-zinc-400">
+              Loading releases…
+            </div>
+          )}
+
+          {componentsError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <span className="flex-1">{componentsError}</span>
+              <button
+                type="button"
+                onClick={() => setComponentsError(null)}
+                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                aria-label="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length === 0 && (
+            <div className="py-12 text-center text-zinc-400">No releases found.</div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {componentGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const menuKey = `components:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {cardRepos.map((repo) => (
+                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repo}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
