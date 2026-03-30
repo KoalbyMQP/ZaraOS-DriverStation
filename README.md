@@ -76,3 +76,5 @@ If using local host make sure it is actually running when you run these tests.
 Some notes about potential bugs: 
 If you are having issues with any of the browsers and it says they are not installed and you run the command given and it still does not work, it may be your antivirus. Some antiviruses stop browsers from being downloaded, especially fire fox, so watch out for that. 
 Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login. 
+
+Do not use firefox, it has so many browser specific bugs it is not worth it. 
