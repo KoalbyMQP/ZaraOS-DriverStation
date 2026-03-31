@@ -65,12 +65,16 @@ export function Header() {
       const res = await fetch(DEV_HEALTH_URL, { method: "GET", signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) {
-        setDevModeError(`Health check failed (${res.status}). Is Cortex running on port 8080?`);
+        setDevModeError(
+          `Health check failed (${res.status}). Make sure to start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS`,
+        );
         return;
       }
       connect("Dev Mode", "127.0.0.1", undefined, { devMode: true });
     } catch {
-      setDevModeError("Could not reach localhost:8080. Start Cortex locally and try again.");
+      setDevModeError(
+        "Could not reach localhost:8080. Start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS",
+      );
     } finally {
       setDevModeLoading(false);
     }
