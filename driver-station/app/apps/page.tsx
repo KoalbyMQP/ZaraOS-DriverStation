@@ -31,15 +31,28 @@ let releasesFetchInFlight = false;
 /** Prevents duplicate GET /instances when React Strict Mode double-invokes the effect. */
 let instancesFetchInFlight = false;
 
-function groupLocalImagesByRepository(images: LocalContainerImage[]): Map<string, LocalContainerImage[]> {
-  const map = new Map<string, LocalContainerImage[]>();
+/** One row per runnable (repository, tag); untagged images use an empty tag and no Run. */
+function buildLocalRunRows(images: LocalContainerImage[]): {
+  repository: string;
+  tag: string;
+  img: LocalContainerImage;
+}[] {
+  const seen = new Set<string>();
+  const rows: { repository: string; tag: string; img: LocalContainerImage }[] = [];
   for (const img of images) {
-    const key = img.repository;
-    const list = map.get(key);
-    if (list) list.push(img);
-    else map.set(key, [img]);
+    const tagList = img.tags.length > 0 ? img.tags : [""];
+    for (const tag of tagList) {
+      const key = `${img.repository}:${tag}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ repository: img.repository, tag, img });
+    }
   }
-  return map;
+  rows.sort((a, b) => {
+    const c = a.repository.localeCompare(b.repository);
+    return c !== 0 ? c : a.tag.localeCompare(b.tag);
+  });
+  return rows;
 }
 
 /** Normalize group/release name to match robot instance app slug (e.g. "ROS2 Nav" → "ros2-nav"). */
@@ -54,6 +67,15 @@ function groupNameToSlug(name: string): string {
 function repoNameFromOwnerRepo(ownerRepo: string): string {
   const [, repo] = ownerRepo.split("/");
   return repo || ownerRepo;
+}
+
+/** Stable id for Active list / isActive when starting apps from local images (not a fetchable URL). */
+function localProjectUrl(repository: string, tag: string): string {
+  return `local:${encodeURIComponent(repository)}:${encodeURIComponent(tag)}`;
+}
+
+function localAppSlugFromRepository(repository: string): string {
+  return groupNameToSlug(repoNameFromOwnerRepo(repository));
 }
 
 function uniqueReposForGroup(group: ReleaseGroup): string[] {
@@ -162,6 +184,18 @@ type Instance = {
   projectUrl?: string;
 };
 
+/** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
+function dedupeInstancesById(instances: Instance[]): Instance[] {
+  const seen = new Set<string>();
+  const out: Instance[] = [];
+  for (const inst of instances) {
+    if (seen.has(inst.id)) continue;
+    seen.add(inst.id);
+    out.push(inst);
+  }
+  return out;
+}
+
 export default function AppsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -229,7 +263,7 @@ export default function AppsPage() {
             const localStarting = prev.filter(
               (p) => p.state === "starting" && !apiIds.has(p.id)
             );
-            return [...merged, ...localStarting];
+            return dedupeInstancesById([...merged, ...localStarting]);
           });
         })
         .catch(() => setInstances([]))
@@ -344,28 +378,37 @@ export default function AppsPage() {
         (groupNameToSlug(groupName) === ri.app || groupName === ri.app)
     );
 
-  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
-    const name = getReleaseGroupName(release);
-    const version = release.tag_name;
-    const url = release.html_url;
-
-    if (connection && (connection.token || isLocalRobotHost(connection))) {
-      setStartError(null);
-      createInstance(connection, appSlug, version)
-        .then((created) => {
-          setInstances((prev) => [
+  const startInstanceOnRobot = (
+    appSlug: string,
+    version: string,
+    displayName: string,
+    projectUrl: string,
+    image?: string
+  ) => {
+    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
+      setStartError("Connect to a device to add apps to Active");
+      return;
+    }
+    setStartError(null);
+    createInstance(connection, appSlug, version, image)
+      .then((created) => {
+        setInstances((prev) => {
+          if (prev.some((i) => i.id === created.id)) return prev;
+          return [
             ...prev,
             {
               id: created.id,
               app: appSlug,
               version: created.version,
               state: "starting",
-              displayName: name,
-              projectUrl: url,
+              displayName,
+              projectUrl,
             },
-          ]);
-          const pollUntilRunning = () => {
-            getInstance(connection!, created.id).then((updated) => {
+          ];
+        });
+        const pollUntilRunning = () => {
+          getInstance(connection!, created.id)
+            .then((updated) => {
               if (updated.state === "running") {
                 setInstances((prev) =>
                   prev.map((i) =>
@@ -374,28 +417,46 @@ export default function AppsPage() {
                       : i
                   )
                 );
-                addActiveProject({ url, name, version });
+                addActiveProject({ url: projectUrl, name: displayName, version });
                 return;
               }
               if (updated.state === "crashed" || updated.state === "stopped") {
                 removeInstance(created.id);
-                setStartError(`${name} ${version} failed to start (${updated.state})`);
+                setStartError(`${displayName} ${version} failed to start (${updated.state})`);
                 return;
               }
               setTimeout(pollUntilRunning, 800);
-            }).catch(() => {
+            })
+            .catch(() => {
               removeInstance(created.id);
-              setStartError(`Failed to check status for ${name}`);
+              setStartError(`Failed to check status for ${displayName}`);
             });
-          };
-          pollUntilRunning();
-        })
-        .catch((err) => {
-          setStartError(err instanceof Error ? err.message : "Failed to start app");
-        });
-    } else {
-      setStartError("Connect to a device to add apps to Active");
-    }
+        };
+        pollUntilRunning();
+      })
+      .catch((err) => {
+        setStartError(err instanceof Error ? err.message : "Failed to start app");
+      });
+  };
+
+  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
+    const name = getReleaseGroupName(release);
+    const version = release.tag_name;
+    const url = release.html_url;
+    startInstanceOnRobot(appSlug, version, name, url);
+  };
+
+  const handleRunLocalImage = (repository: string, tag: string) => {
+    const displayName = repoNameFromOwnerRepo(repository);
+    const appSlug = localAppSlugFromRepository(repository);
+    const imageRef = `${repository}:${tag}`;
+    startInstanceOnRobot(
+      appSlug,
+      tag,
+      displayName,
+      localProjectUrl(repository, tag),
+      imageRef
+    );
   };
 
   const findInstanceForProject = (project: { name: string; version: string }) =>
@@ -634,54 +695,63 @@ export default function AppsPage() {
               </div>
             )}
             {!loadingLocalImages && !localImagesError && localImages.length > 0 && (
-              <div className="space-y-6">
-                {Array.from(groupLocalImagesByRepository(localImages).entries())
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([repository, entries]) => (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {buildLocalRunRows(localImages).map((row) => {
+                  const { repository, tag, img } = row;
+                  const shortName = repoNameFromOwnerRepo(repository);
+                  const hasTag = tag.length > 0;
+                  const canRun =
+                    hasTag &&
+                    connection &&
+                    (connection.token || isLocalRobotHost(connection));
+                  const highlighted =
+                    (hasTag && isActive(localProjectUrl(repository, tag))) ||
+                    (hasTag && isVersionRunningOnRobot(shortName, tag));
+                  return (
                     <div
-                      key={repository}
-                      className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50"
+                      key={`${repository}:${tag}:${img.id}`}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                      style={{
+                        boxShadow: highlighted ? "var(--blue-outline)" : "none",
+                      }}
                     >
-                      <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-3">
-                        <h3 className="break-all font-mono text-sm font-medium text-zinc-100">{repository}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-zinc-100">{shortName}</div>
+                        <div className="mt-0.5 font-mono text-sm text-zinc-400">
+                          {hasTag ? tag : "(untagged)"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="break-all rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repository}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-600">Size</span>{" "}
+                          <span className="text-zinc-400">{img.size}</span>
+                          <span className="mx-2 text-zinc-700">·</span>
+                          <span className="text-zinc-600">Created</span>{" "}
+                          <span className="text-zinc-400">{img.created_at}</span>
+                        </div>
                       </div>
-                      <ul className="divide-y divide-zinc-800">
-                        {entries.map((img) => (
-                          <li key={img.id} className="px-4 py-3">
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              {img.tags.length > 0 ? (
-                                img.tags.map((tag, ti) => (
-                                  <span
-                                    key={`${tag}-${ti}`}
-                                    className="rounded bg-zinc-700 px-2 py-0.5 font-mono text-xs text-zinc-200"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-xs text-zinc-500">(untagged)</span>
-                              )}
-                            </div>
-                            <div className="mt-2 grid gap-1 text-xs text-zinc-500 sm:grid-cols-[auto_1fr] sm:gap-x-4">
-                              <span className="text-zinc-600">Image ID</span>
-                              <span className="break-all font-mono text-zinc-400">{img.id}</span>
-                              <span className="text-zinc-600">Size</span>
-                              <span className="text-zinc-400">{img.size}</span>
-                              <span className="text-zinc-600">Created</span>
-                              <span className="text-zinc-400">{img.created_at}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => handleRunLocalImage(repository, tag)}
+                        disabled={!canRun}
+                        title={!hasTag ? "Image has no tag" : !connection ? "Connect to a robot" : undefined}
+                        className="shrink-0 cursor-pointer rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Run
+                      </button>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
           </section>
         )}
 
         <section>
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available</h2>
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Online</h2>
 
           {loadingAvailableReleases && (
             <div className="flex items-center justify-center py-12 text-zinc-400">
