@@ -184,6 +184,10 @@ type Instance = {
   projectUrl?: string;
 };
 
+function newPendingInstanceId(): string {
+  return `pending:${crypto.randomUUID()}`;
+}
+
 /** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
 function dedupeInstancesById(instances: Instance[]): Instance[] {
   const seen = new Set<string>();
@@ -257,12 +261,34 @@ export default function AppsPage() {
               prev.filter((p) => p.state === "stopping").map((p) => p.id)
             );
             const apiIds = new Set(apiList.map((a) => a.id));
-            const merged = apiList.map((api) =>
-              stoppingIds.has(api.id) ? { ...api, state: "stopping" as const } : api
-            );
-            const localStarting = prev.filter(
-              (p) => p.state === "starting" && !apiIds.has(p.id)
-            );
+            const merged = apiList.map((api) => {
+              let row: Instance = stoppingIds.has(api.id)
+                ? { ...api, state: "stopping" as const }
+                : api;
+              const optimistic = prev.find(
+                (p) =>
+                  p.id.startsWith("pending:") &&
+                  p.state === "starting" &&
+                  p.app === api.app &&
+                  p.version === api.version
+              );
+              if (optimistic && row.state !== "stopping") {
+                row = {
+                  ...row,
+                  displayName: optimistic.displayName ?? row.displayName,
+                  projectUrl: optimistic.projectUrl ?? row.projectUrl,
+                };
+              }
+              return row;
+            });
+            const localStarting = prev.filter((p) => {
+              if (p.state !== "starting" || apiIds.has(p.id)) return false;
+              if (p.id.startsWith("pending:")) {
+                const covered = apiList.some((a) => a.app === p.app && a.version === p.version);
+                return !covered;
+              }
+              return true;
+            });
             return dedupeInstancesById([...merged, ...localStarting]);
           });
         })
@@ -371,12 +397,12 @@ export default function AppsPage() {
       )
   );
 
-  const isVersionRunningOnRobot = (groupName: string, tagName: string) =>
-    runningInstances.some(
-      (ri) =>
-        ri.version === tagName &&
-        (groupNameToSlug(groupName) === ri.app || groupName === ri.app)
-    );
+  const isVersionRunningOnRobot = (groupName: string, tagName: string) => {
+    const match = (i: Instance) =>
+      i.version === tagName &&
+      (groupNameToSlug(groupName) === i.app || groupName === i.app);
+    return runningInstances.some(match) || startingInstances.some(match);
+  };
 
   const startInstanceOnRobot = (
     appSlug: string,
@@ -390,12 +416,35 @@ export default function AppsPage() {
       return;
     }
     setStartError(null);
+    const pendingId = newPendingInstanceId();
+    setInstances((prev) => [
+      ...prev,
+      {
+        id: pendingId,
+        app: appSlug,
+        version,
+        state: "starting",
+        displayName,
+        projectUrl,
+      },
+    ]);
     createInstance(connection, appSlug, version, image)
       .then((created) => {
         setInstances((prev) => {
-          if (prev.some((i) => i.id === created.id)) return prev;
+          const withoutPending = prev.filter((i) => i.id !== pendingId);
+          const existingIdx = withoutPending.findIndex((i) => i.id === created.id);
+          if (existingIdx >= 0) {
+            const next = [...withoutPending];
+            next[existingIdx] = {
+              ...next[existingIdx],
+              state: "starting",
+              displayName,
+              projectUrl,
+            };
+            return next;
+          }
           return [
-            ...prev,
+            ...withoutPending,
             {
               id: created.id,
               app: appSlug,
@@ -435,6 +484,7 @@ export default function AppsPage() {
         pollUntilRunning();
       })
       .catch((err) => {
+        removeInstance(pendingId);
         setStartError(err instanceof Error ? err.message : "Failed to start app");
       });
   };
