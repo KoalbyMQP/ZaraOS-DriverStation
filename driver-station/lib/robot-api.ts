@@ -130,6 +130,28 @@ export async function getSessions(
   return res.json() as Promise<SessionsResponse>;
 }
 
+/** First characters of the pairing token; matches `token_prefix` in GET /auth/sessions (RobotAPI). */
+const TOKEN_PREFIX_LENGTH = 6;
+
+/**
+ * POST /auth/revoke — end the robot session for this client. Best-effort (swallows errors);
+ * call before clearing local connection state.
+ */
+export async function revokeRobotSession(connection: Connection): Promise<void> {
+  const token = connection.token;
+  if (!token) return;
+  const token_prefix =
+    token.length >= TOKEN_PREFIX_LENGTH
+      ? token.slice(0, TOKEN_PREFIX_LENGTH)
+      : token;
+  const body = JSON.stringify({ token_prefix });
+  try {
+    await signedFetch(connection, "POST", "/auth/revoke", body);
+  } catch {
+    // Unreachable host or signing failure — local disconnect still proceeds.
+  }
+}
+
 export type RobotAppInstance = {
   id: string;
   app: string;

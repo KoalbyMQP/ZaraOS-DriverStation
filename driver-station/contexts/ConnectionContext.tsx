@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { revokeRobotSession } from "@/lib/robot-api";
 
 const CONNECTION_KEY = "driver-station-connection";
 
@@ -75,7 +76,10 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       localStorage.removeItem(CONNECTION_KEY);
     }
-  }, []);
+    if (connection?.token) {
+      void revokeRobotSession(connection);
+    }
+  }, [connection]);
 
   return (
     <ConnectionContext.Provider value={{ connection, connect, disconnect }}>

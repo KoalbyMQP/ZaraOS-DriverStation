@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { checkRobotHealth } from "@/lib/robot-api";
 
@@ -12,8 +12,6 @@ const INTERVAL_MS = 60_000;
  */
 export default function ConnectionHealthMonitor() {
   const { connection, disconnect } = useConnection();
-  const disconnectRef = useRef(disconnect);
-  disconnectRef.current = disconnect;
 
   useEffect(() => {
     if (!connection) return;
@@ -24,10 +22,10 @@ export default function ConnectionHealthMonitor() {
       try {
         const ok = await checkRobotHealth(connection);
         if (cancelled) return;
-        if (!ok) disconnectRef.current();
+        if (!ok) disconnect();
       } catch {
         if (cancelled) return;
-        disconnectRef.current();
+        disconnect();
       }
     };
 
@@ -37,7 +35,7 @@ export default function ConnectionHealthMonitor() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [connection]);
+  }, [connection, disconnect]);
 
   return null;
 }
