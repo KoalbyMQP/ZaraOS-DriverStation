@@ -811,83 +811,97 @@ export default function AppsPage() {
           )}
         </section>
 
-        <div className="mb-8 flex justify-center px-2">
-          <div ref={filtersBarRef} className="flex w-full max-w-2xl items-center gap-3">
-            <label htmlFor="apps-search" className="sr-only">
-              Search apps
-            </label>
-            <input
-              id="apps-search"
-              type="search"
-              value={appSearchQuery}
-              onChange={(e) => setAppSearchQuery(e.target.value)}
-              placeholder="Search available apps and components…"
-              autoComplete="off"
-              className="focus-blue-glow min-w-0 flex-1 rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
-            />
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => setFiltersPopoverOpen((o) => !o)}
-                aria-expanded={filtersPopoverOpen}
-                aria-haspopup="dialog"
-                aria-controls="app-source-filters-popover"
-                className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
-                  sourceFiltersOn
-                    ? "border-blue-500/60 bg-zinc-800 text-blue-200 hover:bg-zinc-700"
-                    : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
-                }`}
-              >
-                Filters
-              </button>
-              {filtersPopoverOpen && (
-                <div
-                  id="app-source-filters-popover"
-                  role="dialog"
-                  aria-label="Filter by repository"
-                  className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
-                >
-                  <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                    Repository
-                  </div>
-                  <ul className="max-h-72 overflow-y-auto px-2 py-2">
-                    {RELEASE_SOURCE_ORDER.map((source) => (
-                      <li key={source}>
-                        <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-zinc-700/80">
-                          <input
-                            type="checkbox"
-                            checked={enabledReleaseSources[source]}
-                            onChange={() =>
-                              setEnabledReleaseSources((prev) => ({
-                                ...prev,
-                                [source]: !prev[source],
-                              }))
-                            }
-                            className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 bg-zinc-900 text-blue-500 focus:ring-blue-500/50"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-medium text-zinc-100">
-                              {RELEASE_SOURCE_LABEL[source]}
-                            </span>
-                            <span className="mt-0.5 block break-all font-mono text-xs text-zinc-500">
-                              {RELEASE_SOURCE_REPO[source]}
-                            </span>
-                          </span>
-                        </label>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="border-t border-zinc-700 px-3 pt-3">
-                    <button
-                      type="button"
-                      onClick={() => setEnabledReleaseSources(allReleaseSourcesEnabled())}
-                      className="text-xs font-medium text-blue-400 hover:text-blue-300"
+        <div
+          className="relative -mx-6 mb-8 border-t border-b border-zinc-800/70 bg-zinc-900/40 py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.2)]"
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-500/35 to-transparent"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-zinc-500/25 to-transparent"
+            aria-hidden
+          />
+          <div className="relative px-6">
+            <div className="flex justify-center px-2">
+              <div ref={filtersBarRef} className="flex w-full max-w-2xl items-center gap-3">
+                <label htmlFor="apps-search" className="sr-only">
+                  Search apps
+                </label>
+                <input
+                  id="apps-search"
+                  type="search"
+                  value={appSearchQuery}
+                  onChange={(e) => setAppSearchQuery(e.target.value)}
+                  placeholder="Search available apps and components…"
+                  autoComplete="off"
+                  className="focus-blue-glow min-w-0 flex-1 rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                />
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFiltersPopoverOpen((o) => !o)}
+                    aria-expanded={filtersPopoverOpen}
+                    aria-haspopup="dialog"
+                    aria-controls="app-source-filters-popover"
+                    className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      sourceFiltersOn
+                        ? "border-blue-500/60 bg-zinc-800 text-blue-200 hover:bg-zinc-700"
+                        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Filters
+                  </button>
+                  {filtersPopoverOpen && (
+                    <div
+                      id="app-source-filters-popover"
+                      role="dialog"
+                      aria-label="Filter by repository"
+                      className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
                     >
-                      Reset filters
-                    </button>
-                  </div>
+                      <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Repository
+                      </div>
+                      <ul className="max-h-72 overflow-y-auto px-2 py-2">
+                        {RELEASE_SOURCE_ORDER.map((source) => (
+                          <li key={source}>
+                            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-zinc-700/80">
+                              <input
+                                type="checkbox"
+                                checked={enabledReleaseSources[source]}
+                                onChange={() =>
+                                  setEnabledReleaseSources((prev) => ({
+                                    ...prev,
+                                    [source]: !prev[source],
+                                  }))
+                                }
+                                className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 bg-zinc-900 text-blue-500 focus:ring-blue-500/50"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium text-zinc-100">
+                                  {RELEASE_SOURCE_LABEL[source]}
+                                </span>
+                                <span className="mt-0.5 block break-all font-mono text-xs text-zinc-500">
+                                  {RELEASE_SOURCE_REPO[source]}
+                                </span>
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="border-t border-zinc-700 px-3 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setEnabledReleaseSources(allReleaseSourcesEnabled())}
+                          className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                        >
+                          Reset filters
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
