@@ -54,6 +54,14 @@ function baseUrl(connection: Connection): string {
   return `http://${connection.ip}:8080`;
 }
 
+/**
+ * GET /health — public, no signing (RobotAPI.md).
+ */
+export async function checkRobotHealth(connection: Connection): Promise<boolean> {
+  const res = await fetch(`${baseUrl(connection)}/health`, { method: "GET" });
+  return res.ok;
+}
+
 /** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
 export function isLocalRobotHost(connection: Connection): boolean {
   const ip = connection.ip.trim().toLowerCase();
