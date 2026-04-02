@@ -34,12 +34,12 @@ export default function RootLayout({
       >
       <MsalWrapper>
           <AuthProvider>
-            <ProjectProvider>
-              <ConnectionProvider>
+            <ConnectionProvider>
+              <ProjectProvider>
               <ConnectionHealthMonitor />
               {children}
-            </ConnectionProvider>
             </ProjectProvider>
+            </ConnectionProvider>
           </AuthProvider>
       </MsalWrapper>
       </body>
