@@ -84,6 +84,18 @@ function uniqueReposForGroup(group: ReleaseGroup): string[] {
   );
 }
 
+/** All whitespace-separated terms must appear in `name` (case-insensitive). Empty query matches everything. */
+function matchesAppSearchQuery(query: string, name: string): boolean {
+  const tokens = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 0) return true;
+  const h = name.toLowerCase();
+  return tokens.every((t) => h.includes(t));
+}
+
 function VersionMenu({
   group,
   appSlug,
@@ -218,6 +230,7 @@ export default function AppsPage() {
   const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
   const [loadingLocalImages, setLoadingLocalImages] = useState(false);
   const [localImagesError, setLocalImagesError] = useState<string | null>(null);
+  const [appSearchQuery, setAppSearchQuery] = useState("");
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -530,6 +543,17 @@ export default function AppsPage() {
       .catch(() => setInstanceState(instance.id, "running"));
   };
 
+  const localRunRows = buildLocalRunRows(localImages);
+  const filteredLocalRows = localRunRows.filter((row) =>
+    matchesAppSearchQuery(appSearchQuery, repoNameFromOwnerRepo(row.repository))
+  );
+  const filteredAvailableGroups = availableGroups.filter((g) =>
+    matchesAppSearchQuery(appSearchQuery, g.groupName)
+  );
+  const filteredComponentGroups = componentGroups.filter((g) =>
+    matchesAppSearchQuery(appSearchQuery, g.groupName)
+  );
+
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
     const instance = findInstanceForProject(project);
     if (
@@ -715,6 +739,21 @@ export default function AppsPage() {
           )}
         </section>
 
+        <div className="mb-8">
+          <label htmlFor="apps-search" className="sr-only">
+            Search apps
+          </label>
+          <input
+            id="apps-search"
+            type="search"
+            value={appSearchQuery}
+            onChange={(e) => setAppSearchQuery(e.target.value)}
+            placeholder="Search available apps and components…"
+            autoComplete="off"
+            className="focus-blue-glow w-full max-w-xl rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+          />
+        </div>
+
         {connection?.devMode && (
           <section className="mb-8">
             <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Locally</h2>
@@ -744,9 +783,14 @@ export default function AppsPage() {
                 No local container images reported.
               </div>
             )}
-            {!loadingLocalImages && !localImagesError && localImages.length > 0 && (
+            {!loadingLocalImages && !localImagesError && localImages.length > 0 && filteredLocalRows.length === 0 && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
+                No apps match your search.
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && filteredLocalRows.length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {buildLocalRunRows(localImages).map((row) => {
+                {filteredLocalRows.map((row) => {
                   const { repository, tag, img } = row;
                   const shortName = repoNameFromOwnerRepo(repository);
                   const hasTag = tag.length > 0;
@@ -829,9 +873,13 @@ export default function AppsPage() {
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && filteredAvailableGroups.length === 0 && (
+            <div className="py-12 text-center text-sm text-zinc-400">No apps match your search.</div>
+          )}
+
+          {!loadingAvailableReleases && !availableError && filteredAvailableGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {availableGroups.map((group) => {
+              {filteredAvailableGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
                 const menuKey = `available:${group.groupName}`;
                 return (
@@ -909,9 +957,13 @@ export default function AppsPage() {
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && (
+          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && filteredComponentGroups.length === 0 && (
+            <div className="py-12 text-center text-sm text-zinc-400">No apps match your search.</div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && filteredComponentGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {componentGroups.map((group) => {
+              {filteredComponentGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
                 const menuKey = `components:${group.groupName}`;
                 return (
