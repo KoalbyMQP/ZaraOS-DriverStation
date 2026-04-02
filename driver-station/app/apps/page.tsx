@@ -12,6 +12,7 @@ import {
   getReleaseGroupName,
   groupReleasesByTitle,
   type ReleaseGroup,
+  type ReleaseSource,
   type ReleaseWithSource,
 } from "@/lib/api";
 import {
@@ -94,6 +95,54 @@ function matchesAppSearchQuery(query: string, name: string): boolean {
   if (tokens.length === 0) return true;
   const h = name.toLowerCase();
   return tokens.every((t) => h.includes(t));
+}
+
+const RELEASE_SOURCE_ORDER: ReleaseSource[] = ["core", "apps", "drivers", "control", "sensing"];
+
+const RELEASE_SOURCE_LABEL: Record<ReleaseSource, string> = {
+  core: "Core",
+  apps: "Apps",
+  drivers: "Drivers",
+  control: "Control",
+  sensing: "Sensing",
+};
+
+/** Display repo path (defaults align with driver-station/lib/api.ts). */
+const RELEASE_SOURCE_REPO: Record<ReleaseSource, string> = {
+  core: "KoalbyMQP/Core",
+  apps:
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps",
+  drivers: "KoalbyMQP/Drivers",
+  control: "KoalbyMQP/Control",
+  sensing: "KoalbyMQP/Sensing",
+};
+
+function allReleaseSourcesEnabled(): Record<ReleaseSource, boolean> {
+  return {
+    core: true,
+    apps: true,
+    drivers: true,
+    control: true,
+    sensing: true,
+  };
+}
+
+function groupHasEnabledReleaseSource(
+  group: ReleaseGroup,
+  enabled: Record<ReleaseSource, boolean>
+): boolean {
+  return group.versions.some((v) => enabled[v.source]);
+}
+
+function releaseSourcesFilterActive(enabled: Record<ReleaseSource, boolean>): boolean {
+  return RELEASE_SOURCE_ORDER.some((s) => !enabled[s]);
+}
+
+function catalogNoMatchMessage(hasSearch: boolean, filtersActive: boolean): string {
+  if (hasSearch && filtersActive) return "No apps match your search or filters.";
+  if (hasSearch) return "No apps match your search.";
+  if (filtersActive) return "No apps match your filters.";
+  return "No apps match your search.";
 }
 
 function VersionMenu({
@@ -231,6 +280,21 @@ export default function AppsPage() {
   const [loadingLocalImages, setLoadingLocalImages] = useState(false);
   const [localImagesError, setLocalImagesError] = useState<string | null>(null);
   const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [enabledReleaseSources, setEnabledReleaseSources] =
+    useState<Record<ReleaseSource, boolean>>(allReleaseSourcesEnabled);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
+  const filtersBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filtersPopoverOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (filtersBarRef.current && !filtersBarRef.current.contains(e.target as Node)) {
+        setFiltersPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [filtersPopoverOpen]);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -543,15 +607,23 @@ export default function AppsPage() {
       .catch(() => setInstanceState(instance.id, "running"));
   };
 
+  const hasAppSearch = appSearchQuery.trim().length > 0;
+  const sourceFiltersOn = releaseSourcesFilterActive(enabledReleaseSources);
+  const catalogEmptyMessage = catalogNoMatchMessage(hasAppSearch, sourceFiltersOn);
+
   const localRunRows = buildLocalRunRows(localImages);
   const filteredLocalRows = localRunRows.filter((row) =>
     matchesAppSearchQuery(appSearchQuery, repoNameFromOwnerRepo(row.repository))
   );
-  const filteredAvailableGroups = availableGroups.filter((g) =>
-    matchesAppSearchQuery(appSearchQuery, g.groupName)
+  const filteredAvailableGroups = availableGroups.filter(
+    (g) =>
+      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
+      matchesAppSearchQuery(appSearchQuery, g.groupName)
   );
-  const filteredComponentGroups = componentGroups.filter((g) =>
-    matchesAppSearchQuery(appSearchQuery, g.groupName)
+  const filteredComponentGroups = componentGroups.filter(
+    (g) =>
+      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
+      matchesAppSearchQuery(appSearchQuery, g.groupName)
   );
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
@@ -739,19 +811,85 @@ export default function AppsPage() {
           )}
         </section>
 
-        <div className="mb-8">
-          <label htmlFor="apps-search" className="sr-only">
-            Search apps
-          </label>
-          <input
-            id="apps-search"
-            type="search"
-            value={appSearchQuery}
-            onChange={(e) => setAppSearchQuery(e.target.value)}
-            placeholder="Search available apps and components…"
-            autoComplete="off"
-            className="focus-blue-glow w-full max-w-xl rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
-          />
+        <div className="mb-8 flex justify-center px-2">
+          <div ref={filtersBarRef} className="flex w-full max-w-2xl items-center gap-3">
+            <label htmlFor="apps-search" className="sr-only">
+              Search apps
+            </label>
+            <input
+              id="apps-search"
+              type="search"
+              value={appSearchQuery}
+              onChange={(e) => setAppSearchQuery(e.target.value)}
+              placeholder="Search available apps and components…"
+              autoComplete="off"
+              className="focus-blue-glow min-w-0 flex-1 rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+            />
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setFiltersPopoverOpen((o) => !o)}
+                aria-expanded={filtersPopoverOpen}
+                aria-haspopup="dialog"
+                aria-controls="app-source-filters-popover"
+                className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                  sourceFiltersOn
+                    ? "border-blue-500/60 bg-zinc-800 text-blue-200 hover:bg-zinc-700"
+                    : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                }`}
+              >
+                Filters
+              </button>
+              {filtersPopoverOpen && (
+                <div
+                  id="app-source-filters-popover"
+                  role="dialog"
+                  aria-label="Filter by repository"
+                  className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
+                >
+                  <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Repository
+                  </div>
+                  <ul className="max-h-72 overflow-y-auto px-2 py-2">
+                    {RELEASE_SOURCE_ORDER.map((source) => (
+                      <li key={source}>
+                        <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-zinc-700/80">
+                          <input
+                            type="checkbox"
+                            checked={enabledReleaseSources[source]}
+                            onChange={() =>
+                              setEnabledReleaseSources((prev) => ({
+                                ...prev,
+                                [source]: !prev[source],
+                              }))
+                            }
+                            className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 bg-zinc-900 text-blue-500 focus:ring-blue-500/50"
+                          />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium text-zinc-100">
+                              {RELEASE_SOURCE_LABEL[source]}
+                            </span>
+                            <span className="mt-0.5 block break-all font-mono text-xs text-zinc-500">
+                              {RELEASE_SOURCE_REPO[source]}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="border-t border-zinc-700 px-3 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setEnabledReleaseSources(allReleaseSourcesEnabled())}
+                      className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                    >
+                      Reset filters
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {connection?.devMode && (
@@ -874,7 +1012,7 @@ export default function AppsPage() {
           )}
 
           {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && filteredAvailableGroups.length === 0 && (
-            <div className="py-12 text-center text-sm text-zinc-400">No apps match your search.</div>
+            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
           )}
 
           {!loadingAvailableReleases && !availableError && filteredAvailableGroups.length > 0 && (
@@ -958,7 +1096,7 @@ export default function AppsPage() {
           )}
 
           {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && filteredComponentGroups.length === 0 && (
-            <div className="py-12 text-center text-sm text-zinc-400">No apps match your search.</div>
+            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
           )}
 
           {!loadingComponentReleases && !componentsError && filteredComponentGroups.length > 0 && (
