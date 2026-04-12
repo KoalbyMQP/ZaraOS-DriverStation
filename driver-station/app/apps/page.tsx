@@ -6,11 +6,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { Header } from "@/components/Header";
+import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
+  getReleaseChannel,
   getComponentsReleases,
   getReleaseGroupName,
   groupReleasesByTitle,
+  type ReleaseChannel,
   type ReleaseGroup,
   type ReleaseWithSource,
 } from "@/lib/api";
@@ -84,6 +87,52 @@ function uniqueReposForGroup(group: ReleaseGroup): string[] {
   );
 }
 
+const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
+  alpha: "Alpha",
+  beta: "Beta",
+  rc: "RC",
+  preview: "Preview",
+  nightly: "Nightly",
+  canary: "Canary",
+  prerelease: "Prerelease",
+};
+
+const RELEASE_CHANNEL_BADGE_CLASSES: Record<ReleaseChannel, string> = {
+  alpha: "bg-amber-500/15 text-amber-200 ring-1 ring-inset ring-amber-400/20",
+  beta: "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/20",
+  rc: "bg-violet-500/15 text-violet-200 ring-1 ring-inset ring-violet-400/20",
+  preview: "bg-cyan-500/15 text-cyan-200 ring-1 ring-inset ring-cyan-400/20",
+  nightly: "bg-indigo-500/15 text-indigo-200 ring-1 ring-inset ring-indigo-400/20",
+  canary: "bg-lime-500/15 text-lime-200 ring-1 ring-inset ring-lime-400/20",
+  prerelease: "bg-zinc-700 text-zinc-200 ring-1 ring-inset ring-zinc-600",
+};
+
+function getCommonReleaseChannels(versions: ReleaseWithSource[]): ReleaseChannel[] {
+  const channels = Array.from(
+    new Set(
+      versions
+        .map((version) => getReleaseChannel(version))
+        .filter((channel): channel is ReleaseChannel => channel !== null)
+    )
+  );
+
+  return channels.length === 1 ? channels : [];
+}
+
+function ReleaseTag({
+  label,
+  className,
+}: {
+  label: string;
+  className: string;
+}) {
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 function VersionMenu({
   group,
   appSlug,
@@ -138,6 +187,7 @@ function VersionMenu({
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
           {group.versions.map((r) => {
             const isActive = activeProjectUrls.has(r.html_url) || isVersionRunningOnRobot(r.tag_name);
+            const releaseChannel = getReleaseChannel(r);
             return (
               <button
                 key={`${r.source}-${r.id}`}
@@ -148,8 +198,16 @@ function VersionMenu({
                 }}
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
               >
-                <span>
-                  {r.tag_name}
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">
+                    {r.tag_name}
+                  </span>
+                  {releaseChannel && (
+                    <ReleaseTag
+                      label={RELEASE_CHANNEL_LABELS[releaseChannel]}
+                      className={RELEASE_CHANNEL_BADGE_CLASSES[releaseChannel]}
+                    />
+                  )}
                   {group.versions.some((v) => v.tag_name === r.tag_name && v.source !== r.source) && (
                     <span className="ml-1 text-zinc-500">({r.source})</span>
                   )}
@@ -211,6 +269,7 @@ export default function AppsPage() {
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
+  const [logInstanceId, setLogInstanceId] = useState<string | null>(null);
   const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
   const [loadingLocalImages, setLoadingLocalImages] = useState(false);
   const [localImagesError, setLocalImagesError] = useState<string | null>(null);
@@ -225,6 +284,7 @@ export default function AppsPage() {
 
   const removeInstance = (id: string) => {
     setInstances((prev) => prev.filter((i) => i.id !== id));
+    setLogInstanceId((prev) => (prev === id ? null : prev));
   };
 
   // Fetch GET /instances when robot is connected, then every 60s
@@ -544,26 +604,46 @@ export default function AppsPage() {
                     <div className="font-medium text-zinc-100">{inst.displayName ?? inst.app}</div>
                     <div className="mt-0.5 font-mono text-sm text-zinc-400">{inst.version}</div>
                   </div>
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
-                    aria-label="Starting…"
-                  >
-                    <svg
-                      className="h-5 w-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      aria-hidden
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLogInstanceId((prev) =>
+                          prev === inst.id ? null : inst.id
+                        )
+                      }
+                      className={`cursor-pointer rounded p-1.5 transition-colors ${
+                        logInstanceId === inst.id
+                          ? "bg-blue-900/50 text-blue-300"
+                          : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                      }`}
+                      aria-label="Toggle logs"
                     >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeDasharray="24 48"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
+                      aria-label="Starting…"
+                    >
+                      <svg
+                        className="h-5 w-5 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeDasharray="24 48"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -580,36 +660,60 @@ export default function AppsPage() {
                       <div className="font-medium text-zinc-100">{project.name}</div>
                       <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveActive(project)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop and remove from active"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {matchingInstance && !isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === matchingInstance.id
+                                ? null
+                                : matchingInstance.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === matchingInstance?.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveActive(project)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop and remove from active"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -628,41 +732,110 @@ export default function AppsPage() {
                         <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">on robot</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleStopInstance(inst)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop on robot"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {!isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === inst.id ? null : inst.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === inst.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStopInstance(inst)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop on robot"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* Log panel for selected instance */}
+          {logInstanceId &&
+            connection &&
+            instances.some((i) => i.id === logInstanceId) && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-zinc-400">Streaming logs from</span>
+                    <span className="font-mono font-medium text-zinc-200">
+                      {instances.find((i) => i.id === logInstanceId)?.app ??
+                        logInstanceId.slice(0, 8)}
+                    </span>
+                    <span className="font-mono text-xs text-zinc-500">
+                      {instances.find((i) => i.id === logInstanceId)?.version}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLogInstanceId(null)}
+                    className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                    aria-label="Close log panel"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="h-[400px]">
+                  <LogViewer
+                    key={logInstanceId}
+                    connection={connection}
+                    instanceId={logInstanceId}
+                  />
+                </div>
+              </div>
+            )}
         </section>
 
         {connection?.devMode && (
@@ -783,6 +956,7 @@ export default function AppsPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {availableGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
                 const menuKey = `available:${group.groupName}`;
                 return (
                   <div
@@ -802,10 +976,19 @@ export default function AppsPage() {
                         {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
                         {cardRepos.map((repo) => (
-                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-                            {repo}
-                          </span>
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
                         ))}
                       </div>
                     </div>
@@ -863,6 +1046,7 @@ export default function AppsPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {componentGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
                 const menuKey = `components:${group.groupName}`;
                 return (
                   <div
@@ -882,10 +1066,19 @@ export default function AppsPage() {
                         {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
                         {cardRepos.map((repo) => (
-                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-                            {repo}
-                          </span>
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
                         ))}
                       </div>
                     </div>
