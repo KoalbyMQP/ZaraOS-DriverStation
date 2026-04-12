@@ -3,13 +3,13 @@
 import {
     createContext,
     useContext,
-    useEffect,
-    useState,
+    useMemo,
     type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
 import { useMsal } from "@azure/msal-react";
 import { AccountInfo } from "@azure/msal-browser";
+import { isClientLocalAuthBypassEnabled } from "@/lib/authBypass";
 
 type AuthContextValue = {
     user: AccountInfo | null;
@@ -20,30 +20,42 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const { instance, accounts } = useMsal();
-    const [user, setUser] = useState<AccountInfo | null>(null);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
+const LOCAL_DEV_ACCOUNT: AccountInfo = {
+    homeAccountId: "local-dev-home-account-id",
+    localAccountId: "local-dev-local-account-id",
+    environment: "localhost",
+    tenantId: "local-dev-tenant-id",
+    username: "local-dev@localhost",
+    name: "Local Dev User",
+};
 
-    useEffect(() => {
-        if (accounts.length > 0) {
-            setUser(accounts[0]);
-        } else {
-            setUser(null);
-        }
-        setLoading(false);
-    }, [accounts]);
+export function AuthProvider({ children }: { children: ReactNode }) {
+    const { instance, accounts, inProgress } = useMsal();
+    const router = useRouter();
+    const bypassAuth = isClientLocalAuthBypassEnabled();
+
+    const user = useMemo<AccountInfo | null>(
+        () => {
+            if (bypassAuth) return LOCAL_DEV_ACCOUNT;
+            return accounts.length > 0 ? accounts[0] : null;
+        },
+        [accounts, bypassAuth],
+    );
+    const loading = bypassAuth ? false : inProgress !== "none";
 
     const login = async () => {
+        if (bypassAuth) return;
         await instance.loginRedirect({
             scopes: ["User.Read"],
         });
     };
 
     const logout = async () => {
+        if (bypassAuth) {
+            router.push("/");
+            return;
+        }
         await instance.logoutRedirect();
-        setUser(null);
         router.push("/authenticate");
     };
 

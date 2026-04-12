@@ -6,18 +6,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import { ConnectionStatusWidget } from "@/components/ConnectionStatusWidget";
 import { ProjectStatusWidget } from "@/components/ProjectStatusWidget";
-import { useIsAuthenticated } from "@azure/msal-react";
-
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
 
-  const isAuthenticated = useIsAuthenticated();
-
   // Middleware handles missing token; only redirect unverified users here
   useEffect(() => {
     if (loading) return;
-    if (!isAuthenticated) {
+    if (!user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);
