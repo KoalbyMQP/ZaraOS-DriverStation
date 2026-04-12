@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { Header } from "@/components/Header";
+import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
   getReleaseGroupName,
@@ -149,6 +150,7 @@ export default function AppsPage() {
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
+  const [logInstanceId, setLogInstanceId] = useState<string | null>(null);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -160,6 +162,7 @@ export default function AppsPage() {
 
   const removeInstance = (id: string) => {
     setInstances((prev) => prev.filter((i) => i.id !== id));
+    setLogInstanceId((prev) => (prev === id ? null : prev));
   };
 
   // Fetch GET /instances when robot is connected, then every 60s
@@ -399,26 +402,46 @@ export default function AppsPage() {
                     <div className="font-medium text-zinc-100">{inst.displayName ?? inst.app}</div>
                     <div className="mt-0.5 font-mono text-sm text-zinc-400">{inst.version}</div>
                   </div>
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
-                    aria-label="Starting…"
-                  >
-                    <svg
-                      className="h-5 w-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      aria-hidden
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLogInstanceId((prev) =>
+                          prev === inst.id ? null : inst.id
+                        )
+                      }
+                      className={`cursor-pointer rounded p-1.5 transition-colors ${
+                        logInstanceId === inst.id
+                          ? "bg-blue-900/50 text-blue-300"
+                          : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                      }`}
+                      aria-label="Toggle logs"
                     >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeDasharray="24 48"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
+                      aria-label="Starting…"
+                    >
+                      <svg
+                        className="h-5 w-5 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeDasharray="24 48"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -435,36 +458,60 @@ export default function AppsPage() {
                       <div className="font-medium text-zinc-100">{project.name}</div>
                       <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveActive(project)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop and remove from active"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {matchingInstance && !isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === matchingInstance.id
+                                ? null
+                                : matchingInstance.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === matchingInstance?.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveActive(project)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop and remove from active"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -483,41 +530,110 @@ export default function AppsPage() {
                         <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">on robot</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleStopInstance(inst)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop on robot"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {!isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === inst.id ? null : inst.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === inst.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStopInstance(inst)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop on robot"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* Log panel for selected instance */}
+          {logInstanceId &&
+            connection &&
+            instances.some((i) => i.id === logInstanceId) && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-zinc-400">Streaming logs from</span>
+                    <span className="font-mono font-medium text-zinc-200">
+                      {instances.find((i) => i.id === logInstanceId)?.app ??
+                        logInstanceId.slice(0, 8)}
+                    </span>
+                    <span className="font-mono text-xs text-zinc-500">
+                      {instances.find((i) => i.id === logInstanceId)?.version}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLogInstanceId(null)}
+                    className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                    aria-label="Close log panel"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="h-[400px]">
+                  <LogViewer
+                    key={logInstanceId}
+                    connection={connection}
+                    instanceId={logInstanceId}
+                  />
+                </div>
+              </div>
+            )}
         </section>
 
         <section>
