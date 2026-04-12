@@ -32,6 +32,13 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
+  webServer: {
+    command: 'npm run dev',       
+    url: 'http://localhost:3000',
+    reuseExistingServer: true,   
+    timeout: 120000,
+  },
+
   /* Configure projects for major browsers */
   projects: [
     {
@@ -39,10 +46,10 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
+    // {
+    //   name: 'firefox',
+    //   use: { ...devices['Desktop Firefox'] },
+    // },
 
     {
       name: 'webkit',

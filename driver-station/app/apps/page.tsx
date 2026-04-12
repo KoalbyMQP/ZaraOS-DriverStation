@@ -9,6 +9,7 @@ import { Header } from "@/components/Header";
 import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
+  getComponentsReleases,
   getReleaseGroupName,
   groupReleasesByTitle,
   type ReleaseGroup,
@@ -19,7 +20,9 @@ import {
   getInstance,
   createInstance,
   deleteInstance,
+  getImages,
   isLocalRobotHost,
+  type LocalContainerImage,
   type RobotAppInstance,
 } from "@/lib/robot-api";
 
@@ -29,6 +32,30 @@ let releasesFetchInFlight = false;
 /** Prevents duplicate GET /instances when React Strict Mode double-invokes the effect. */
 let instancesFetchInFlight = false;
 
+/** One row per runnable (repository, tag); untagged images use an empty tag and no Run. */
+function buildLocalRunRows(images: LocalContainerImage[]): {
+  repository: string;
+  tag: string;
+  img: LocalContainerImage;
+}[] {
+  const seen = new Set<string>();
+  const rows: { repository: string; tag: string; img: LocalContainerImage }[] = [];
+  for (const img of images) {
+    const tagList = img.tags.length > 0 ? img.tags : [""];
+    for (const tag of tagList) {
+      const key = `${img.repository}:${tag}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ repository: img.repository, tag, img });
+    }
+  }
+  rows.sort((a, b) => {
+    const c = a.repository.localeCompare(b.repository);
+    return c !== 0 ? c : a.tag.localeCompare(b.tag);
+  });
+  return rows;
+}
+
 /** Normalize group/release name to match robot instance app slug (e.g. "ROS2 Nav" → "ros2-nav"). */
 function groupNameToSlug(name: string): string {
   return name
@@ -36,6 +63,26 @@ function groupNameToSlug(name: string): string {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
+}
+
+function repoNameFromOwnerRepo(ownerRepo: string): string {
+  const [, repo] = ownerRepo.split("/");
+  return repo || ownerRepo;
+}
+
+/** Stable id for Active list / isActive when starting apps from local images (not a fetchable URL). */
+function localProjectUrl(repository: string, tag: string): string {
+  return `local:${encodeURIComponent(repository)}:${encodeURIComponent(tag)}`;
+}
+
+function localAppSlugFromRepository(repository: string): string {
+  return groupNameToSlug(repoNameFromOwnerRepo(repository));
+}
+
+function uniqueReposForGroup(group: ReleaseGroup): string[] {
+  return Array.from(new Set(group.versions.map((v) => repoNameFromOwnerRepo(v.repo)))).sort((a, b) =>
+    a.localeCompare(b)
+  );
 }
 
 function VersionMenu({
@@ -138,19 +185,37 @@ type Instance = {
   projectUrl?: string;
 };
 
+/** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
+function dedupeInstancesById(instances: Instance[]): Instance[] {
+  const seen = new Set<string>();
+  const out: Instance[] = [];
+  for (const inst of instances) {
+    if (seen.has(inst.id)) continue;
+    seen.add(inst.id);
+    out.push(inst);
+  }
+  return out;
+}
+
 export default function AppsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { connection } = useConnection();
   const { activeProjects, addActiveProject, removeActiveProject, isActive } = useProject();
-  const [groups, setGroups] = useState<ReleaseGroup[]>([]);
-  const [loadingReleases, setLoadingReleases] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<ReleaseGroup[]>([]);
+  const [componentGroups, setComponentGroups] = useState<ReleaseGroup[]>([]);
+  const [loadingAvailableReleases, setLoadingAvailableReleases] = useState(true);
+  const [loadingComponentReleases, setLoadingComponentReleases] = useState(true);
+  const [availableError, setAvailableError] = useState<string | null>(null);
+  const [componentsError, setComponentsError] = useState<string | null>(null);
   const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
   const [logInstanceId, setLogInstanceId] = useState<string | null>(null);
+  const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
+  const [loadingLocalImages, setLoadingLocalImages] = useState(false);
+  const [localImagesError, setLocalImagesError] = useState<string | null>(null);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -171,6 +236,7 @@ export default function AppsPage() {
       !connection ||
       (!connection.token && !isLocalRobotHost(connection))
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstances([]);
       return;
     }
@@ -200,7 +266,7 @@ export default function AppsPage() {
             const localStarting = prev.filter(
               (p) => p.state === "starting" && !apiIds.has(p.id)
             );
-            return [...merged, ...localStarting];
+            return dedupeInstancesById([...merged, ...localStarting]);
           });
         })
         .catch(() => setInstances([]))
@@ -214,27 +280,79 @@ export default function AppsPage() {
   }, [connection]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!connection?.devMode) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalImages([]);
+      setLocalImagesError(null);
+      setLoadingLocalImages(false);
+      return;
+    }
+    let cancelled = false;
+    const c = connection;
+    const fetchLocalImages = (isInitial: boolean) => {
+      if (isInitial) {
+        setLoadingLocalImages(true);
+        setLocalImagesError(null);
+      }
+      getImages(c)
+        .then((data) => {
+          if (cancelled) return;
+          setLocalImages(Array.isArray(data.images) ? data.images : []);
+          setLocalImagesError(null);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          setLocalImages([]);
+          setLocalImagesError(e instanceof Error ? e.message : "Failed to load local images");
+        })
+        .finally(() => {
+          if (!cancelled && isInitial) setLoadingLocalImages(false);
+        });
+    };
+    fetchLocalImages(true);
+    const interval = setInterval(() => fetchLocalImages(false), 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [connection]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
       router.replace("/authenticate");
     }
   }, [loading, user, router]);
 
   useEffect(() => {
-    // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
+    // Guard against double-invocation in React Strict Mode (dev) so we don't call release endpoints twice
     if (releasesFetchInFlight) return;
     releasesFetchInFlight = true;
-    setLoadingReleases(true);
-    setError(null);
-    getCombinedReleases()
-      .then((releases) => {
-        setGroups(groupReleasesByTitle(releases));
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "Failed to load releases");
-        setGroups([]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadingAvailableReleases(true);
+    setLoadingComponentReleases(true);
+    setAvailableError(null);
+    setComponentsError(null);
+    Promise.allSettled([getCombinedReleases(), getComponentsReleases()])
+      .then(([availableResult, componentsResult]) => {
+        if (availableResult.status === "fulfilled") {
+          setAvailableGroups(groupReleasesByTitle(availableResult.value));
+        } else {
+          const reason = availableResult.reason;
+          setAvailableError(reason instanceof Error ? reason.message : "Failed to load available releases");
+          setAvailableGroups([]);
+        }
+        if (componentsResult.status === "fulfilled") {
+          setComponentGroups(groupReleasesByTitle(componentsResult.value));
+        } else {
+          const reason = componentsResult.reason;
+          setComponentsError(reason instanceof Error ? reason.message : "Failed to load component releases");
+          setComponentGroups([]);
+        }
       })
       .finally(() => {
-        setLoadingReleases(false);
+        setLoadingAvailableReleases(false);
+        setLoadingComponentReleases(false);
         releasesFetchInFlight = false;
       });
   }, []);
@@ -263,28 +381,37 @@ export default function AppsPage() {
         (groupNameToSlug(groupName) === ri.app || groupName === ri.app)
     );
 
-  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
-    const name = getReleaseGroupName(release);
-    const version = release.tag_name;
-    const url = release.html_url;
-
-    if (connection && (connection.token || isLocalRobotHost(connection))) {
-      setStartError(null);
-      createInstance(connection, appSlug, version)
-        .then((created) => {
-          setInstances((prev) => [
+  const startInstanceOnRobot = (
+    appSlug: string,
+    version: string,
+    displayName: string,
+    projectUrl: string,
+    image?: string
+  ) => {
+    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
+      setStartError("Connect to a device to add apps to Active");
+      return;
+    }
+    setStartError(null);
+    createInstance(connection, appSlug, version, image)
+      .then((created) => {
+        setInstances((prev) => {
+          if (prev.some((i) => i.id === created.id)) return prev;
+          return [
             ...prev,
             {
               id: created.id,
               app: appSlug,
               version: created.version,
               state: "starting",
-              displayName: name,
-              projectUrl: url,
+              displayName,
+              projectUrl,
             },
-          ]);
-          const pollUntilRunning = () => {
-            getInstance(connection!, created.id).then((updated) => {
+          ];
+        });
+        const pollUntilRunning = () => {
+          getInstance(connection!, created.id)
+            .then((updated) => {
               if (updated.state === "running") {
                 setInstances((prev) =>
                   prev.map((i) =>
@@ -293,28 +420,46 @@ export default function AppsPage() {
                       : i
                   )
                 );
-                addActiveProject({ url, name, version });
+                addActiveProject({ url: projectUrl, name: displayName, version });
                 return;
               }
               if (updated.state === "crashed" || updated.state === "stopped") {
                 removeInstance(created.id);
-                setStartError(`${name} ${version} failed to start (${updated.state})`);
+                setStartError(`${displayName} ${version} failed to start (${updated.state})`);
                 return;
               }
               setTimeout(pollUntilRunning, 800);
-            }).catch(() => {
+            })
+            .catch(() => {
               removeInstance(created.id);
-              setStartError(`Failed to check status for ${name}`);
+              setStartError(`Failed to check status for ${displayName}`);
             });
-          };
-          pollUntilRunning();
-        })
-        .catch((err) => {
-          setStartError(err instanceof Error ? err.message : "Failed to start app");
-        });
-    } else {
-      setStartError("Connect to a device to add apps to Active");
-    }
+        };
+        pollUntilRunning();
+      })
+      .catch((err) => {
+        setStartError(err instanceof Error ? err.message : "Failed to start app");
+      });
+  };
+
+  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
+    const name = getReleaseGroupName(release);
+    const version = release.tag_name;
+    const url = release.html_url;
+    startInstanceOnRobot(appSlug, version, name, url);
+  };
+
+  const handleRunLocalImage = (repository: string, tag: string) => {
+    const displayName = repoNameFromOwnerRepo(repository);
+    const appSlug = localAppSlugFromRepository(repository);
+    const imageRef = `${repository}:${tag}`;
+    startInstanceOnRobot(
+      appSlug,
+      tag,
+      displayName,
+      localProjectUrl(repository, tag),
+      imageRef
+    );
   };
 
   const findInstanceForProject = (project: { name: string; version: string }) =>
@@ -636,21 +781,106 @@ export default function AppsPage() {
             )}
         </section>
 
-        <section>
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available</h2>
+        {connection?.devMode && (
+          <section className="mb-8">
+            <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Locally</h2>
+            <p className="mb-4 text-sm text-zinc-500">
+              Container images on this machine from your local Cortex server.
+            </p>
+            {loadingLocalImages && (
+              <div className="flex items-center justify-center py-8 text-zinc-400">Loading local images…</div>
+            )}
+            {localImagesError && (
+              <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+                <span className="flex-1">{localImagesError}</span>
+                <button
+                  type="button"
+                  onClick={() => setLocalImagesError(null)}
+                  className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                  aria-label="Dismiss"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && localImages.length === 0 && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
+                No local container images reported.
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && localImages.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {buildLocalRunRows(localImages).map((row) => {
+                  const { repository, tag, img } = row;
+                  const shortName = repoNameFromOwnerRepo(repository);
+                  const hasTag = tag.length > 0;
+                  const canRun =
+                    hasTag &&
+                    connection &&
+                    (connection.token || isLocalRobotHost(connection));
+                  const highlighted =
+                    (hasTag && isActive(localProjectUrl(repository, tag))) ||
+                    (hasTag && isVersionRunningOnRobot(shortName, tag));
+                  return (
+                    <div
+                      key={`${repository}:${tag}:${img.id}`}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                      style={{
+                        boxShadow: highlighted ? "var(--blue-outline)" : "none",
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-zinc-100">{shortName}</div>
+                        <div className="mt-0.5 font-mono text-sm text-zinc-400">
+                          {hasTag ? tag : "(untagged)"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="break-all rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repository}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-600">Size</span>{" "}
+                          <span className="text-zinc-400">{img.size}</span>
+                          <span className="mx-2 text-zinc-700">·</span>
+                          <span className="text-zinc-600">Created</span>{" "}
+                          <span className="text-zinc-400">{img.created_at}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRunLocalImage(repository, tag)}
+                        disabled={!canRun}
+                        title={!hasTag ? "Image has no tag" : !connection ? "Connect to a robot" : undefined}
+                        className="shrink-0 cursor-pointer rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Run
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
-          {loadingReleases && (
+        <section>
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Online</h2>
+
+          {loadingAvailableReleases && (
             <div className="flex items-center justify-center py-12 text-zinc-400">
               Loading releases…
             </div>
           )}
 
-          {error && (
+          {availableError && (
             <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{error}</span>
+              <span className="flex-1">{availableError}</span>
               <button
                 type="button"
-                onClick={() => setError(null)}
+                onClick={() => setAvailableError(null)}
                 className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
                 aria-label="Dismiss"
               >
@@ -661,46 +891,137 @@ export default function AppsPage() {
             </div>
           )}
 
-          {!loadingReleases && !error && groups.length === 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length === 0 && (
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingReleases && !error && groups.length > 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
-                <div
-                  key={group.groupName}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                  style={{
-                    boxShadow:
-                      group.versions.some((v) => isActive(v.html_url)) ||
-                      group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
-                        ? "var(--blue-outline)"
-                        : "none",
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{group.groupName}</div>
-                    <div className="mt-0.5 text-sm text-zinc-400">
-                      {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+              {availableGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const menuKey = `available:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {cardRepos.map((repo) => (
+                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repo}
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
                   </div>
-                  <VersionMenu
-                    group={group}
-                    appSlug={groupNameToSlug(group.groupName)}
-                    onSelectVersion={handleSelectVersion}
-                    activeProjectUrls={activeProjectUrls}
-                    isVersionRunningOnRobot={(tagName) =>
-                      isVersionRunningOnRobot(group.groupName, tagName)
-                    }
-                    open={openMenuGroup === group.groupName}
-                    onToggle={() =>
-                      setOpenMenuGroup((prev) => (prev === group.groupName ? null : group.groupName))
-                    }
-                    onClose={() => setOpenMenuGroup(null)}
-                  />
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8">
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Components</h2>
+
+          {loadingComponentReleases && (
+            <div className="flex items-center justify-center py-12 text-zinc-400">
+              Loading releases…
+            </div>
+          )}
+
+          {componentsError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <span className="flex-1">{componentsError}</span>
+              <button
+                type="button"
+                onClick={() => setComponentsError(null)}
+                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                aria-label="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length === 0 && (
+            <div className="py-12 text-center text-zinc-400">No releases found.</div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {componentGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const menuKey = `components:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {cardRepos.map((repo) => (
+                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repo}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

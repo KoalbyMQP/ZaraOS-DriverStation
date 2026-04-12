@@ -135,6 +135,32 @@ export type InstancesResponse = {
   instances: RobotAppInstance[];
 };
 
+export type LocalContainerImage = {
+  repository: string;
+  tags: string[];
+  id: string;
+  size: string;
+  created_at: string;
+};
+
+export type ImagesResponse = {
+  images: LocalContainerImage[];
+};
+
+/**
+ * GET /images — list locally available container images (grouped by repository in the payload).
+ */
+export async function getImages(connection: Connection): Promise<ImagesResponse> {
+  const res = await signedFetch(connection, "GET", "/images");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string })?.error ?? `images failed: ${res.status}`
+    );
+  }
+  return res.json() as Promise<ImagesResponse>;
+}
+
 /**
  * GET /instances — list all instances (running and recently stopped).
  */
@@ -154,13 +180,19 @@ export async function getInstances(
 /**
  * POST /instances — start an app. Returns the created instance (state may be "starting").
  * Use getInstance to poll until state === "running".
+ * When `image` is set (e.g. local `repository:tag`), the server uses it as the container image override.
  */
 export async function createInstance(
   connection: Connection,
   app: string,
-  version: string
+  version: string,
+  image?: string
 ): Promise<RobotAppInstance> {
-  const body = JSON.stringify({ app, version });
+  const payload =
+    image !== undefined && image !== ""
+      ? { app, version, image }
+      : { app, version };
+  const body = JSON.stringify(payload);
   const res = await signedFetch(connection, "POST", "/instances", body);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
