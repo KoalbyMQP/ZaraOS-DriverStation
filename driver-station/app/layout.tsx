@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import MsalWrapper from "@/components/MsalWrapper";
+import ConnectionHealthMonitor from "@/components/ConnectionHealthMonitor";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -54,9 +55,12 @@ export default function RootLayout({
       <MsalWrapper>
           <ThemeProvider>
           <AuthProvider>
-            <ProjectProvider>
-              <ConnectionProvider>{children}</ConnectionProvider>
+            <ConnectionProvider>
+              <ProjectProvider>
+              <ConnectionHealthMonitor />
+              {children}
             </ProjectProvider>
+            </ConnectionProvider>
           </AuthProvider>
           </ThemeProvider>
       </MsalWrapper>
