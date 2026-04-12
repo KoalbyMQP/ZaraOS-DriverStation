@@ -9,9 +9,11 @@ import { Header } from "@/components/Header";
 import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
+  getReleaseChannel,
   getComponentsReleases,
   getReleaseGroupName,
   groupReleasesByTitle,
+  type ReleaseChannel,
   type ReleaseGroup,
   type ReleaseWithSource,
 } from "@/lib/api";
@@ -85,6 +87,52 @@ function uniqueReposForGroup(group: ReleaseGroup): string[] {
   );
 }
 
+const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
+  alpha: "Alpha",
+  beta: "Beta",
+  rc: "RC",
+  preview: "Preview",
+  nightly: "Nightly",
+  canary: "Canary",
+  prerelease: "Prerelease",
+};
+
+const RELEASE_CHANNEL_BADGE_CLASSES: Record<ReleaseChannel, string> = {
+  alpha: "bg-amber-500/15 text-amber-200 ring-1 ring-inset ring-amber-400/20",
+  beta: "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/20",
+  rc: "bg-violet-500/15 text-violet-200 ring-1 ring-inset ring-violet-400/20",
+  preview: "bg-cyan-500/15 text-cyan-200 ring-1 ring-inset ring-cyan-400/20",
+  nightly: "bg-indigo-500/15 text-indigo-200 ring-1 ring-inset ring-indigo-400/20",
+  canary: "bg-lime-500/15 text-lime-200 ring-1 ring-inset ring-lime-400/20",
+  prerelease: "bg-zinc-700 text-zinc-200 ring-1 ring-inset ring-zinc-600",
+};
+
+function getCommonReleaseChannels(versions: ReleaseWithSource[]): ReleaseChannel[] {
+  const channels = Array.from(
+    new Set(
+      versions
+        .map((version) => getReleaseChannel(version))
+        .filter((channel): channel is ReleaseChannel => channel !== null)
+    )
+  );
+
+  return channels.length === 1 ? channels : [];
+}
+
+function ReleaseTag({
+  label,
+  className,
+}: {
+  label: string;
+  className: string;
+}) {
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 function VersionMenu({
   group,
   appSlug,
@@ -139,6 +187,7 @@ function VersionMenu({
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
           {group.versions.map((r) => {
             const isActive = activeProjectUrls.has(r.html_url) || isVersionRunningOnRobot(r.tag_name);
+            const releaseChannel = getReleaseChannel(r);
             return (
               <button
                 key={`${r.source}-${r.id}`}
@@ -149,8 +198,16 @@ function VersionMenu({
                 }}
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
               >
-                <span>
-                  {r.tag_name}
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">
+                    {r.tag_name}
+                  </span>
+                  {releaseChannel && (
+                    <ReleaseTag
+                      label={RELEASE_CHANNEL_LABELS[releaseChannel]}
+                      className={RELEASE_CHANNEL_BADGE_CLASSES[releaseChannel]}
+                    />
+                  )}
                   {group.versions.some((v) => v.tag_name === r.tag_name && v.source !== r.source) && (
                     <span className="ml-1 text-zinc-500">({r.source})</span>
                   )}
@@ -899,6 +956,7 @@ export default function AppsPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {availableGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
                 const menuKey = `available:${group.groupName}`;
                 return (
                   <div
@@ -918,10 +976,19 @@ export default function AppsPage() {
                         {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
                         {cardRepos.map((repo) => (
-                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-                            {repo}
-                          </span>
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
                         ))}
                       </div>
                     </div>
@@ -979,6 +1046,7 @@ export default function AppsPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {componentGroups.map((group) => {
                 const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
                 const menuKey = `components:${group.groupName}`;
                 return (
                   <div
@@ -998,10 +1066,19 @@ export default function AppsPage() {
                         {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
                         {cardRepos.map((repo) => (
-                          <span key={repo} className="rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
-                            {repo}
-                          </span>
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
                         ))}
                       </div>
                     </div>

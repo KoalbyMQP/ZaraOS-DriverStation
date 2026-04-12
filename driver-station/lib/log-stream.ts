@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import type { Connection } from "@/contexts/ConnectionContext";
-import { isLocalRobotHost } from "@/lib/robot-api";
+import { signedFetch, isLocalRobotHost } from "@/lib/robot-api";
 
 export type LogEntry = {
   ts: string;
@@ -18,10 +18,14 @@ export type LogEvent = {
 };
 
 /**
- * Hook to stream logs from a running instance via EventSource (SSE).
+ * Hook to stream logs from a running instance via fetch + ReadableStream.
+ *
+ * Uses `signedFetch` so that auth headers (X-Timestamp / X-Signature) are
+ * sent on the streaming request — the browser EventSource API cannot do this,
+ * which caused 401s on non-localhost connections.
  *
  * Uses callback refs so that changing `onLog`/`onError` references does NOT
- * tear down and re-open the EventSource.  The stream is only reconnected when
+ * tear down and re-open the stream.  The connection is only restarted when
  * `connection`, `instanceId`, or `tailCount` actually change.
  *
  * Reconnects automatically with the `since` query-param to avoid duplicate
@@ -34,7 +38,7 @@ export function useLogStream(
   onError: (error: string) => void,
   tailCount: number = 100
 ) {
-  // Stable refs for callbacks — avoids tearing down EventSource on every render
+  // Stable refs for callbacks — avoids tearing down the stream on every render
   const onLogRef = useRef(onLog);
   const onErrorRef = useRef(onError);
   useEffect(() => {
@@ -48,19 +52,9 @@ export function useLogStream(
     if (!connection || !instanceId) return;
 
     let alive = true;
-    let es: EventSource | null = null;
+    let controller: AbortController | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let lastTs: string | null = null;
-
-    const buildUrl = (since?: string) => {
-      const base = `http://${connection.ip}:8080`;
-      const params = new URLSearchParams({
-        stream: "true",
-        tail: tailCount.toString(),
-      });
-      if (since) params.append("since", since);
-      return `${base}/instances/${instanceId}/logs?${params.toString()}`;
-    };
 
     const scheduleReconnect = () => {
       if (!alive) return;
@@ -71,55 +65,101 @@ export function useLogStream(
       }, 2000);
     };
 
-    const connect = (since?: string) => {
-      es?.close();
-      const url = buildUrl(since);
-      es = new EventSource(url);
+    const connect = async (since?: string) => {
+      controller?.abort();
+      controller = new AbortController();
 
-      es.addEventListener("log", (event) => {
-        try {
-          const data = JSON.parse(
-            (event as MessageEvent).data
-          ) as LogEntry;
-          lastTs = data.ts;
-          if (alive) onLogRef.current(data);
-        } catch (e) {
-          console.error("Failed to parse log event", e);
-        }
+      const params = new URLSearchParams({
+        stream: "true",
+        tail: tailCount.toString(),
       });
+      if (since) params.append("since", since);
+      const path = `/instances/${instanceId}/logs?${params}`;
 
-      es.addEventListener("heartbeat", () => {
-        // Connection alive — cancel any pending reconnect
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer);
-          reconnectTimer = null;
-        }
-      });
+      try {
+        const res = await signedFetch(connection, "GET", path, undefined, {
+          signal: controller.signal,
+        });
 
-      es.addEventListener("error", (event) => {
-        try {
-          const data = JSON.parse((event as MessageEvent).data);
-          if (alive) onErrorRef.current(data.message || "Stream ended");
-        } catch {
-          if (alive) onErrorRef.current("Connection lost");
-        }
-        es?.close();
-        scheduleReconnect();
-      });
-
-      es.onerror = () => {
-        if (es?.readyState === EventSource.CLOSED) {
-          if (alive) onErrorRef.current("Connection closed");
+        if (!res.ok || !res.body) {
+          if (alive)
+            onErrorRef.current(`Log stream failed: HTTP ${res.status}`);
           scheduleReconnect();
+          return;
         }
-      };
+
+        // Read the SSE stream via ReadableStream
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || !alive) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // SSE events are delimited by double newlines
+          const chunks = buffer.split("\n\n");
+          buffer = chunks.pop() ?? "";
+
+          for (const chunk of chunks) {
+            if (!chunk.trim()) continue;
+
+            const lines = chunk.split("\n");
+            let event = "message";
+            let data = "";
+
+            for (const line of lines) {
+              if (line.startsWith("event: ")) event = line.slice(7);
+              else if (line.startsWith("data: ")) data = line.slice(6);
+              else if (line.startsWith("id: ")) {
+                /* currently unused but spec-compliant */
+              }
+            }
+
+            if (event === "log" && data) {
+              try {
+                const entry = JSON.parse(data) as LogEntry;
+                lastTs = entry.ts;
+                if (alive) onLogRef.current(entry);
+              } catch {
+                /* skip malformed JSON */
+              }
+            } else if (event === "heartbeat") {
+              // Connection alive — cancel any pending reconnect
+              if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+              }
+            } else if (event === "error") {
+              try {
+                const errData = JSON.parse(data) as { message?: string };
+                if (alive)
+                  onErrorRef.current(errData.message || "Stream ended");
+              } catch {
+                if (alive) onErrorRef.current("Stream ended");
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // AbortError is expected when we intentionally close the stream
+        if ((e as Error).name !== "AbortError" && alive) {
+          onErrorRef.current("Connection lost");
+        }
+      }
+
+      // Stream ended (container stopped, network error, etc.) — try again
+      scheduleReconnect();
     };
 
     connect();
 
     return () => {
       alive = false;
-      es?.close();
+      controller?.abort();
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
   }, [connection, instanceId, tailCount]);

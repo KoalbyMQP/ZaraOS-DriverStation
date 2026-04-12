@@ -82,6 +82,15 @@ export type ReleaseWithSource = Release & {
   repo: string;
 };
 
+export type ReleaseChannel =
+  | "alpha"
+  | "beta"
+  | "rc"
+  | "preview"
+  | "nightly"
+  | "canary"
+  | "prerelease";
+
 function mapWithSource(releases: Release[], source: ReleaseSource, repo: string): ReleaseWithSource[] {
   return releases.map((rel) => ({ ...rel, source, repo }));
 }
@@ -108,12 +117,48 @@ export async function getComponentsReleases(): Promise<ReleaseWithSource[]> {
  * Strips a trailing version (tag_name) from the release name when present.
  */
 export function getReleaseGroupName(release: Release): string {
-  const name = release.name || release.tag_name;
-  const tag = release.tag_name;
-  if (tag && name.endsWith(tag)) {
-    return name.slice(0, -tag.length).replace(/-+$/, "").trim() || name;
+  const name = (release.name || release.tag_name).trim();
+  const tag = release.tag_name.trim();
+  const candidates = Array.from(
+    new Set(
+      [tag, tag.replace(/^v/i, ""), tag.startsWith("v") ? tag : `v${tag}`].filter(Boolean)
+    )
+  );
+
+  for (const candidate of candidates) {
+    const escaped = candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const suffixPattern = new RegExp(`(?:[\\s_-]+)?${escaped}$`, "i");
+    if (suffixPattern.test(name)) {
+      const stripped = name.replace(suffixPattern, "").replace(/[\s_-]+$/, "").trim();
+      if (stripped) return stripped;
+    }
   }
+
+  const genericVersionSuffix = /(?:[\s_-]+)?v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/i;
+  if (genericVersionSuffix.test(name)) {
+    const stripped = name.replace(genericVersionSuffix, "").replace(/[\s_-]+$/, "").trim();
+    if (stripped) return stripped;
+  }
+
   return name;
+}
+
+export function getReleaseChannel(release: Release): ReleaseChannel | null {
+  const haystack = `${release.tag_name} ${release.name ?? ""}`.toLowerCase();
+  const channelMatchers: Array<[ReleaseChannel, RegExp]> = [
+    ["alpha", /(?:^|[.\-_/+\s])alpha(?:[.\-_/+\s]?\d+)?(?:$|[.\-_/+\s])/],
+    ["beta", /(?:^|[.\-_/+\s])beta(?:[.\-_/+\s]?\d+)?(?:$|[.\-_/+\s])/],
+    ["rc", /(?:^|[.\-_/+\s])rc(?:[.\-_/+\s]?\d+)?(?:$|[.\-_/+\s])/],
+    ["preview", /(?:^|[.\-_/+\s])preview(?:[.\-_/+\s]?\d+)?(?:$|[.\-_/+\s])/],
+    ["nightly", /(?:^|[.\-_/+\s])nightly(?:$|[.\-_/+\s])/],
+    ["canary", /(?:^|[.\-_/+\s])canary(?:$|[.\-_/+\s])/],
+  ];
+
+  for (const [channel, pattern] of channelMatchers) {
+    if (pattern.test(haystack)) return channel;
+  }
+
+  return release.prerelease ? "prerelease" : null;
 }
 
 export type ReleaseGroup = {
