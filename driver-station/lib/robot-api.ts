@@ -75,7 +75,8 @@ export async function signedFetch(
   connection: Connection,
   method: string,
   path: string,
-  body?: string
+  body?: string,
+  options?: { signal?: AbortSignal }
 ): Promise<Response> {
   const b = body ?? "";
   if (isLocalRobotHost(connection)) {
@@ -84,6 +85,7 @@ export async function signedFetch(
       method,
       headers: { "Content-Type": "application/json" },
       ...(b ? { body: b } : {}),
+      signal: options?.signal,
     });
   }
   const token = connection.token;
@@ -100,6 +102,7 @@ export async function signedFetch(
       "X-Signature": signature,
     },
     ...(b ? { body: b } : {}),
+    signal: options?.signal,
   });
 }
 

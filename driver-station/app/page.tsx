@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import { ConnectionStatusWidget } from "@/components/ConnectionStatusWidget";
 import { ProjectStatusWidget } from "@/components/ProjectStatusWidget";
-
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useAuth();

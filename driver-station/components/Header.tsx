@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { IpConnectModal } from "@/components/IpConnectModal";
 
 function PersonIcon({ className }: { className?: string }) {
@@ -25,10 +26,53 @@ function PersonIcon({ className }: { className?: string }) {
   );
 }
 
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2" />
+      <path d="M12 20v2" />
+      <path d="m4.93 4.93 1.41 1.41" />
+      <path d="m17.66 17.66 1.41 1.41" />
+      <path d="M2 12h2" />
+      <path d="M20 12h2" />
+      <path d="m6.34 17.66-1.41 1.41" />
+      <path d="m19.07 4.93-1.41 1.41" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+    </svg>
+  );
+}
+
 export function Header() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { connection, connect, disconnect } = useConnection();
+  const { theme, toggleTheme, darkReaderDetected } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [connectDropdownOpen, setConnectDropdownOpen] = useState(false);
   const [ipConnectModalOpen, setIpConnectModalOpen] = useState(false);
@@ -95,9 +139,10 @@ export function Header() {
   return (
     <header className="relative flex items-center justify-between border-b border-zinc-800 px-6 py-4">
       <div className="flex items-center gap-6">
-        <h1 className="text-lg font-semibold">Driver Station</h1>
+        <Link href="/" className="text-lg font-semibold text-zinc-100 hover:text-zinc-200">
+          Driver Station
+        </Link>
         <nav className="flex items-center gap-4">
-          {navLink("/", "Home")}
           {navLink("/console", "Console")}
           {navLink("/apps", "Apps")}
         </nav>
@@ -157,15 +202,35 @@ export function Header() {
         )}
       </div>
       <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((o) => !o)}
-          className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-zinc-100"
-          aria-label="Account menu"
-          aria-expanded={menuOpen}
-        >
-          <PersonIcon className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-3">
+          {darkReaderDetected && (
+            <span
+              className="darkreader-badge rounded-full border px-2 py-1 text-xs font-medium"
+              title="Dark Reader is active and may override the in-app theme."
+            >
+              Dark Reader
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="theme-toggle-button flex h-9 items-center gap-2 rounded-full border px-3 text-sm font-medium"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+          >
+            {theme === "dark" ? <MoonIcon className="h-4 w-4" /> : <SunIcon className="h-4 w-4" />}
+            <span className="hidden sm:inline">{theme === "dark" ? "Dark" : "Light"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-zinc-100"
+            aria-label="Account menu"
+            aria-expanded={menuOpen}
+          >
+            <PersonIcon className="h-5 w-5" />
+          </button>
+        </div>
         {menuOpen && (
           <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
             <div className="border-b border-zinc-700 px-4 py-3">
@@ -181,7 +246,7 @@ export function Header() {
                   setMenuOpen(false);
                   logout();
                 }}
-                className="w-full cursor-pointer rounded bg-zinc-700 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-600"
+                className="w-full cursor-pointer rounded border border-red-900/50 bg-red-950/40 px-3 py-2 text-left text-sm text-red-200 transition-colors hover:bg-red-900/50 hover:text-red-100"
               >
                 Logout
               </button>
