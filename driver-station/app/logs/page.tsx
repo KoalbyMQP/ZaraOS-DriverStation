@@ -27,6 +27,7 @@ export default function LogsPage() {
 
   useEffect(() => {
     if (!connection) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear list when disconnected
       setInstances([]);
       setLoadingInstances(false);
       return;

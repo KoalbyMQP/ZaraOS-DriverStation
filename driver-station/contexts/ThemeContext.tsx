@@ -40,7 +40,7 @@ function readInitialTheme(): ThemeMode {
   if (typeof document === "undefined") return "dark";
 
   const appliedTheme = document.documentElement.dataset.theme;
-  if (isThemeMode(appliedTheme ?? null)) return appliedTheme;
+  if (appliedTheme === "light" || appliedTheme === "dark") return appliedTheme;
 
   try {
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
