@@ -6,11 +6,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { Header } from "@/components/Header";
+import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
+  getReleaseChannel,
+  getComponentsReleases,
   getReleaseGroupName,
   groupReleasesByTitle,
+  type ReleaseChannel,
   type ReleaseGroup,
+  type ReleaseSource,
   type ReleaseWithSource,
 } from "@/lib/api";
 import {
@@ -30,15 +35,28 @@ let releasesFetchInFlight = false;
 /** Prevents duplicate GET /instances when React Strict Mode double-invokes the effect. */
 let instancesFetchInFlight = false;
 
-function groupLocalImagesByRepository(images: LocalContainerImage[]): Map<string, LocalContainerImage[]> {
-  const map = new Map<string, LocalContainerImage[]>();
+/** One row per runnable (repository, tag); untagged images use an empty tag and no Run. */
+function buildLocalRunRows(images: LocalContainerImage[]): {
+  repository: string;
+  tag: string;
+  img: LocalContainerImage;
+}[] {
+  const seen = new Set<string>();
+  const rows: { repository: string; tag: string; img: LocalContainerImage }[] = [];
   for (const img of images) {
-    const key = img.repository;
-    const list = map.get(key);
-    if (list) list.push(img);
-    else map.set(key, [img]);
+    const tagList = img.tags.length > 0 ? img.tags : [""];
+    for (const tag of tagList) {
+      const key = `${img.repository}:${tag}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ repository: img.repository, tag, img });
+    }
   }
-  return map;
+  rows.sort((a, b) => {
+    const c = a.repository.localeCompare(b.repository);
+    return c !== 0 ? c : a.tag.localeCompare(b.tag);
+  });
+  return rows;
 }
 
 /** Normalize group/release name to match robot instance app slug (e.g. "ROS2 Nav" → "ros2-nav"). */
@@ -48,6 +66,132 @@ function groupNameToSlug(name: string): string {
     .trim()
     .replace(/\s+/g, "-")
     .replace(/[^a-z0-9-]/g, "");
+}
+
+function repoNameFromOwnerRepo(ownerRepo: string): string {
+  const [, repo] = ownerRepo.split("/");
+  return repo || ownerRepo;
+}
+
+/** Stable id for Active list / isActive when starting apps from local images (not a fetchable URL). */
+function localProjectUrl(repository: string, tag: string): string {
+  return `local:${encodeURIComponent(repository)}:${encodeURIComponent(tag)}`;
+}
+
+function localAppSlugFromRepository(repository: string): string {
+  return groupNameToSlug(repoNameFromOwnerRepo(repository));
+}
+
+function uniqueReposForGroup(group: ReleaseGroup): string[] {
+  return Array.from(new Set(group.versions.map((v) => repoNameFromOwnerRepo(v.repo)))).sort((a, b) =>
+    a.localeCompare(b)
+  );
+}
+
+/** All whitespace-separated terms must appear in `name` (case-insensitive). Empty query matches everything. */
+function matchesAppSearchQuery(query: string, name: string): boolean {
+  const tokens = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 0) return true;
+  const h = name.toLowerCase();
+  return tokens.every((t) => h.includes(t));
+}
+
+const RELEASE_SOURCE_ORDER: ReleaseSource[] = ["core", "apps", "drivers", "control", "sensing"];
+
+const RELEASE_SOURCE_LABEL: Record<ReleaseSource, string> = {
+  core: "Core",
+  apps: "Apps",
+  drivers: "Drivers",
+  control: "Control",
+  sensing: "Sensing",
+};
+
+/** Display repo path (defaults align with driver-station/lib/api.ts). */
+const RELEASE_SOURCE_REPO: Record<ReleaseSource, string> = {
+  core: "KoalbyMQP/Core",
+  apps:
+    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps",
+  drivers: "KoalbyMQP/Drivers",
+  control: "KoalbyMQP/Control",
+  sensing: "KoalbyMQP/Sensing",
+};
+
+function allReleaseSourcesEnabled(): Record<ReleaseSource, boolean> {
+  return {
+    core: true,
+    apps: true,
+    drivers: true,
+    control: true,
+    sensing: true,
+  };
+}
+
+function groupHasEnabledReleaseSource(
+  group: ReleaseGroup,
+  enabled: Record<ReleaseSource, boolean>
+): boolean {
+  return group.versions.some((v) => enabled[v.source]);
+}
+
+function releaseSourcesFilterActive(enabled: Record<ReleaseSource, boolean>): boolean {
+  return RELEASE_SOURCE_ORDER.some((s) => !enabled[s]);
+}
+
+function catalogNoMatchMessage(hasSearch: boolean, filtersActive: boolean): string {
+  if (hasSearch && filtersActive) return "No apps match your search or filters.";
+  if (hasSearch) return "No apps match your search.";
+  if (filtersActive) return "No apps match your filters.";
+  return "No apps match your search.";
+}
+
+const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
+  alpha: "Alpha",
+  beta: "Beta",
+  rc: "RC",
+  preview: "Preview",
+  nightly: "Nightly",
+  canary: "Canary",
+  prerelease: "Prerelease",
+};
+
+const RELEASE_CHANNEL_BADGE_CLASSES: Record<ReleaseChannel, string> = {
+  alpha: "bg-amber-500/15 text-amber-200 ring-1 ring-inset ring-amber-400/20",
+  beta: "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/20",
+  rc: "bg-violet-500/15 text-violet-200 ring-1 ring-inset ring-violet-400/20",
+  preview: "bg-cyan-500/15 text-cyan-200 ring-1 ring-inset ring-cyan-400/20",
+  nightly: "bg-indigo-500/15 text-indigo-200 ring-1 ring-inset ring-indigo-400/20",
+  canary: "bg-lime-500/15 text-lime-200 ring-1 ring-inset ring-lime-400/20",
+  prerelease: "bg-zinc-700 text-zinc-200 ring-1 ring-inset ring-zinc-600",
+};
+
+function getCommonReleaseChannels(versions: ReleaseWithSource[]): ReleaseChannel[] {
+  const channels = Array.from(
+    new Set(
+      versions
+        .map((version) => getReleaseChannel(version))
+        .filter((channel): channel is ReleaseChannel => channel !== null)
+    )
+  );
+
+  return channels.length === 1 ? channels : [];
+}
+
+function ReleaseTag({
+  label,
+  className,
+}: {
+  label: string;
+  className: string;
+}) {
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs ${className}`}>
+      {label}
+    </span>
+  );
 }
 
 function VersionMenu({
@@ -104,6 +248,7 @@ function VersionMenu({
         <div className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
           {group.versions.map((r) => {
             const isActive = activeProjectUrls.has(r.html_url) || isVersionRunningOnRobot(r.tag_name);
+            const releaseChannel = getReleaseChannel(r);
             return (
               <button
                 key={`${r.source}-${r.id}`}
@@ -114,8 +259,16 @@ function VersionMenu({
                 }}
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
               >
-                <span>
-                  {r.tag_name}
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">
+                    {r.tag_name}
+                  </span>
+                  {releaseChannel && (
+                    <ReleaseTag
+                      label={RELEASE_CHANNEL_LABELS[releaseChannel]}
+                      className={RELEASE_CHANNEL_BADGE_CLASSES[releaseChannel]}
+                    />
+                  )}
                   {group.versions.some((v) => v.tag_name === r.tag_name && v.source !== r.source) && (
                     <span className="ml-1 text-zinc-500">({r.source})</span>
                   )}
@@ -150,21 +303,57 @@ type Instance = {
   projectUrl?: string;
 };
 
+function newPendingInstanceId(): string {
+  return `pending:${crypto.randomUUID()}`;
+}
+
+/** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
+function dedupeInstancesById(instances: Instance[]): Instance[] {
+  const seen = new Set<string>();
+  const out: Instance[] = [];
+  for (const inst of instances) {
+    if (seen.has(inst.id)) continue;
+    seen.add(inst.id);
+    out.push(inst);
+  }
+  return out;
+}
+
 export default function AppsPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const { connection } = useConnection();
   const { activeProjects, addActiveProject, removeActiveProject, isActive } = useProject();
-  const [groups, setGroups] = useState<ReleaseGroup[]>([]);
-  const [loadingReleases, setLoadingReleases] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [availableGroups, setAvailableGroups] = useState<ReleaseGroup[]>([]);
+  const [componentGroups, setComponentGroups] = useState<ReleaseGroup[]>([]);
+  const [loadingAvailableReleases, setLoadingAvailableReleases] = useState(true);
+  const [loadingComponentReleases, setLoadingComponentReleases] = useState(true);
+  const [availableError, setAvailableError] = useState<string | null>(null);
+  const [componentsError, setComponentsError] = useState<string | null>(null);
   const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
   /** Single source of truth for all instance states (running, starting, stopping). */
   const [instances, setInstances] = useState<Instance[]>([]);
   const [startError, setStartError] = useState<string | null>(null);
+  const [logInstanceId, setLogInstanceId] = useState<string | null>(null);
   const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
   const [loadingLocalImages, setLoadingLocalImages] = useState(false);
   const [localImagesError, setLocalImagesError] = useState<string | null>(null);
+  const [appSearchQuery, setAppSearchQuery] = useState("");
+  const [enabledReleaseSources, setEnabledReleaseSources] =
+    useState<Record<ReleaseSource, boolean>>(allReleaseSourcesEnabled);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
+  const filtersBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!filtersPopoverOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (filtersBarRef.current && !filtersBarRef.current.contains(e.target as Node)) {
+        setFiltersPopoverOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [filtersPopoverOpen]);
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
@@ -176,6 +365,7 @@ export default function AppsPage() {
 
   const removeInstance = (id: string) => {
     setInstances((prev) => prev.filter((i) => i.id !== id));
+    setLogInstanceId((prev) => (prev === id ? null : prev));
   };
 
   // Fetch GET /instances when robot is connected, then every 60s
@@ -208,13 +398,35 @@ export default function AppsPage() {
               prev.filter((p) => p.state === "stopping").map((p) => p.id)
             );
             const apiIds = new Set(apiList.map((a) => a.id));
-            const merged = apiList.map((api) =>
-              stoppingIds.has(api.id) ? { ...api, state: "stopping" as const } : api
-            );
-            const localStarting = prev.filter(
-              (p) => p.state === "starting" && !apiIds.has(p.id)
-            );
-            return [...merged, ...localStarting];
+            const merged = apiList.map((api) => {
+              let row: Instance = stoppingIds.has(api.id)
+                ? { ...api, state: "stopping" as const }
+                : api;
+              const optimistic = prev.find(
+                (p) =>
+                  p.id.startsWith("pending:") &&
+                  p.state === "starting" &&
+                  p.app === api.app &&
+                  p.version === api.version
+              );
+              if (optimistic && row.state !== "stopping") {
+                row = {
+                  ...row,
+                  displayName: optimistic.displayName ?? row.displayName,
+                  projectUrl: optimistic.projectUrl ?? row.projectUrl,
+                };
+              }
+              return row;
+            });
+            const localStarting = prev.filter((p) => {
+              if (p.state !== "starting" || apiIds.has(p.id)) return false;
+              if (p.id.startsWith("pending:")) {
+                const covered = apiList.some((a) => a.app === p.app && a.version === p.version);
+                return !covered;
+              }
+              return true;
+            });
+            return dedupeInstancesById([...merged, ...localStarting]);
           });
         })
         .catch(() => setInstances([]))
@@ -273,22 +485,34 @@ export default function AppsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    // Guard against double-invocation in React Strict Mode (dev) so we don't call Core/Apps twice
+    // Guard against double-invocation in React Strict Mode (dev) so we don't call release endpoints twice
     if (releasesFetchInFlight) return;
     releasesFetchInFlight = true;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingReleases(true);
-    setError(null);
-    getCombinedReleases()
-      .then((releases) => {
-        setGroups(groupReleasesByTitle(releases));
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "Failed to load releases");
-        setGroups([]);
+    setLoadingAvailableReleases(true);
+    setLoadingComponentReleases(true);
+    setAvailableError(null);
+    setComponentsError(null);
+    Promise.allSettled([getCombinedReleases(), getComponentsReleases()])
+      .then(([availableResult, componentsResult]) => {
+        if (availableResult.status === "fulfilled") {
+          setAvailableGroups(groupReleasesByTitle(availableResult.value));
+        } else {
+          const reason = availableResult.reason;
+          setAvailableError(reason instanceof Error ? reason.message : "Failed to load available releases");
+          setAvailableGroups([]);
+        }
+        if (componentsResult.status === "fulfilled") {
+          setComponentGroups(groupReleasesByTitle(componentsResult.value));
+        } else {
+          const reason = componentsResult.reason;
+          setComponentsError(reason instanceof Error ? reason.message : "Failed to load component releases");
+          setComponentGroups([]);
+        }
       })
       .finally(() => {
-        setLoadingReleases(false);
+        setLoadingAvailableReleases(false);
+        setLoadingComponentReleases(false);
         releasesFetchInFlight = false;
       });
   }, []);
@@ -310,35 +534,67 @@ export default function AppsPage() {
       )
   );
 
-  const isVersionRunningOnRobot = (groupName: string, tagName: string) =>
-    runningInstances.some(
-      (ri) =>
-        ri.version === tagName &&
-        (groupNameToSlug(groupName) === ri.app || groupName === ri.app)
-    );
+  const isVersionRunningOnRobot = (groupName: string, tagName: string) => {
+    const match = (i: Instance) =>
+      i.version === tagName &&
+      (groupNameToSlug(groupName) === i.app || groupName === i.app);
+    return runningInstances.some(match) || startingInstances.some(match);
+  };
 
-  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
-    const name = getReleaseGroupName(release);
-    const version = release.tag_name;
-    const url = release.html_url;
-
-    if (connection && (connection.token || isLocalRobotHost(connection))) {
-      setStartError(null);
-      createInstance(connection, appSlug, version)
-        .then((created) => {
-          setInstances((prev) => [
-            ...prev,
+  const startInstanceOnRobot = (
+    appSlug: string,
+    version: string,
+    displayName: string,
+    projectUrl: string,
+    image?: string
+  ) => {
+    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
+      setStartError("Connect to a device to add apps to Active");
+      return;
+    }
+    setStartError(null);
+    const pendingId = newPendingInstanceId();
+    setInstances((prev) => [
+      ...prev,
+      {
+        id: pendingId,
+        app: appSlug,
+        version,
+        state: "starting",
+        displayName,
+        projectUrl,
+      },
+    ]);
+    createInstance(connection, appSlug, version, image)
+      .then((created) => {
+        setInstances((prev) => {
+          const withoutPending = prev.filter((i) => i.id !== pendingId);
+          const existingIdx = withoutPending.findIndex((i) => i.id === created.id);
+          if (existingIdx >= 0) {
+            const next = [...withoutPending];
+            next[existingIdx] = {
+              ...next[existingIdx],
+              state: "starting",
+              displayName,
+              projectUrl,
+            };
+            return next;
+          }
+          return [
+            ...withoutPending,
             {
               id: created.id,
               app: appSlug,
               version: created.version,
               state: "starting",
-              displayName: name,
-              projectUrl: url,
+              displayName,
+              projectUrl,
             },
-          ]);
-          const pollUntilRunning = () => {
-            getInstance(connection!, created.id).then((updated) => {
+          ];
+        });
+        const pollUntilRunning = () => {
+          getInstance(connection!, created.id)
+            .then((updated) => {
               if (updated.state === "running") {
                 setInstances((prev) =>
                   prev.map((i) =>
@@ -347,28 +603,47 @@ export default function AppsPage() {
                       : i
                   )
                 );
-                addActiveProject({ url, name, version });
+                addActiveProject({ url: projectUrl, name: displayName, version });
                 return;
               }
               if (updated.state === "crashed" || updated.state === "stopped") {
                 removeInstance(created.id);
-                setStartError(`${name} ${version} failed to start (${updated.state})`);
+                setStartError(`${displayName} ${version} failed to start (${updated.state})`);
                 return;
               }
               setTimeout(pollUntilRunning, 800);
-            }).catch(() => {
+            })
+            .catch(() => {
               removeInstance(created.id);
-              setStartError(`Failed to check status for ${name}`);
+              setStartError(`Failed to check status for ${displayName}`);
             });
-          };
-          pollUntilRunning();
-        })
-        .catch((err) => {
-          setStartError(err instanceof Error ? err.message : "Failed to start app");
-        });
-    } else {
-      setStartError("Connect to a device to add apps to Active");
-    }
+        };
+        pollUntilRunning();
+      })
+      .catch((err) => {
+        removeInstance(pendingId);
+        setStartError(err instanceof Error ? err.message : "Failed to start app");
+      });
+  };
+
+  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
+    const name = getReleaseGroupName(release);
+    const version = release.tag_name;
+    const url = release.html_url;
+    startInstanceOnRobot(appSlug, version, name, url);
+  };
+
+  const handleRunLocalImage = (repository: string, tag: string) => {
+    const displayName = repoNameFromOwnerRepo(repository);
+    const appSlug = localAppSlugFromRepository(repository);
+    const imageRef = `${repository}:${tag}`;
+    startInstanceOnRobot(
+      appSlug,
+      tag,
+      displayName,
+      localProjectUrl(repository, tag),
+      imageRef
+    );
   };
 
   const findInstanceForProject = (project: { name: string; version: string }) =>
@@ -391,6 +666,25 @@ export default function AppsPage() {
       .then(() => removeInstance(instance.id))
       .catch(() => setInstanceState(instance.id, "running"));
   };
+
+  const hasAppSearch = appSearchQuery.trim().length > 0;
+  const sourceFiltersOn = releaseSourcesFilterActive(enabledReleaseSources);
+  const catalogEmptyMessage = catalogNoMatchMessage(hasAppSearch, sourceFiltersOn);
+
+  const localRunRows = buildLocalRunRows(localImages);
+  const filteredLocalRows = localRunRows.filter((row) =>
+    matchesAppSearchQuery(appSearchQuery, repoNameFromOwnerRepo(row.repository))
+  );
+  const filteredAvailableGroups = availableGroups.filter(
+    (g) =>
+      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
+      matchesAppSearchQuery(appSearchQuery, g.groupName)
+  );
+  const filteredComponentGroups = componentGroups.filter(
+    (g) =>
+      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
+      matchesAppSearchQuery(appSearchQuery, g.groupName)
+  );
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
     const instance = findInstanceForProject(project);
@@ -456,26 +750,46 @@ export default function AppsPage() {
                     <div className="font-medium text-zinc-100">{inst.displayName ?? inst.app}</div>
                     <div className="mt-0.5 font-mono text-sm text-zinc-400">{inst.version}</div>
                   </div>
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
-                    aria-label="Starting…"
-                  >
-                    <svg
-                      className="h-5 w-5 animate-spin"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      aria-hidden
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setLogInstanceId((prev) =>
+                          prev === inst.id ? null : inst.id
+                        )
+                      }
+                      className={`cursor-pointer rounded p-1.5 transition-colors ${
+                        logInstanceId === inst.id
+                          ? "bg-blue-900/50 text-blue-300"
+                          : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                      }`}
+                      aria-label="Toggle logs"
                     >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeDasharray="24 48"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <div
+                      className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
+                      aria-label="Starting…"
+                    >
+                      <svg
+                        className="h-5 w-5 animate-spin"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="3"
+                          strokeDasharray="24 48"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -492,36 +806,60 @@ export default function AppsPage() {
                       <div className="font-medium text-zinc-100">{project.name}</div>
                       <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveActive(project)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop and remove from active"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {matchingInstance && !isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === matchingInstance.id
+                                ? null
+                                : matchingInstance.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === matchingInstance?.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveActive(project)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop and remove from active"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -540,42 +878,206 @@ export default function AppsPage() {
                         <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">on robot</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleStopInstance(inst)}
-                      disabled={isStopping}
-                      className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                      aria-label="Stop on robot"
-                    >
-                      {isStopping ? (
-                        <svg
-                          className="h-5 w-5 animate-spin text-zinc-400"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          aria-hidden
+                    <div className="flex items-center gap-1">
+                      {!isStopping && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setLogInstanceId((prev) =>
+                              prev === inst.id ? null : inst.id
+                            )
+                          }
+                          className={`cursor-pointer rounded p-1.5 transition-colors ${
+                            logInstanceId === inst.id
+                              ? "bg-blue-900/50 text-blue-300"
+                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
+                          }`}
+                          aria-label="Toggle logs"
                         >
-                          <circle
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                            strokeDasharray="24 48"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      ) : (
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </button>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleStopInstance(inst)}
+                        disabled={isStopping}
+                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
+                        aria-label="Stop on robot"
+                      >
+                        {isStopping ? (
+                          <svg
+                            className="h-5 w-5 animate-spin text-zinc-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            aria-hidden
+                          >
+                            <circle
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeDasharray="24 48"
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
+
+          {/* Log panel for selected instance */}
+          {logInstanceId &&
+            connection &&
+            instances.some((i) => i.id === logInstanceId) && (
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-zinc-400">Streaming logs from</span>
+                    <span className="font-mono font-medium text-zinc-200">
+                      {instances.find((i) => i.id === logInstanceId)?.app ??
+                        logInstanceId.slice(0, 8)}
+                    </span>
+                    <span className="font-mono text-xs text-zinc-500">
+                      {instances.find((i) => i.id === logInstanceId)?.version}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLogInstanceId(null)}
+                    className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                    aria-label="Close log panel"
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div className="h-[400px]">
+                  <LogViewer
+                    key={logInstanceId}
+                    connection={connection}
+                    instanceId={logInstanceId}
+                  />
+                </div>
+              </div>
+            )}
         </section>
+
+        <div
+          className="relative -mx-6 mb-8 border-t border-b border-zinc-800/70 bg-zinc-900/40 py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.2)]"
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-500/35 to-transparent"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-zinc-500/25 to-transparent"
+            aria-hidden
+          />
+          <div className="relative px-6">
+            <div className="flex justify-center px-2">
+              <div ref={filtersBarRef} className="flex w-full max-w-2xl items-center gap-3">
+                <label htmlFor="apps-search" className="sr-only">
+                  Search apps
+                </label>
+                <input
+                  id="apps-search"
+                  type="search"
+                  value={appSearchQuery}
+                  onChange={(e) => setAppSearchQuery(e.target.value)}
+                  placeholder="Search available apps and components…"
+                  autoComplete="off"
+                  className="focus-blue-glow min-w-0 flex-1 rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
+                />
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFiltersPopoverOpen((o) => !o)}
+                    aria-expanded={filtersPopoverOpen}
+                    aria-haspopup="dialog"
+                    aria-controls="app-source-filters-popover"
+                    className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
+                      sourceFiltersOn
+                        ? "border-blue-500/60 bg-zinc-800 text-blue-200 hover:bg-zinc-700"
+                        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                    }`}
+                  >
+                    Filters
+                  </button>
+                  {filtersPopoverOpen && (
+                    <div
+                      id="app-source-filters-popover"
+                      role="dialog"
+                      aria-label="Filter by repository"
+                      className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
+                    >
+                      <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Repository
+                      </div>
+                      <ul className="max-h-72 overflow-y-auto px-2 py-2">
+                        {RELEASE_SOURCE_ORDER.map((source) => (
+                          <li key={source}>
+                            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-zinc-700/80">
+                              <input
+                                type="checkbox"
+                                checked={enabledReleaseSources[source]}
+                                onChange={() =>
+                                  setEnabledReleaseSources((prev) => ({
+                                    ...prev,
+                                    [source]: !prev[source],
+                                  }))
+                                }
+                                className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 bg-zinc-900 text-blue-500 focus:ring-blue-500/50"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium text-zinc-100">
+                                  {RELEASE_SOURCE_LABEL[source]}
+                                </span>
+                                <span className="mt-0.5 block break-all font-mono text-xs text-zinc-500">
+                                  {RELEASE_SOURCE_REPO[source]}
+                                </span>
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="border-t border-zinc-700 px-3 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setEnabledReleaseSources(allReleaseSourcesEnabled())}
+                          className="text-xs font-medium text-blue-400 hover:text-blue-300"
+                        >
+                          Reset filters
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {connection?.devMode && (
           <section className="mb-8">
@@ -606,68 +1108,82 @@ export default function AppsPage() {
                 No local container images reported.
               </div>
             )}
-            {!loadingLocalImages && !localImagesError && localImages.length > 0 && (
-              <div className="space-y-6">
-                {Array.from(groupLocalImagesByRepository(localImages).entries())
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([repository, entries]) => (
+            {!loadingLocalImages && !localImagesError && localImages.length > 0 && filteredLocalRows.length === 0 && (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
+                No apps match your search.
+              </div>
+            )}
+            {!loadingLocalImages && !localImagesError && filteredLocalRows.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredLocalRows.map((row) => {
+                  const { repository, tag, img } = row;
+                  const shortName = repoNameFromOwnerRepo(repository);
+                  const hasTag = tag.length > 0;
+                  const canRun =
+                    hasTag &&
+                    connection &&
+                    (connection.token || isLocalRobotHost(connection));
+                  const highlighted =
+                    (hasTag && isActive(localProjectUrl(repository, tag))) ||
+                    (hasTag && isVersionRunningOnRobot(shortName, tag));
+                  return (
                     <div
-                      key={repository}
-                      className="overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900/50"
+                      key={`${repository}:${tag}:${img.id}`}
+                      className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                      style={{
+                        boxShadow: highlighted ? "var(--blue-outline)" : "none",
+                      }}
                     >
-                      <div className="border-b border-zinc-800 bg-zinc-900/80 px-4 py-3">
-                        <h3 className="break-all font-mono text-sm font-medium text-zinc-100">{repository}</h3>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium text-zinc-100">{shortName}</div>
+                        <div className="mt-0.5 font-mono text-sm text-zinc-400">
+                          {hasTag ? tag : "(untagged)"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="break-all rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                            {repository}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-zinc-500">
+                          <span className="text-zinc-600">Size</span>{" "}
+                          <span className="text-zinc-400">{img.size}</span>
+                          <span className="mx-2 text-zinc-700">·</span>
+                          <span className="text-zinc-600">Created</span>{" "}
+                          <span className="text-zinc-400">{img.created_at}</span>
+                        </div>
                       </div>
-                      <ul className="divide-y divide-zinc-800">
-                        {entries.map((img) => (
-                          <li key={img.id} className="px-4 py-3">
-                            <div className="flex flex-wrap items-baseline gap-2">
-                              {img.tags.length > 0 ? (
-                                img.tags.map((tag, ti) => (
-                                  <span
-                                    key={`${tag}-${ti}`}
-                                    className="rounded bg-zinc-700 px-2 py-0.5 font-mono text-xs text-zinc-200"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-xs text-zinc-500">(untagged)</span>
-                              )}
-                            </div>
-                            <div className="mt-2 grid gap-1 text-xs text-zinc-500 sm:grid-cols-[auto_1fr] sm:gap-x-4">
-                              <span className="text-zinc-600">Image ID</span>
-                              <span className="break-all font-mono text-zinc-400">{img.id}</span>
-                              <span className="text-zinc-600">Size</span>
-                              <span className="text-zinc-400">{img.size}</span>
-                              <span className="text-zinc-600">Created</span>
-                              <span className="text-zinc-400">{img.created_at}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => handleRunLocalImage(repository, tag)}
+                        disabled={!canRun}
+                        title={!hasTag ? "Image has no tag" : !connection ? "Connect to a robot" : undefined}
+                        className="shrink-0 cursor-pointer rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Run
+                      </button>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             )}
           </section>
         )}
 
         <section>
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available</h2>
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Online</h2>
 
-          {loadingReleases && (
+          {loadingAvailableReleases && (
             <div className="flex items-center justify-center py-12 text-zinc-400">
               Loading releases…
             </div>
           )}
 
-          {error && (
+          {availableError && (
             <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{error}</span>
+              <span className="flex-1">{availableError}</span>
               <button
                 type="button"
-                onClick={() => setError(null)}
+                onClick={() => setAvailableError(null)}
                 className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
                 aria-label="Dismiss"
               >
@@ -678,46 +1194,165 @@ export default function AppsPage() {
             </div>
           )}
 
-          {!loadingReleases && !error && groups.length === 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length === 0 && (
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingReleases && !error && groups.length > 0 && (
+          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && filteredAvailableGroups.length === 0 && (
+            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
+          )}
+
+          {!loadingAvailableReleases && !availableError && filteredAvailableGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {groups.map((group) => (
-                <div
-                  key={group.groupName}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                  style={{
-                    boxShadow:
-                      group.versions.some((v) => isActive(v.html_url)) ||
-                      group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
-                        ? "var(--blue-outline)"
-                        : "none",
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{group.groupName}</div>
-                    <div className="mt-0.5 text-sm text-zinc-400">
-                      {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+              {filteredAvailableGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
+                const menuKey = `available:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
+                        {cardRepos.map((repo) => (
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
+                        ))}
+                      </div>
                     </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
                   </div>
-                  <VersionMenu
-                    group={group}
-                    appSlug={groupNameToSlug(group.groupName)}
-                    onSelectVersion={handleSelectVersion}
-                    activeProjectUrls={activeProjectUrls}
-                    isVersionRunningOnRobot={(tagName) =>
-                      isVersionRunningOnRobot(group.groupName, tagName)
-                    }
-                    open={openMenuGroup === group.groupName}
-                    onToggle={() =>
-                      setOpenMenuGroup((prev) => (prev === group.groupName ? null : group.groupName))
-                    }
-                    onClose={() => setOpenMenuGroup(null)}
-                  />
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8">
+          <h2 className="mb-4 text-lg font-medium text-zinc-200">Components</h2>
+
+          {loadingComponentReleases && (
+            <div className="flex items-center justify-center py-12 text-zinc-400">
+              Loading releases…
+            </div>
+          )}
+
+          {componentsError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+              <span className="flex-1">{componentsError}</span>
+              <button
+                type="button"
+                onClick={() => setComponentsError(null)}
+                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
+                aria-label="Dismiss"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length === 0 && (
+            <div className="py-12 text-center text-zinc-400">No releases found.</div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && filteredComponentGroups.length === 0 && (
+            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
+          )}
+
+          {!loadingComponentReleases && !componentsError && filteredComponentGroups.length > 0 && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredComponentGroups.map((group) => {
+                const cardRepos = uniqueReposForGroup(group);
+                const commonChannels = getCommonReleaseChannels(group.versions);
+                const menuKey = `components:${group.groupName}`;
+                return (
+                  <div
+                    key={menuKey}
+                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
+                    style={{
+                      boxShadow:
+                        group.versions.some((v) => isActive(v.html_url)) ||
+                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
+                          ? "var(--blue-outline)"
+                          : "none",
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-zinc-100">{group.groupName}</div>
+                      <div className="mt-0.5 text-sm text-zinc-400">
+                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {commonChannels.map((channel) => (
+                          <ReleaseTag
+                            key={channel}
+                            label={RELEASE_CHANNEL_LABELS[channel]}
+                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
+                          />
+                        ))}
+                        {cardRepos.map((repo) => (
+                          <ReleaseTag
+                            key={repo}
+                            label={repo}
+                            className="bg-zinc-700 text-zinc-300"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    <VersionMenu
+                      group={group}
+                      appSlug={groupNameToSlug(group.groupName)}
+                      onSelectVersion={handleSelectVersion}
+                      activeProjectUrls={activeProjectUrls}
+                      isVersionRunningOnRobot={(tagName) =>
+                        isVersionRunningOnRobot(group.groupName, tagName)
+                      }
+                      open={openMenuGroup === menuKey}
+                      onToggle={() =>
+                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
+                      }
+                      onClose={() => setOpenMenuGroup(null)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

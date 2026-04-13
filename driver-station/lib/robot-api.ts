@@ -54,6 +54,14 @@ function baseUrl(connection: Connection): string {
   return `http://${connection.ip}:8080`;
 }
 
+/**
+ * GET /health — public, no signing (RobotAPI.md).
+ */
+export async function checkRobotHealth(connection: Connection): Promise<boolean> {
+  const res = await fetch(`${baseUrl(connection)}/health`, { method: "GET" });
+  return res.ok;
+}
+
 /** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
 export function isLocalRobotHost(connection: Connection): boolean {
   const ip = connection.ip.trim().toLowerCase();
@@ -67,7 +75,8 @@ export async function signedFetch(
   connection: Connection,
   method: string,
   path: string,
-  body?: string
+  body?: string,
+  options?: { signal?: AbortSignal }
 ): Promise<Response> {
   const b = body ?? "";
   if (isLocalRobotHost(connection)) {
@@ -76,6 +85,7 @@ export async function signedFetch(
       method,
       headers: { "Content-Type": "application/json" },
       ...(b ? { body: b } : {}),
+      signal: options?.signal,
     });
   }
   const token = connection.token;
@@ -92,6 +102,7 @@ export async function signedFetch(
       "X-Signature": signature,
     },
     ...(b ? { body: b } : {}),
+    signal: options?.signal,
   });
 }
 
@@ -120,6 +131,28 @@ export async function getSessions(
     );
   }
   return res.json() as Promise<SessionsResponse>;
+}
+
+/** First characters of the pairing token; matches `token_prefix` in GET /auth/sessions (RobotAPI). */
+const TOKEN_PREFIX_LENGTH = 6;
+
+/**
+ * POST /auth/revoke — end the robot session for this client. Best-effort (swallows errors);
+ * call before clearing local connection state.
+ */
+export async function revokeRobotSession(connection: Connection): Promise<void> {
+  const token = connection.token;
+  if (!token) return;
+  const token_prefix =
+    token.length >= TOKEN_PREFIX_LENGTH
+      ? token.slice(0, TOKEN_PREFIX_LENGTH)
+      : token;
+  const body = JSON.stringify({ token_prefix });
+  try {
+    await signedFetch(connection, "POST", "/auth/revoke", body);
+  } catch {
+    // Unreachable host or signing failure — local disconnect still proceeds.
+  }
 }
 
 export type RobotAppInstance = {
@@ -180,13 +213,19 @@ export async function getInstances(
 /**
  * POST /instances — start an app. Returns the created instance (state may be "starting").
  * Use getInstance to poll until state === "running".
+ * When `image` is set (e.g. local `repository:tag`), the server uses it as the container image override.
  */
 export async function createInstance(
   connection: Connection,
   app: string,
-  version: string
+  version: string,
+  image?: string
 ): Promise<RobotAppInstance> {
-  const body = JSON.stringify({ app, version });
+  const payload =
+    image !== undefined && image !== ""
+      ? { app, version, image }
+      : { app, version };
+  const body = JSON.stringify(payload);
   const res = await signedFetch(connection, "POST", "/instances", body);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

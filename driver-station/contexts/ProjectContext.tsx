@@ -5,9 +5,11 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { useConnection } from "@/contexts/ConnectionContext";
 
 const ACTIVE_PROJECTS_KEY = "driver-station-active-projects";
 
@@ -50,11 +52,29 @@ function loadFromStorage(): SelectedProject[] {
 }
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
+  const { connection } = useConnection();
   const [activeProjects, setActiveProjectsState] = useState<SelectedProject[]>([]);
+  const hadConnectionRef = useRef<boolean | null>(null);
 
   // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setActiveProjectsState(loadFromStorage()); }, []);
+
+  useEffect(() => {
+    const connected = connection !== null;
+    if (hadConnectionRef.current === null) {
+      hadConnectionRef.current = connected;
+      return;
+    }
+    if (hadConnectionRef.current && !connected) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset active apps when connection ends
+      setActiveProjectsState([]);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(ACTIVE_PROJECTS_KEY);
+      }
+    }
+    hadConnectionRef.current = connected;
+  }, [connection]);
 
   const persist = useCallback((list: SelectedProject[]) => {
     if (typeof window !== "undefined") {
