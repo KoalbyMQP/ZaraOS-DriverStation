@@ -51,7 +51,7 @@ export default function HomePage() {
             <ul className="mt-3 list-inside list-disc space-y-2 text-sm leading-relaxed text-zinc-300">
               <li>
                 Click <span className="font-medium text-zinc-200">Connect to Robot</span>. Enter a
-                short device name and the robot&apos;s IP (or host with port). The app talks to the
+                short device name and the robot&apos;s IP address. The app talks to the
                 robot on port <span className="font-mono text-zinc-400">8080</span> unless you
                 include a port in the address.
               </li>
