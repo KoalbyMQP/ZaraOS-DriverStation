@@ -78,5 +78,3 @@ If you are having issues with any of the browsers and it says they are not insta
 Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login. 
 
 Do not use firefox, it has so many browser specific bugs it is not worth it. 
-
-Hello, World!
