@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import MsalWrapper from "@/components/MsalWrapper";
-import ConnectionHealthMonitor from "@/components/ConnectionHealthMonitor";
-import { ConnectionProvider } from "@/contexts/ConnectionContext";
-import { ProjectProvider } from "@/contexts/ProjectContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import "./globals.css";
-import {AuthProvider} from "@/contexts/AuthContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,31 +37,24 @@ const themeInitScript = `
 `;
 
 export default function RootLayout({
-                                     children,
-                                   }: Readonly<{
+  children,
+}: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-      <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-      <MsalWrapper>
+        <MsalWrapper>
           <ThemeProvider>
-          <AuthProvider>
-            <ConnectionProvider>
-              <ProjectProvider>
-              <ConnectionHealthMonitor />
-              {children}
-            </ProjectProvider>
-            </ConnectionProvider>
-          </AuthProvider>
+            <AuthProvider>{children}</AuthProvider>
           </ThemeProvider>
-      </MsalWrapper>
+        </MsalWrapper>
       </body>
-      </html>
+    </html>
   );
 }

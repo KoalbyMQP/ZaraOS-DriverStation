@@ -1,33 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/Header";
 import RobotTerminal from "@/components/SSHTerminal";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { signedFetch } from "@/lib/robot-api";
 
 export default function ConsolePage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
   const { connection } = useConnection();
-
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace("/authenticate");
-    }
-  }, [loading, user, router]);
-
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
