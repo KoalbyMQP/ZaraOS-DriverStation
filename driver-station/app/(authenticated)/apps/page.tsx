@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { Header } from "@/components/Header";
@@ -320,8 +318,6 @@ function dedupeInstancesById(instances: Instance[]): Instance[] {
 }
 
 export default function AppsPage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
   const { connection } = useConnection();
   const { activeProjects, addActiveProject, removeActiveProject, isActive } = useProject();
   const [availableGroups, setAvailableGroups] = useState<ReleaseGroup[]>([]);
@@ -476,13 +472,6 @@ export default function AppsPage() {
       clearInterval(interval);
     };
   }, [connection]);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace("/authenticate");
-    }
-  }, [loading, user, router]);
 
   useEffect(() => {
     // Guard against double-invocation in React Strict Mode (dev) so we don't call release endpoints twice
@@ -704,14 +693,6 @@ export default function AppsPage() {
       removeActiveProject(project.url);
     }
   };
-
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
