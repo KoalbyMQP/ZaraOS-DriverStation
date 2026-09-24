@@ -53,7 +53,7 @@ docker run -p 3001:3001 --env-file backend/.env -d --name backend zara-backend
 **Frontend** (driver-station):
 
 ```bash
-docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./driver-station
+docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./apps/driver-station
 docker run -p 3000:3000 -d --name frontend zara-frontend
 ```
 
