@@ -1,0 +1,23 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "tasks": {
+    "dev": {
+      "persistent": true,
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
+    },
+    "start": {
+      "persistent": true,
+      "cache": false
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "test:auth": {
+      "dependsOn": ["^test:auth"]
+    }
+  }
+}

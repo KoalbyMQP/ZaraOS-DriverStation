@@ -1,11 +1,13 @@
 {
   "name": "zaraos-driverstation",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.17.1",
   "description": "New driver station for ZaraOS robots.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall": "npx --yes only-allow@1.2.2 pnpm"
+    "test": "turbo test",
+    "preinstall": "pnpx only-allow@1.2.2 pnpm",
+    "dev": "turbo dev"
   },
   "repository": {
     "type": "git",
@@ -16,5 +18,14 @@
   "bugs": {
     "url": "https://github.com/KoalbyMQP/ZaraOS-DriverStation/issues"
   },
-  "homepage": "https://github.com/KoalbyMQP/ZaraOS-DriverStation#readme"
+  "homepage": "https://github.com/KoalbyMQP/ZaraOS-DriverStation#readme",
+  "devDependencies": {
+    "turbo": "^2.11.3"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "10.17.1"
+    }
+  }
 }

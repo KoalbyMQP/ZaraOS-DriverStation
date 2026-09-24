@@ -1,4 +1,4 @@
 # Turborepo splits workspaces into apps and packages by convention, so we add both here
 packages:
-  - "apps/**"
-  - "packages/**"
+  - "apps/*"
+  - "packages/*"
