@@ -1,7 +1,7 @@
 services:
   frontend:
     build:
-      context: ./driver-station
+      context: ./apps/driver-station
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_AZURE_CLIENT_ID: ${NEXT_PUBLIC_AZURE_CLIENT_ID}

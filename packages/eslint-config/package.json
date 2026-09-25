@@ -1,0 +1,37 @@
+{
+  "name": "@repo/eslint-config",
+  "main": "index.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint --fix",
+    "format": "prettier . --write"
+  },
+  "dependencies": {
+    "@eslint/css": "^1.1.0",
+    "@eslint/js": "^9.39.5",
+    "@eslint/json": "^1.2.0",
+    "@eslint/markdown": "^8.0.1",
+    "@types/node": "20.19.37",
+    "eslint-config-next": "16.3.6",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-turbo": "^2.9.6",
+    "globals": "^17.5.0",
+    "jiti": "^2.6.1",
+    "tailwind-csstree": "^0.3.1",
+    "typescript-eslint": "^8.58.1"
+  },
+  "devDependencies": {
+    "@repo/prettier-config": "workspace:*",
+    "eslint": "^9",
+    "prettier": "^3.8.2",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "eslint": "^9.39.5",
+    "typescript": "^5.9.3"
+  }
+}

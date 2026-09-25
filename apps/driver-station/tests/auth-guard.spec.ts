@@ -71,7 +71,7 @@ test("restores a cached account without redirecting and allows app navigation", 
     }
   });
   await page.addInitScript(() => {
-    // MSAL Browser 5 account cache (schema 2), with no real credentials or tokens.
+    // MSAL Browser 5 account cache (schema 3), with no real credentials or tokens.
     const tenantId = "22222222-2222-2222-2222-222222222222";
     const account = {
       homeAccountId: `test-user.${tenantId}`,
@@ -81,11 +81,11 @@ test("restores a cached account without redirecting and allows app navigation", 
       username: "test@example.com",
       name: "Test User",
       authorityType: "MSSTS",
-      lastUpdatedAt: new Date().toISOString(),
+      lastUpdatedAt: Date.now().toString(),
     };
-    const key = `msal.2|${account.homeAccountId}|${account.environment}|${tenantId}`;
+    const key = `msal.3|${account.homeAccountId}|${account.environment}|${tenantId}`;
     sessionStorage.setItem(key, JSON.stringify(account));
-    sessionStorage.setItem("msal.2.account.keys", JSON.stringify([key]));
+    sessionStorage.setItem("msal.3.account.keys", JSON.stringify([key]));
   });
 
   await page.goto("/console");

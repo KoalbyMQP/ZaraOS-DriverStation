@@ -2,6 +2,32 @@
 
 New driver station for ZaraOS robots.
 
+## Stack Overview
+
+This repo is a monorepo. It contains a few packages:
+
+1. The driver station webapp itself
+2. A UI library built on top of ShadCN
+3. Linter & formatter configurations
+
+We use Turborepo to manage the repo. Turborepo is an incremental build system that works well with javascript (and some other languages too, but we're not using those here). Package management is handled by `pnpm`, for a few reasons:
+
+1. It's faster than `npm`
+2. Alternatives like `cnpm`, `nub`, or `aube` aren't very popular and tools might not integrate as well with them as they do `pnpm`
+3. `yarn` is old
+4. We don't use the buntime, so Bun doesn't give us any benefits that `pnpm` doesn't already provide
+
+You can download `pnpm` using `corepack` ([not recommended](https://x.com/pnpmjs/status/2087964982289854928)), the `pnpm` installer, or `nvm`.
+
+However, we don't recommend installing devtools yourself. Either:
+
+1. Use the `flake.nix` file via `nix develop` or `nix-direnv`
+2. Use the devcontainer either via the CLI, your IDE, or Devpod
+
+### Driver Station
+
+The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely 
+
 ## Running locally (development)
 
 **Frontend** (driver-station):
@@ -53,7 +79,7 @@ docker run -p 3001:3001 --env-file backend/.env -d --name backend zara-backend
 **Frontend** (driver-station):
 
 ```bash
-docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./driver-station
+docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./apps/driver-station
 docker run -p 3000:3000 -d --name frontend zara-frontend
 ```
 

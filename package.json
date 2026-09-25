@@ -1,0 +1,40 @@
+{
+  "name": "zaraos-driverstation",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.17.1",
+  "description": "New driver station for ZaraOS robots.",
+  "main": "index.js",
+  "scripts": {
+    "test": "turbo test",
+    "preinstall": "pnpx only-allow@1.2.2 pnpm",
+    "dev": "turbo dev",
+    "lint": "turbo run lint lint:root",
+    "format": "turbo run format format:root",
+    "lint:root": "eslint --fix",
+    "format:root": "prettier . --write"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KoalbyMQP/ZaraOS-DriverStation.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KoalbyMQP/ZaraOS-DriverStation/issues"
+  },
+  "homepage": "https://github.com/KoalbyMQP/ZaraOS-DriverStation#readme",
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/prettier-config": "workspace:*",
+    "eslint": "^9",
+    "prettier": "^3.8.2",
+    "turbo": "^2.11.3",
+    "typescript": "5.9.3"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "10.17.1"
+    }
+  }
+}
