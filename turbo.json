@@ -14,10 +14,25 @@
       "cache": false
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["^lint"],
+      "cache": false
     },
     "test:auth": {
       "dependsOn": ["^test:auth"]
-    }
-  }
+    },
+    "//#lint:root": {},
+    "format": {
+      "dependsOn": ["^format"],
+      "cache": false
+    },
+    "//#format:root": {}
+  },
+  "globalEnv": [
+    "AUTH_BYPASS_LOCAL",
+    "AZURE_CLIENT_SECRET",
+    "AZURE_TENANT_ID",
+    "NEXT_PUBLIC_*",
+    "NODE_ENV"
+  ],
+  "globalPassThroughEnv": ["CI", "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
 }

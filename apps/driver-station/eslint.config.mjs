@@ -1,20 +1,23 @@
+// @ts-check
+
+import repo from "@repo/eslint-config";
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
 
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    // Example workflow sources; optional `workflow` package not in this app
-    "workflows/**",
-  ]),
+export default defineConfig([
+  ...repo.next,
+  ...repo.base,
+  ...repo.json,
+  ...repo.markdown,
+  ...repo.css,
+  {
+    files: ["app/globals.css"],
+    rules: {
+      // Theme overrides intentionally take precedence over utility classes.
+      "css/no-important": "off",
+      // The validator misreads nested color variables in --blue-outline.
+      "css/no-invalid-properties": "off",
+    },
+  },
+  // Example workflow sources are excluded from this app's lint checks.
+  globalIgnores(["workflows/**"]),
 ]);
-
-export default eslintConfig;
