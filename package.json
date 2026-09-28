@@ -11,7 +11,7 @@
     "lint": "turbo run lint lint:root",
     "format": "turbo run format format:root",
     "lint:root": "eslint --fix",
-    "format:root": "prettier . --write"
+    "format:root": "oxfmt --write --disable-nested-config ."
   },
   "repository": {
     "type": "git",
@@ -25,9 +25,9 @@
   "homepage": "https://github.com/KoalbyMQP/ZaraOS-DriverStation#readme",
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
-    "@repo/prettier-config": "workspace:*",
+    "@repo/oxfmt-config": "workspace:*",
     "eslint": "^9",
-    "prettier": "^3.8.2",
+    "oxfmt": "0.71.0",
     "turbo": "^2.11.3",
     "typescript": "5.9.3"
   },

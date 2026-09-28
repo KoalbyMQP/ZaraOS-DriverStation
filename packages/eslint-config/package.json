@@ -6,7 +6,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint --fix",
-    "format": "prettier . --write"
+    "format": "oxfmt --write ."
   },
   "dependencies": {
     "@eslint/css": "^1.1.0",
@@ -25,9 +25,9 @@
     "typescript-eslint": "^8.58.1"
   },
   "devDependencies": {
-    "@repo/prettier-config": "workspace:*",
+    "@repo/oxfmt-config": "workspace:*",
     "eslint": "^9",
-    "prettier": "^3.8.2",
+    "oxfmt": "0.71.0",
     "typescript": "5.9.3"
   },
   "peerDependencies": {

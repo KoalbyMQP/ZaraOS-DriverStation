@@ -1,20 +1,17 @@
 {
-  "name": "@repo/prettier-config",
+  "name": "@repo/oxfmt-config",
   "main": "index.js",
   "type": "module",
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "format": "prettier . --write"
-  },
-  "dependencies": {
-    "prettier-plugin-tailwindcss": "^0.7.2"
+    "format": "oxfmt --write ."
   },
   "devDependencies": {
-    "prettier": "^3.8.2",
+    "oxfmt": "0.71.0",
     "typescript": "5.9.3"
   },
   "peerDependencies": {
-    "prettier": ">=3.8.1"
+    "oxfmt": "0.71.0"
   }
 }

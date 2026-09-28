@@ -28,6 +28,16 @@ However, we don't recommend installing devtools yourself. Either:
 
 The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely 
 
+## Formatting
+
+Run `pnpm format` to format the root and every package with Oxfmt, or
+`pnpm --filter @repo/driver-station format` to format only the app.
+Run `pnpm exec oxfmt --check .` to check formatting without changing files.
+
+Each package owns its rules and exclusions in `oxfmt.config.mts`. Install the
+recommended Oxc extension for VS Code formatting on save in a single-folder
+workspace. See [the shared config](packages/oxfmt-config/README.md) for details.
+
 ## Running locally (development)
 
 **Frontend** (driver-station):

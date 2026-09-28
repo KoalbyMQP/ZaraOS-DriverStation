@@ -18,7 +18,7 @@ For Next.js apps, include `repo.next` before `repo.base` to retain the shared
 TypeScript rule overrides. Add `repo.css` when linting stylesheets.
 
 The exports live in `index.js`. This package's `eslint.config.js` uses those
-exports to lint itself, and `prettier.config.js` uses `@repo/prettier-config`.
+exports to lint itself, and `oxfmt.config.mts` uses `@repo/oxfmt-config`.
 
 Run `pnpm --filter @repo/eslint-config lint`, `format`, or `typecheck` from the
 workspace root. The lint and format scripts apply fixes, matching the root

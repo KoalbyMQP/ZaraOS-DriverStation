@@ -23,3 +23,7 @@ RobotAPI.md
 
 # Turborepo
 .turbo
+
+# Worktrees
+.worktrees/*
+!.worktrees/.gitkeep
