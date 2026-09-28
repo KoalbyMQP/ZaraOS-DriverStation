@@ -26,7 +26,11 @@ However, we don't recommend installing devtools yourself. Either:
 
 ### Driver Station
 
-The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely 
+The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely
+
+#### UI
+
+We use ShadCN with a custom [TweakCN theme](https://tweakcn.com/themes/cmulobjp9000004l39em7guus).
 
 ## Formatting
 
@@ -64,16 +68,16 @@ Build and run both the backend and frontend in one command. From the repo root:
 docker compose up -d --build
 ```
 
-- **Frontend:** http://localhost:3000  
-- **Backend API:** http://localhost:3001  
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:3001
 
 The frontend is built with `NEXT_PUBLIC_API_URL=http://localhost:3001`, so the browser talks to the backend on port 3001. Ensure `backend/.env` exists and has the required variables (e.g. `DATABASE_URL`, `JWT_SECRET`, SMTP settings). See backend docs for full env list.
 
 **Useful commands:**
 
-- `docker compose up -d --build` — build images (if needed) and start containers in the background  
-- `docker compose down` — stop and remove the containers  
-- `docker compose logs -f` — stream logs from both services  
+- `docker compose up -d --build` — build images (if needed) and start containers in the background
+- `docker compose down` — stop and remove the containers
+- `docker compose logs -f` — stream logs from both services
 
 ### Individual containers
 
@@ -106,11 +110,11 @@ We used PlayWright to write our test cases for the Driver Station. This is for f
 ### `npx playwright test tests/___.spec.js`
 
 on windows to run all of the tests or the second option for specific tests.
-If you want to see it run on the brower you can add --headed to the command. 
-If using local host make sure it is actually running when you run these tests. 
+If you want to see it run on the brower you can add --headed to the command.
+If using local host make sure it is actually running when you run these tests.
 
-Some notes about potential bugs: 
-If you are having issues with any of the browsers and it says they are not installed and you run the command given and it still does not work, it may be your antivirus. Some antiviruses stop browsers from being downloaded, especially fire fox, so watch out for that. 
-Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login. 
+Some notes about potential bugs:
+If you are having issues with any of the browsers and it says they are not installed and you run the command given and it still does not work, it may be your antivirus. Some antiviruses stop browsers from being downloaded, especially fire fox, so watch out for that.
+Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login.
 
-Do not use firefox, it has so many browser specific bugs it is not worth it. 
+Do not use firefox, it has so many browser specific bugs it is not worth it.
