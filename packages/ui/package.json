@@ -28,7 +28,7 @@
     "@repo/oxfmt-config": "workspace:*",
     "eslint": "^9",
     "next": "16.3.6",
-    "oxfmt": "0.71.0",
+    "oxfmt": "0.70.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwindcss": "^4",
