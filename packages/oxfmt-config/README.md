@@ -1,7 +1,7 @@
 # Oxfmt config
 
 Shared formatting rules for this workspace. Add `@repo/oxfmt-config` with
-`workspace:*` and `oxfmt` at version `0.71.0` to a package's development
+`workspace:*` and the same `oxfmt` version used at the workspace root to a package's development
 dependencies, then create `oxfmt.config.ts`:
 
 ```ts
@@ -21,8 +21,10 @@ of the shared preset. Configs do not automatically merge with the root config.
 
 These configs run in Node.js, which provides `structuredClone` natively. For
 packages with only ECMAScript libraries in their TypeScript config, install
-`@types/node` to provide its global declarations. TypeScript loads these types
-automatically unless `compilerOptions.types` restricts them.
+`@types/node` and set `"types": ["node"]` in that package's `compilerOptions`.
+TypeScript 6 no longer automatically includes installed `@types` packages, so
+installing the declarations alone is not enough. Each package needs this setting
+unless its tsconfig explicitly extends a config that provides it.
 
 For Tailwind v4, enable the built-in sorter in the app config:
 
