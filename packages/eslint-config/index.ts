@@ -7,11 +7,15 @@ import json from "@eslint/json";
 import markdown from "@eslint/markdown";
 import css from "@eslint/css";
 import { defineConfig, globalIgnores } from "eslint/config";
+import type { ESLint, Linter } from "eslint";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import turbo from "eslint-plugin-turbo";
 import { tailwind4 } from "tailwind-csstree";
+
+// The JSON plugin uses language-specific rule types that ESLint's generic plugin type cannot represent.
+const jsonPlugins = { json: json as unknown as ESLint.Plugin };
 
 export default {
   submodules: {
@@ -30,7 +34,8 @@ export default {
     tailwind4,
   },
   base: defineConfig([
-    turbo.configs["flat/recommended"],
+    // Turbo types its configs as optional and includes legacy configs in the union.
+    turbo.configs!["flat/recommended"] as Linter.Config,
     globalIgnores(["**/.turbo/**"]),
     {
       files: ["**/*.{js,mjs,cjs,jsx,mjsx,cjsx}"],
@@ -54,11 +59,7 @@ export default {
       },
     },
   ]),
-  next: defineConfig([
-    ...nextVitals,
-    ...nextTs,
-    globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
-  ]),
+  next: defineConfig([...nextVitals, ...nextTs, globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"])]),
   tsx: defineConfig([
     {
       files: ["**/*.{js,mjs,cjs,jsx,mjsx,cjsx,ts,mts,cts,tsx,mtsx,ctsx}"],
@@ -85,25 +86,25 @@ export default {
   json: defineConfig([
     {
       files: ["**/*.json"],
-      plugins: { json },
+      plugins: jsonPlugins,
       language: "json/json",
       extends: ["json/recommended"],
     },
     {
       files: ["**/tsconfig.json"],
-      plugins: { json },
+      plugins: jsonPlugins,
       language: "json/jsonc",
       extends: ["json/recommended"],
     },
     {
       files: ["**/*.jsonc"],
-      plugins: { json },
+      plugins: jsonPlugins,
       language: "json/jsonc",
       extends: ["json/recommended"],
     },
     {
       files: ["**/*.json5"],
-      plugins: { json },
+      plugins: jsonPlugins,
       language: "json/json5",
       extends: ["json/recommended"],
     },
