@@ -9,6 +9,7 @@
     "test": "turbo test",
     "preinstall": "pnpx only-allow@1.2.2 pnpm",
     "dev": "turbo dev",
+    "build": "turbo run build",
     "lint": "turbo run lint lint:root",
     "lint:check": "turbo run lint:check lint:root:check",
     "format": "turbo run format format:root",
