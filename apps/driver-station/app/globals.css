@@ -4,7 +4,8 @@
   --background: #0a0a0a;
   --foreground: #ededed;
   --blue-glow: 59, 130, 246;
-  --blue-outline: 0 0 0 1px rgba(var(--blue-glow), 0.3), 0 0 12px 1px rgba(var(--blue-glow), 0.12),
+  --blue-outline:
+    0 0 0 1px rgba(var(--blue-glow), 0.3), 0 0 12px 1px rgba(var(--blue-glow), 0.12),
     0 0 24px 2px rgba(var(--blue-glow), 0.06);
 }
 
@@ -33,7 +34,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 150ms ease, color 150ms ease;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .blue-outline {

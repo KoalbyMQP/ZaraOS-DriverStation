@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { revokeRobotSession } from "@/lib/robot-api";
 
 const CONNECTION_KEY = "driver-station-connection";
@@ -55,8 +48,12 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   const [connection, setConnectionState] = useState<Connection | null>(null);
 
   // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setConnectionState(loadFromStorage()); }, []);
+
+  useEffect(() => {
+    // FIX: the proper paradigm for this in react 19 is useEffectEvent
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setConnectionState(loadFromStorage());
+  }, []);
 
   const connect = useCallback((name: string, ip: string, token?: string, opts?: { devMode?: boolean }) => {
     const value: Connection = {
@@ -82,9 +79,7 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
   }, [connection]);
 
   return (
-    <ConnectionContext.Provider value={{ connection, connect, disconnect }}>
-      {children}
-    </ConnectionContext.Provider>
+    <ConnectionContext.Provider value={{ connection, connect, disconnect }}>{children}</ConnectionContext.Provider>
   );
 }
 

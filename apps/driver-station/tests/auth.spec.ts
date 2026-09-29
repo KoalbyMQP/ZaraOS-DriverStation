@@ -17,7 +17,7 @@
 //     await page.getByRole('textbox', { name: 'Password' }).fill('123456');
 //     await page.getByRole('button', { name: 'Login' }).click();
 
-//     await expect(page).toHaveURL("http://localhost:3000/"); 
+//     await expect(page).toHaveURL("http://localhost:3000/");
 //   });
 
 //   test("testing login", async ({ page }) => {
@@ -28,7 +28,7 @@
 //     await page.getByRole('textbox', { name: 'Password' }).fill('123456');
 //     await page.getByRole('button', { name: 'Login' }).click();
 
-//     await expect(page).toHaveURL("http://localhost:3000/"); 
+//     await expect(page).toHaveURL("http://localhost:3000/");
 //   });
 // });
 
@@ -74,7 +74,7 @@
 //   await page.goto("http://localhost:3000/authenticate");
 //   await page.getByRole('textbox', { name: 'Email' }).fill('jrtint@wpi.edu');
 //   await page.getByRole('button', { name: 'Continue' }).click();
-//   await expect(page.getByRole('textbox', {name: 'First name'})).toBeVisible(); 
+//   await expect(page.getByRole('textbox', {name: 'First name'})).toBeVisible();
 // });
 
 // // next tests for this

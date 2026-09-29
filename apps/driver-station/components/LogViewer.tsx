@@ -13,16 +13,12 @@ export function inferLogSeverity(entry: LogEntry): LogSeverity {
   if (entry.stream === "stderr") return "error";
   const line = entry.content;
   if (
-    /\b(fatal|critical|panic|traceback|exception|err|error|\[error\]|\[critical\])\b/i.test(
-      line
-    ) ||
+    /\b(fatal|critical|panic|traceback|exception|err|error|\[error\]|\[critical\])\b/i.test(line) ||
     /^\s*error[\s:]/i.test(line)
   ) {
     return "error";
   }
-  if (
-    /\b(warn|warning|deprecated|deprecation|\[warn\]|\[warning\])\b/i.test(line)
-  ) {
+  if (/\b(warn|warning|deprecated|deprecation|\[warn\]|\[warning\])\b/i.test(line)) {
     return "warn";
   }
   return "info";
@@ -108,15 +104,10 @@ function severityTabClass(tone: "neutral" | "warn" | "error", active: boolean): 
       ? "bg-red-500/20 text-red-100 shadow-sm ring-1 ring-inset ring-red-500/40"
       : "text-red-400/95 hover:bg-red-950/45 hover:text-red-300";
   }
-  return active
-    ? "bg-zinc-700 text-zinc-100 shadow-sm"
-    : "text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300";
+  return active ? "bg-zinc-700 text-zinc-100 shadow-sm" : "text-zinc-500 hover:bg-zinc-800/80 hover:text-zinc-300";
 }
 
-function severityTabCountClass(
-  tone: "neutral" | "warn" | "error",
-  active: boolean
-): string {
+function severityTabCountClass(tone: "neutral" | "warn" | "error", active: boolean): string {
   const base = "ml-0.5 tabular-nums";
   if (tone === "warn") {
     return `${base} ${active ? "text-amber-200/75" : "text-amber-500/85"}`;
@@ -127,13 +118,7 @@ function severityTabCountClass(
   return `${base} text-zinc-500`;
 }
 
-export function LogViewer({
-  connection,
-  instanceId,
-}: {
-  connection: Connection | null;
-  instanceId: string | null;
-}) {
+export function LogViewer({ connection, instanceId }: { connection: Connection | null; instanceId: string | null }) {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [filter, setFilter] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
@@ -146,9 +131,7 @@ export function LogViewer({
   const stickToBottomRef = useRef(true);
   const logBufferRef = useRef<LogEntry[]>([]);
 
-  const serializedLogs = logs
-    .map((log) => `[${log.ts}] [${log.stream.toUpperCase()}] ${log.content}`)
-    .join("\n");
+  const serializedLogs = logs.map((log) => `[${log.ts}] [${log.stream.toUpperCase()}] ${log.content}`).join("\n");
   const actionButtonClass =
     "inline-flex items-center gap-2 rounded bg-zinc-800 px-2.5 py-1.5 text-sm text-zinc-300 transition-colors hover:bg-zinc-700";
 
@@ -259,24 +242,18 @@ export function LogViewer({
             <span className="text-sm text-zinc-500">
               {logs.length} {logs.length === 1 ? "entry" : "entries"}
               {filterActive && logs.length > 0 && (
-                <span className="text-zinc-600">
-                  {" "}
-                  · showing {filteredLogs.length}
-                </span>
+                <span className="text-zinc-600"> · showing {filteredLogs.length}</span>
               )}
             </span>
           </div>
           <div
-            className="log-viewer-severity-tabs flex flex-wrap items-center gap-0.5 rounded-lg bg-zinc-950/60 p-0.5 ring-1 ring-inset ring-zinc-800"
+            className="log-viewer-severity-tabs flex flex-wrap items-center gap-0.5 rounded-lg bg-zinc-950/60 p-0.5 ring-1 ring-zinc-800 ring-inset"
             role="group"
             aria-label="Filter by severity"
           >
             {LEVEL_FILTER_META.map(({ id, label, short, tone }) => {
               const active = levelFilter === id;
-              const count =
-                id === "all"
-                  ? logs.length
-                  : levelCounts[id as LogSeverity];
+              const count = id === "all" ? logs.length : levelCounts[id as LogSeverity];
               return (
                 <button
                   key={id}
@@ -290,11 +267,7 @@ export function LogViewer({
                   {id === "warn" && <LogSeverityTabIcon level="warn" />}
                   {id === "error" && <LogSeverityTabIcon level="error" />}
                   {short}
-                  {id !== "all" && (
-                    <span className={severityTabCountClass(tone, active)}>
-                      {count}
-                    </span>
-                  )}
+                  {id !== "all" && <span className={severityTabCountClass(tone, active)}>{count}</span>}
                 </button>
               );
             })}
@@ -306,7 +279,7 @@ export function LogViewer({
             placeholder="Search message…"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="min-w-[10rem] flex-1 rounded-md bg-zinc-800 px-2.5 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="min-w-[10rem] flex-1 rounded-md bg-zinc-800 px-2.5 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
           />
           <button
             type="button"
@@ -314,25 +287,16 @@ export function LogViewer({
             className={`rounded px-2 py-1 text-sm font-medium transition-colors ${
               isPaused
                 ? "bg-amber-900/50 text-amber-300 hover:bg-amber-900"
-                : "log-viewer-btn-live bg-emerald-950/80 text-emerald-300 ring-1 ring-inset ring-emerald-500/35 hover:bg-emerald-900/70 hover:text-emerald-200"
+                : "log-viewer-btn-live bg-emerald-950/80 text-emerald-300 ring-1 ring-emerald-500/35 ring-inset hover:bg-emerald-900/70 hover:text-emerald-200"
             }`}
             title={isPaused ? "Resume streaming" : "Pause streaming"}
           >
             {isPaused ? "Paused" : "Live"}
           </button>
-          <button
-            onClick={handleClear}
-            className={actionButtonClass}
-            title="Clear logs"
-          >
+          <button onClick={handleClear} className={actionButtonClass} title="Clear logs">
             Clear
           </button>
-          <button
-            onClick={handleCopy}
-            className={actionButtonClass}
-            title="Copy logs"
-            aria-label="Copy logs"
-          >
+          <button onClick={handleCopy} className={actionButtonClass} title="Copy logs" aria-label="Copy logs">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <rect x="9" y="9" width="10" height="10" rx="2" strokeWidth="1.8" />
               <path
@@ -367,21 +331,14 @@ export function LogViewer({
       {error && (
         <div className="border-b border-red-900/50 bg-red-950/30 px-4 py-2 text-sm text-red-300">
           <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="ml-2 text-red-300 hover:text-red-200"
-          >
+          <button onClick={() => setError(null)} className="ml-2 text-red-300 hover:text-red-200">
             ✕
           </button>
         </div>
       )}
 
       {/* Logs display */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScrollContainer}
-        className="min-h-0 flex-1 overflow-y-auto"
-      >
+      <div ref={scrollContainerRef} onScroll={handleScrollContainer} className="min-h-0 flex-1 overflow-y-auto">
         {filteredLogs.length === 0 ? (
           <div className="flex h-full items-center justify-center px-4 text-center text-sm text-zinc-500">
             {logs.length === 0
@@ -397,18 +354,15 @@ export function LogViewer({
               return (
                 <div
                   key={`${log.seq}-${log.ts}-${idx}`}
-                  className={`flex gap-3 border-b border-zinc-800/40 border-l-2 px-4 py-1.5 ${LEVEL_ROW_CLASS[sev]}`}
+                  className={`flex gap-3 border-b border-l-2 border-zinc-800/40 px-4 py-1.5 ${LEVEL_ROW_CLASS[sev]}`}
                 >
-                  <span
-                    className="w-[5.5rem] shrink-0 select-none tabular-nums text-zinc-500"
-                    title={log.ts}
-                  >
+                  <span className="w-[5.5rem] shrink-0 text-zinc-500 tabular-nums select-none" title={log.ts}>
                     {formatLogTime(log.ts)}
                   </span>
                   <span className="flex min-w-0 flex-1 gap-2">
                     {sev !== "info" ? (
                       <span
-                        className={`w-10 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide ${LEVEL_BADGE_CLASS[sev]}`}
+                        className={`w-10 shrink-0 rounded px-1 py-0.5 text-center text-[10px] font-semibold tracking-wide uppercase ${LEVEL_BADGE_CLASS[sev]}`}
                       >
                         {sev === "warn" ? "WRN" : "ERR"}
                       </span>
@@ -426,9 +380,7 @@ export function LogViewer({
 
       {/* Footer info */}
       <div className="border-t border-zinc-800 px-4 py-2 text-xs text-zinc-500">
-        {isPaused && pendingWhilePaused > 0 && (
-          <span>{pendingWhilePaused} new entries while paused</span>
-        )}
+        {isPaused && pendingWhilePaused > 0 && <span>{pendingWhilePaused} new entries while paused</span>}
         {isPaused && pendingWhilePaused === 0 && <span>Paused</span>}
         {!isPaused && <span>Streaming live</span>}
       </div>

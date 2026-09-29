@@ -103,19 +103,15 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
       ws?.close();
       term.dispose();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [robotUrl]);
 
   return (
     <div
-      className="blue-outline rounded-lg overflow-hidden p-2 flex flex-col w-full h-full"
+      className="blue-outline flex h-full w-full flex-col overflow-hidden rounded-lg p-2"
       style={{ background: "#0d1117" }}
     >
-      <div
-        ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden"
-        style={{ background: "#0d1117" }}
-      />
+      <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden" style={{ background: "#0d1117" }} />
     </div>
   );
 }

@@ -34,9 +34,7 @@ export function ProjectStatusWidget() {
           <FolderIcon hasProjects={hasProjects} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Active projects
-          </p>
+          <p className="text-xs font-medium tracking-wider text-zinc-500 uppercase">Active projects</p>
           {hasProjects ? (
             <ul className="mt-1.5 space-y-1">
               {activeProjects.map((p) => (

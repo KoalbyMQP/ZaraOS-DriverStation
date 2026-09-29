@@ -49,9 +49,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
     setError(null);
     setLoading(true);
     try {
-      const baseUrl = trimmedIp.includes(":")
-        ? `http://${trimmedIp}`
-        : `http://${trimmedIp}:8080`;
+      const baseUrl = trimmedIp.includes(":") ? `http://${trimmedIp}` : `http://${trimmedIp}:8080`;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 1000);
       const res = await fetch(`${baseUrl}/auth/pair/start`, {
@@ -134,8 +132,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
       }
       await submitConnection(name, ip);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Bluetooth connection failed.";
+      const message = err instanceof Error ? err.message : "Bluetooth connection failed.";
       setError(message);
     } finally {
       setLoading(false);
@@ -170,13 +167,9 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
             <h2 id="ip-connect-title" className="text-lg font-semibold text-zinc-100">
               Enter pairing code
             </h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              Enter the 6-digit code displayed on the robot.
-            </p>
+            <p className="mt-1 text-sm text-zinc-400">Enter the 6-digit code displayed on the robot.</p>
             {pendingPair && (
-              <p className="mt-1 text-xs text-zinc-500">
-                Code expires in {pendingPair.expiresIn} seconds.
-              </p>
+              <p className="mt-1 text-xs text-zinc-500">Code expires in {pendingPair.expiresIn} seconds.</p>
             )}
             {error && (
               <div
@@ -214,7 +207,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
                 type="button"
                 disabled={loading || codeInput.replace(/\D/g, "").length !== 6}
                 onClick={submitCode}
-                className="rounded-md bg-blue-glow px-4 py-2 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-blue-glow rounded-md px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? "Pairing…" : "Pair"}
               </button>
@@ -238,7 +231,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
               type="button"
               onClick={handleFindIPWithBluetooth}
               disabled={loading}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-zinc-600 bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-md border border-zinc-600 bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 hover:bg-zinc-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "Connecting…" : "Find IP with Bluetooth"}
             </button>
@@ -282,7 +275,7 @@ export function IpConnectModal({ open, onClose }: IpConnectModalProps) {
                   type="button"
                   disabled={loading || !ipAddressInput.trim()}
                   onClick={handleConnect}
-                  className="rounded-md bg-blue-glow px-4 py-2 text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-blue-glow rounded-md px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {loading ? "Connecting…" : "Connect"}
                 </button>

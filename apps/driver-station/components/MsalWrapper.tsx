@@ -8,9 +8,5 @@ import { msalConfig } from "@/lib/msalConfig";
 const msalInstance = new PublicClientApplication(msalConfig);
 
 export default function MsalWrapper({ children }: { children: ReactNode }) {
-    return (
-        <MsalProvider instance={msalInstance}>
-            {children}
-        </MsalProvider>
-    );
+  return <MsalProvider instance={msalInstance}>{children}</MsalProvider>;
 }

@@ -24,9 +24,7 @@ export async function connectBLEAndGetIP(): Promise<{ name: string; ip: string }
 
   const server = await device.gatt!.connect();
   const service = await server.getPrimaryService(BLE_UUIDS.INTERACTIVE_SERVICE_UUID);
-  const characteristic = await service.getCharacteristic(
-    BLE_UUIDS.COMMUNICATION_CHARACTERISTIC_UUID
-  );
+  const characteristic = await service.getCharacteristic(BLE_UUIDS.COMMUNICATION_CHARACTERISTIC_UUID);
 
   try {
     const ip = await sendGetIP(characteristic);
@@ -44,9 +42,7 @@ export async function connectBLEAndGetIP(): Promise<{ name: string; ip: string }
  * Send "get-ip" to the communication characteristic and wait for the IP response.
  * Mirrors BLEConnection.sendMessageToCharacteristic / get_ip() behavior.
  */
-async function sendGetIP(
-  characteristic: BluetoothRemoteGATTCharacteristic
-): Promise<string> {
+async function sendGetIP(characteristic: BluetoothRemoteGATTCharacteristic): Promise<string> {
   return new Promise((resolve, reject) => {
     let fullMessage = "";
     let success = true;
@@ -58,10 +54,7 @@ async function sendGetIP(
       isComplete = true;
       clearTimeout(responseTimeout);
       try {
-        characteristic.removeEventListener(
-          "characteristicvaluechanged",
-          onCharacteristicValueChanged
-        );
+        characteristic.removeEventListener("characteristicvaluechanged", onCharacteristicValueChanged);
       } catch {
         // ignore
       }
@@ -96,8 +89,7 @@ async function sendGetIP(
       }
 
       const isSmallMessage = decodedData.length < CHUNK_SIZE;
-      const hasTerminator =
-        decodedData.endsWith("\0") || fullMessage.endsWith("\0");
+      const hasTerminator = decodedData.endsWith("\0") || fullMessage.endsWith("\0");
       if (isSmallMessage || hasTerminator) {
         cleanup();
         const cleanMessage = fullMessage.replace(/\0+$/, "");
@@ -109,10 +101,7 @@ async function sendGetIP(
       }
     };
 
-    characteristic.addEventListener(
-      "characteristicvaluechanged",
-      onCharacteristicValueChanged
-    );
+    characteristic.addEventListener("characteristicvaluechanged", onCharacteristicValueChanged);
 
     responseTimeout = setTimeout(() => {
       cleanup();
@@ -127,10 +116,7 @@ async function sendGetIP(
         const message = "get-ip\0";
         const encoder = new TextEncoder();
         for (let i = 0; i < Math.ceil(message.length / CHUNK_SIZE); i++) {
-          const chunk = message.substring(
-            i * CHUNK_SIZE,
-            (i + 1) * CHUNK_SIZE
-          );
+          const chunk = message.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
           await characteristic.writeValue(encoder.encode(chunk));
           if (i < Math.ceil(message.length / CHUNK_SIZE) - 1) {
             await new Promise((r) => setTimeout(r, 10));

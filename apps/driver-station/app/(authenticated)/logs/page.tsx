@@ -9,9 +9,7 @@ import { getInstances, type RobotAppInstance } from "@/lib/robot-api";
 export default function LogsPage() {
   const { connection } = useConnection();
   const [instances, setInstances] = useState<RobotAppInstance[]>([]);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
-    null
-  );
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [loadingInstances, setLoadingInstances] = useState(true);
 
   useEffect(() => {
@@ -48,9 +46,7 @@ export default function LogsPage() {
             No robot connected. Use the Connect button in the header to view logs.
           </div>
         ) : loadingInstances ? (
-          <div className="flex items-center justify-center py-12 text-zinc-400">
-            Loading instances...
-          </div>
+          <div className="flex items-center justify-center py-12 text-zinc-400">Loading instances...</div>
         ) : instances.length === 0 ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
             No running instances. Start an app from the Apps page to view logs.
@@ -74,13 +70,9 @@ export default function LogsPage() {
                           : "text-zinc-300 hover:bg-zinc-800"
                       }`}
                     >
-                      <div className="font-mono text-xs text-zinc-500">
-                        {instance.id.slice(0, 8)}
-                      </div>
+                      <div className="font-mono text-xs text-zinc-500">{instance.id.slice(0, 8)}</div>
                       <div className="font-medium">{instance.app}</div>
-                      <div className="text-xs text-zinc-500">
-                        v{instance.version}
-                      </div>
+                      <div className="text-xs text-zinc-500">v{instance.version}</div>
                     </button>
                   ))}
                 </div>
@@ -90,11 +82,7 @@ export default function LogsPage() {
             {/* Log viewer */}
             <div className="flex-1">
               {selectedInstanceId ? (
-                <LogViewer
-                  key={selectedInstanceId}
-                  connection={connection}
-                  instanceId={selectedInstanceId}
-                />
+                <LogViewer key={selectedInstanceId} connection={connection} instanceId={selectedInstanceId} />
               ) : (
                 <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
                   Select an instance to view logs

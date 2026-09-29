@@ -36,9 +36,7 @@ export function ConnectionStatusWidget() {
           <WifiIcon connected={connected} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            Robot connection
-          </p>
+          <p className="text-xs font-medium tracking-wider text-zinc-500 uppercase">Robot connection</p>
           {connected ? (
             <p className="truncate text-sm font-medium text-zinc-100">
               {connection!.devMode ? "Dev Mode" : connection!.name}

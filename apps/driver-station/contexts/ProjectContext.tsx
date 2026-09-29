@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
 
 const ACTIVE_PROJECTS_KEY = "driver-station-active-projects";
@@ -57,8 +49,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const hadConnectionRef = useRef<boolean | null>(null);
 
   // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setActiveProjectsState(loadFromStorage()); }, []);
+
+  useEffect(() => {
+    // FIX: the proper paradigm for this in react 19 is useEffectEvent
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveProjectsState(loadFromStorage());
+  }, []);
 
   useEffect(() => {
     const connected = connection !== null;
@@ -67,7 +63,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       return;
     }
     if (hadConnectionRef.current && !connected) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset active apps when connection ends
       setActiveProjectsState([]);
       if (typeof window !== "undefined") {
         localStorage.removeItem(ACTIVE_PROJECTS_KEY);
@@ -105,14 +100,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
-  const isActive = useCallback((url: string) => {
-    return activeProjects.some((p) => p.url === url);
-  }, [activeProjects]);
+  const isActive = useCallback(
+    (url: string) => {
+      return activeProjects.some((p) => p.url === url);
+    },
+    [activeProjects]
+  );
 
   return (
-    <ProjectContext.Provider
-      value={{ activeProjects, addActiveProject, removeActiveProject, isActive }}
-    >
+    <ProjectContext.Provider value={{ activeProjects, addActiveProject, removeActiveProject, isActive }}>
       {children}
     </ProjectContext.Provider>
   );

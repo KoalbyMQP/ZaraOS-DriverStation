@@ -22,18 +22,8 @@ async function sha256Hex(data: string): Promise<string> {
 
 async function hmacSha256Hex(keyUtf8: string, message: string): Promise<string> {
   const keyBytes = new TextEncoder().encode(keyUtf8);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyBytes,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    new TextEncoder().encode(message)
-  );
+  const cryptoKey = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message));
   return toHex(sig);
 }
 
@@ -120,15 +110,11 @@ export type SessionsResponse = {
 /**
  * GET /auth/sessions — list active sessions. Requires signing.
  */
-export async function getSessions(
-  connection: Connection
-): Promise<SessionsResponse> {
+export async function getSessions(connection: Connection): Promise<SessionsResponse> {
   const res = await signedFetch(connection, "GET", "/auth/sessions");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `sessions failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `sessions failed: ${res.status}`);
   }
   return res.json() as Promise<SessionsResponse>;
 }
@@ -143,10 +129,7 @@ const TOKEN_PREFIX_LENGTH = 6;
 export async function revokeRobotSession(connection: Connection): Promise<void> {
   const token = connection.token;
   if (!token) return;
-  const token_prefix =
-    token.length >= TOKEN_PREFIX_LENGTH
-      ? token.slice(0, TOKEN_PREFIX_LENGTH)
-      : token;
+  const token_prefix = token.length >= TOKEN_PREFIX_LENGTH ? token.slice(0, TOKEN_PREFIX_LENGTH) : token;
   const body = JSON.stringify({ token_prefix });
   try {
     await signedFetch(connection, "POST", "/auth/revoke", body);
@@ -187,9 +170,7 @@ export async function getImages(connection: Connection): Promise<ImagesResponse>
   const res = await signedFetch(connection, "GET", "/images");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `images failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `images failed: ${res.status}`);
   }
   return res.json() as Promise<ImagesResponse>;
 }
@@ -197,15 +178,11 @@ export async function getImages(connection: Connection): Promise<ImagesResponse>
 /**
  * GET /instances — list all instances (running and recently stopped).
  */
-export async function getInstances(
-  connection: Connection
-): Promise<InstancesResponse> {
+export async function getInstances(connection: Connection): Promise<InstancesResponse> {
   const res = await signedFetch(connection, "GET", "/instances");
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `instances failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `instances failed: ${res.status}`);
   }
   return res.json() as Promise<InstancesResponse>;
 }
@@ -221,17 +198,12 @@ export async function createInstance(
   version: string,
   image?: string
 ): Promise<RobotAppInstance> {
-  const payload =
-    image !== undefined && image !== ""
-      ? { app, version, image }
-      : { app, version };
+  const payload = image !== undefined && image !== "" ? { app, version, image } : { app, version };
   const body = JSON.stringify(payload);
   const res = await signedFetch(connection, "POST", "/instances", body);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `start instance failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `start instance failed: ${res.status}`);
   }
   return res.json() as Promise<RobotAppInstance>;
 }
@@ -239,16 +211,11 @@ export async function createInstance(
 /**
  * GET /instances/:id — get status of a single instance. Use to poll until state === "running".
  */
-export async function getInstance(
-  connection: Connection,
-  instanceId: string
-): Promise<RobotAppInstance> {
+export async function getInstance(connection: Connection, instanceId: string): Promise<RobotAppInstance> {
   const res = await signedFetch(connection, "GET", `/instances/${instanceId}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `get instance failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `get instance failed: ${res.status}`);
   }
   return res.json() as Promise<RobotAppInstance>;
 }
@@ -256,15 +223,10 @@ export async function getInstance(
 /**
  * DELETE /instances/:id — stop a running instance. Resolves when response is 200.
  */
-export async function deleteInstance(
-  connection: Connection,
-  instanceId: string
-): Promise<void> {
+export async function deleteInstance(connection: Connection, instanceId: string): Promise<void> {
   const res = await signedFetch(connection, "DELETE", `/instances/${instanceId}`);
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string })?.error ?? `stop instance failed: ${res.status}`
-    );
+    throw new Error((err as { error?: string })?.error ?? `stop instance failed: ${res.status}`);
   }
 }

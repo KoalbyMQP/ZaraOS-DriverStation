@@ -5,11 +5,9 @@ test.beforeEach(async ({ page }) => {
   await page.route("https://login.microsoftonline.com/**", (route) =>
     route.request().isNavigationRequest()
       ? route.fulfill({ contentType: "text/html", body: "<h1>Microsoft sign-in</h1>" })
-      : route.abort(),
+      : route.abort()
   );
-  await page.route("https://api.github.com/**", (route) =>
-    route.fulfill({ json: [] }),
-  );
+  await page.route("https://api.github.com/**", (route) => route.fulfill({ json: [] }));
 });
 
 test.describe("before hydration", () => {
@@ -41,11 +39,14 @@ test("signed-out users redirect before page or connection effects run", async ({
     }
   });
   await page.addInitScript(() => {
-    localStorage.setItem("driver-station-connection", JSON.stringify({
-      name: "Stored robot",
-      ip: "127.0.0.1",
-      devMode: true,
-    }));
+    localStorage.setItem(
+      "driver-station-connection",
+      JSON.stringify({
+        name: "Stored robot",
+        ip: "127.0.0.1",
+        devMode: true,
+      })
+    );
   });
 
   await page.goto("/apps");

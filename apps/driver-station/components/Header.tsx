@@ -110,14 +110,14 @@ export function Header() {
       clearTimeout(timeoutId);
       if (!res.ok) {
         setDevModeError(
-          `Health check failed (${res.status}). Make sure to start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS`,
+          `Health check failed (${res.status}). Make sure to start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS`
         );
         return;
       }
       connect("Dev Mode", "127.0.0.1", undefined, { devMode: true });
     } catch {
       setDevModeError(
-        "Could not reach localhost:8080. Start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS",
+        "Could not reach localhost:8080. Start ZaraOS on localhost and see setup instructions: https://github.com/KoalbyMQP/ZaraOS"
       );
     } finally {
       setDevModeLoading(false);
@@ -147,18 +147,18 @@ export function Header() {
           {navLink("/apps", "Apps")}
         </nav>
       </div>
-      <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
+      <div className="absolute top-1/2 left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1">
         <div className="flex items-center gap-2">
           <div className="relative" ref={connectDropdownRef}>
             <button
               type="button"
-            onClick={() => {
-              if (connection) setConnectDropdownOpen((o) => !o);
-              else {
-                setDevModeError(null);
-                setIpConnectModalOpen(true);
-              }
-            }}
+              onClick={() => {
+                if (connection) setConnectDropdownOpen((o) => !o);
+                else {
+                  setDevModeError(null);
+                  setIpConnectModalOpen(true);
+                }
+              }}
               className="cursor-pointer rounded-md border border-zinc-800 bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-700"
               style={{ boxShadow: "var(--blue-outline)" }}
               aria-expanded={connectDropdownOpen}
@@ -170,7 +170,7 @@ export function Header() {
                 : "Connect to Robot"}
             </button>
             {connectDropdownOpen && connection && (
-              <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
+              <div className="absolute top-full left-1/2 z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
                 <button
                   type="button"
                   onClick={() => {
@@ -232,11 +232,9 @@ export function Header() {
           </button>
         </div>
         {menuOpen && (
-          <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
+          <div className="absolute top-full right-0 z-50 mt-2 w-56 rounded-lg border border-zinc-700 bg-zinc-800 py-2 shadow-lg">
             <div className="border-b border-zinc-700 px-4 py-3">
-              <p className="text-sm font-medium text-zinc-100">
-                {user.name ?? user.username}
-              </p>
+              <p className="text-sm font-medium text-zinc-100">{user.name ?? user.username}</p>
               <p className="mt-0.5 truncate text-sm text-zinc-400">{user.username}</p>
             </div>
             <div className="px-2 pt-2">

@@ -12,7 +12,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Local auth bypass (development only)
 
-To bypass the sign in locally: 
+To bypass the sign in locally:
 
 ```bash
 AUTH_BYPASS_LOCAL=true

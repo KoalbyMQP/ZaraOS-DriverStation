@@ -23,10 +23,6 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <div
-      className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
-    >
-      {children}
-    </div>
+    <div className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}>{children}</div>
   );
 }

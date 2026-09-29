@@ -22,9 +22,7 @@ const GITHUB_HEADERS: HeadersInit = {
   "X-GitHub-Api-Version": "2022-11-28",
 };
 
-const APPS_REPO =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) ||
-  "KoalbyMQP/Apps";
+const APPS_REPO = (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps";
 const CORE_REPO = "KoalbyMQP/Core";
 const DRIVERS_REPO = "KoalbyMQP/Drivers";
 const CONTROL_REPO = "KoalbyMQP/Control";
@@ -82,14 +80,7 @@ export type ReleaseWithSource = Release & {
   repo: string;
 };
 
-export type ReleaseChannel =
-  | "alpha"
-  | "beta"
-  | "rc"
-  | "preview"
-  | "nightly"
-  | "canary"
-  | "prerelease";
+export type ReleaseChannel = "alpha" | "beta" | "rc" | "preview" | "nightly" | "canary" | "prerelease";
 
 function mapWithSource(releases: Release[], source: ReleaseSource, repo: string): ReleaseWithSource[] {
   return releases.map((rel) => ({ ...rel, source, repo }));
@@ -120,23 +111,27 @@ export function getReleaseGroupName(release: Release): string {
   const name = (release.name || release.tag_name).trim();
   const tag = release.tag_name.trim();
   const candidates = Array.from(
-    new Set(
-      [tag, tag.replace(/^v/i, ""), tag.startsWith("v") ? tag : `v${tag}`].filter(Boolean)
-    )
+    new Set([tag, tag.replace(/^v/i, ""), tag.startsWith("v") ? tag : `v${tag}`].filter(Boolean))
   );
 
   for (const candidate of candidates) {
     const escaped = candidate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const suffixPattern = new RegExp(`(?:[\\s_-]+)?${escaped}$`, "i");
     if (suffixPattern.test(name)) {
-      const stripped = name.replace(suffixPattern, "").replace(/[\s_-]+$/, "").trim();
+      const stripped = name
+        .replace(suffixPattern, "")
+        .replace(/[\s_-]+$/, "")
+        .trim();
       if (stripped) return stripped;
     }
   }
 
   const genericVersionSuffix = /(?:[\s_-]+)?v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/i;
   if (genericVersionSuffix.test(name)) {
-    const stripped = name.replace(genericVersionSuffix, "").replace(/[\s_-]+$/, "").trim();
+    const stripped = name
+      .replace(genericVersionSuffix, "")
+      .replace(/[\s_-]+$/, "")
+      .trim();
     if (stripped) return stripped;
   }
 

@@ -15,7 +15,14 @@ export default function ConsolePage() {
         {connection ? (
           <RobotTerminal
             robotUrl={`http://${connection.ip}:8080`}
-            signedFetch={(url, init) => signedFetch(connection, /* method */ init?.method ?? "GET", new URL(url).pathname, init?.body as string | undefined)}
+            signedFetch={(url, init) =>
+              signedFetch(
+                connection,
+                /* method */ init?.method ?? "GET",
+                new URL(url).pathname,
+                init?.body as string | undefined
+              )
+            }
           />
         ) : (
           <p className="text-zinc-400">No robot connected. Use the Connect button in the header.</p>

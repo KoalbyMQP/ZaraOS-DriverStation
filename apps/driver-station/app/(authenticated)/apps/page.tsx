@@ -88,11 +88,7 @@ function uniqueReposForGroup(group: ReleaseGroup): string[] {
 
 /** All whitespace-separated terms must appear in `name` (case-insensitive). Empty query matches everything. */
 function matchesAppSearchQuery(query: string, name: string): boolean {
-  const tokens = query
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return true;
   const h = name.toLowerCase();
   return tokens.every((t) => h.includes(t));
@@ -111,8 +107,7 @@ const RELEASE_SOURCE_LABEL: Record<ReleaseSource, string> = {
 /** Display repo path (defaults align with driver-station/lib/api.ts). */
 const RELEASE_SOURCE_REPO: Record<ReleaseSource, string> = {
   core: "KoalbyMQP/Core",
-  apps:
-    (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps",
+  apps: (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps",
   drivers: "KoalbyMQP/Drivers",
   control: "KoalbyMQP/Control",
   sensing: "KoalbyMQP/Sensing",
@@ -128,10 +123,7 @@ function allReleaseSourcesEnabled(): Record<ReleaseSource, boolean> {
   };
 }
 
-function groupHasEnabledReleaseSource(
-  group: ReleaseGroup,
-  enabled: Record<ReleaseSource, boolean>
-): boolean {
+function groupHasEnabledReleaseSource(group: ReleaseGroup, enabled: Record<ReleaseSource, boolean>): boolean {
   return group.versions.some((v) => enabled[v.source]);
 }
 
@@ -178,18 +170,8 @@ function getCommonReleaseChannels(versions: ReleaseWithSource[]): ReleaseChannel
   return channels.length === 1 ? channels : [];
 }
 
-function ReleaseTag({
-  label,
-  className,
-}: {
-  label: string;
-  className: string;
-}) {
-  return (
-    <span className={`rounded px-2 py-0.5 text-xs ${className}`}>
-      {label}
-    </span>
-  );
+function ReleaseTag({ label, className }: { label: string; className: string }) {
+  return <span className={`rounded px-2 py-0.5 text-xs ${className}`}>{label}</span>;
 }
 
 function VersionMenu({
@@ -243,7 +225,7 @@ function VersionMenu({
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
+        <div className="absolute top-full right-0 z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
           {group.versions.map((r) => {
             const isActive = activeProjectUrls.has(r.html_url) || isVersionRunningOnRobot(r.tag_name);
             const releaseChannel = getReleaseChannel(r);
@@ -258,9 +240,7 @@ function VersionMenu({
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate">
-                    {r.tag_name}
-                  </span>
+                  <span className="truncate">{r.tag_name}</span>
                   {releaseChannel && (
                     <ReleaseTag
                       label={RELEASE_CHANNEL_LABELS[releaseChannel]}
@@ -353,10 +333,12 @@ export default function AppsPage() {
 
   const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
 
-  const setInstanceState = (id: string, state: InstanceState, extra?: { displayName?: string; projectUrl?: string }) => {
-    setInstances((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, state, ...extra } : i))
-    );
+  const setInstanceState = (
+    id: string,
+    state: InstanceState,
+    extra?: { displayName?: string; projectUrl?: string }
+  ) => {
+    setInstances((prev) => prev.map((i) => (i.id === id ? { ...i, state, ...extra } : i)));
   };
 
   const removeInstance = (id: string) => {
@@ -366,10 +348,7 @@ export default function AppsPage() {
 
   // Fetch GET /instances when robot is connected, then every 60s
   useEffect(() => {
-    if (
-      !connection ||
-      (!connection.token && !isLocalRobotHost(connection))
-    ) {
+    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstances([]);
       return;
@@ -380,9 +359,7 @@ export default function AppsPage() {
       getInstances(connection)
         .then((data) => {
           const apiList = data.instances
-            .filter(
-              (i: RobotAppInstance) => i.state === "running" || i.state === "starting"
-            )
+            .filter((i: RobotAppInstance) => i.state === "running" || i.state === "starting")
             .map((i: RobotAppInstance) => ({
               id: i.id,
               app: i.app,
@@ -390,14 +367,10 @@ export default function AppsPage() {
               state: i.state as InstanceState,
             }));
           setInstances((prev) => {
-            const stoppingIds = new Set(
-              prev.filter((p) => p.state === "stopping").map((p) => p.id)
-            );
+            const stoppingIds = new Set(prev.filter((p) => p.state === "stopping").map((p) => p.id));
             const apiIds = new Set(apiList.map((a) => a.id));
             const merged = apiList.map((api) => {
-              let row: Instance = stoppingIds.has(api.id)
-                ? { ...api, state: "stopping" as const }
-                : api;
+              let row: Instance = stoppingIds.has(api.id) ? { ...api, state: "stopping" as const } : api;
               const optimistic = prev.find(
                 (p) =>
                   p.id.startsWith("pending:") &&
@@ -508,25 +481,18 @@ export default function AppsPage() {
 
   const runningInstances = instances.filter((i) => i.state === "running");
   const startingInstances = instances.filter((i) => i.state === "starting");
-  const stoppingInstanceIds = new Set(
-    instances.filter((i) => i.state === "stopping").map((i) => i.id)
-  );
+  const stoppingInstanceIds = new Set(instances.filter((i) => i.state === "stopping").map((i) => i.id));
 
   // Running (or stopping) instances not in user's active list — show as "on robot" cards
   const runningOnly = instances.filter(
     (i) =>
       (i.state === "running" || i.state === "stopping") &&
-      !activeProjects.some(
-        (p) =>
-          p.version === i.version &&
-          (groupNameToSlug(p.name) === i.app || p.name === i.app)
-      )
+      !activeProjects.some((p) => p.version === i.version && (groupNameToSlug(p.name) === i.app || p.name === i.app))
   );
 
   const isVersionRunningOnRobot = (groupName: string, tagName: string) => {
     const match = (i: Instance) =>
-      i.version === tagName &&
-      (groupNameToSlug(groupName) === i.app || groupName === i.app);
+      i.version === tagName && (groupNameToSlug(groupName) === i.app || groupName === i.app);
     return runningInstances.some(match) || startingInstances.some(match);
   };
 
@@ -626,13 +592,7 @@ export default function AppsPage() {
     const displayName = repoNameFromOwnerRepo(repository);
     const appSlug = localAppSlugFromRepository(repository);
     const imageRef = `${repository}:${tag}`;
-    startInstanceOnRobot(
-      appSlug,
-      tag,
-      displayName,
-      localProjectUrl(repository, tag),
-      imageRef
-    );
+    startInstanceOnRobot(appSlug, tag, displayName, localProjectUrl(repository, tag), imageRef);
   };
 
   const findInstanceForProject = (project: { name: string; version: string }) =>
@@ -644,11 +604,7 @@ export default function AppsPage() {
     );
 
   const handleStopInstance = (instance: Instance) => {
-    if (
-      !connection ||
-      (!connection.token && !isLocalRobotHost(connection)) ||
-      stoppingInstanceIds.has(instance.id)
-    )
+    if (!connection || (!connection.token && !isLocalRobotHost(connection)) || stoppingInstanceIds.has(instance.id))
       return;
     setInstanceState(instance.id, "stopping");
     deleteInstance(connection, instance.id)
@@ -665,23 +621,15 @@ export default function AppsPage() {
     matchesAppSearchQuery(appSearchQuery, repoNameFromOwnerRepo(row.repository))
   );
   const filteredAvailableGroups = availableGroups.filter(
-    (g) =>
-      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
-      matchesAppSearchQuery(appSearchQuery, g.groupName)
+    (g) => groupHasEnabledReleaseSource(g, enabledReleaseSources) && matchesAppSearchQuery(appSearchQuery, g.groupName)
   );
   const filteredComponentGroups = componentGroups.filter(
-    (g) =>
-      groupHasEnabledReleaseSource(g, enabledReleaseSources) &&
-      matchesAppSearchQuery(appSearchQuery, g.groupName)
+    (g) => groupHasEnabledReleaseSource(g, enabledReleaseSources) && matchesAppSearchQuery(appSearchQuery, g.groupName)
   );
 
   const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
     const instance = findInstanceForProject(project);
-    if (
-      connection &&
-      (connection.token || isLocalRobotHost(connection)) &&
-      instance
-    ) {
+    if (connection && (connection.token || isLocalRobotHost(connection)) && instance) {
       setInstanceState(instance.id, "stopping");
       deleteInstance(connection, instance.id)
         .then(() => {
@@ -734,11 +682,7 @@ export default function AppsPage() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() =>
-                        setLogInstanceId((prev) =>
-                          prev === inst.id ? null : inst.id
-                        )
-                      }
+                      onClick={() => setLogInstanceId((prev) => (prev === inst.id ? null : inst.id))}
                       className={`cursor-pointer rounded p-1.5 transition-colors ${
                         logInstanceId === inst.id
                           ? "bg-blue-900/50 text-blue-300"
@@ -747,19 +691,19 @@ export default function AppsPage() {
                       aria-label="Toggle logs"
                     >
                       <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
                       </svg>
                     </button>
                     <div
                       className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
                       aria-label="Starting…"
                     >
-                      <svg
-                        className="h-5 w-5 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden
-                      >
+                      <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
                         <circle
                           cx="12"
                           cy="12"
@@ -792,11 +736,7 @@ export default function AppsPage() {
                         <button
                           type="button"
                           onClick={() =>
-                            setLogInstanceId((prev) =>
-                              prev === matchingInstance.id
-                                ? null
-                                : matchingInstance.id
-                            )
+                            setLogInstanceId((prev) => (prev === matchingInstance.id ? null : matchingInstance.id))
                           }
                           className={`cursor-pointer rounded p-1.5 transition-colors ${
                             logInstanceId === matchingInstance?.id
@@ -806,7 +746,12 @@ export default function AppsPage() {
                           aria-label="Toggle logs"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                           </svg>
                         </button>
                       )}
@@ -836,7 +781,12 @@ export default function AppsPage() {
                           </svg>
                         ) : (
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         )}
                       </button>
@@ -863,11 +813,7 @@ export default function AppsPage() {
                       {!isStopping && (
                         <button
                           type="button"
-                          onClick={() =>
-                            setLogInstanceId((prev) =>
-                              prev === inst.id ? null : inst.id
-                            )
-                          }
+                          onClick={() => setLogInstanceId((prev) => (prev === inst.id ? null : inst.id))}
                           className={`cursor-pointer rounded p-1.5 transition-colors ${
                             logInstanceId === inst.id
                               ? "bg-blue-900/50 text-blue-300"
@@ -876,7 +822,12 @@ export default function AppsPage() {
                           aria-label="Toggle logs"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                           </svg>
                         </button>
                       )}
@@ -906,7 +857,12 @@ export default function AppsPage() {
                           </svg>
                         ) : (
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         )}
                       </button>
@@ -918,56 +874,37 @@ export default function AppsPage() {
           )}
 
           {/* Log panel for selected instance */}
-          {logInstanceId &&
-            connection &&
-            instances.some((i) => i.id === logInstanceId) && (
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-zinc-400">Streaming logs from</span>
-                    <span className="font-mono font-medium text-zinc-200">
-                      {instances.find((i) => i.id === logInstanceId)?.app ??
-                        logInstanceId.slice(0, 8)}
-                    </span>
-                    <span className="font-mono text-xs text-zinc-500">
-                      {instances.find((i) => i.id === logInstanceId)?.version}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setLogInstanceId(null)}
-                    className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                    aria-label="Close log panel"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
+          {logInstanceId && connection && instances.some((i) => i.id === logInstanceId) && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-zinc-400">Streaming logs from</span>
+                  <span className="font-mono font-medium text-zinc-200">
+                    {instances.find((i) => i.id === logInstanceId)?.app ?? logInstanceId.slice(0, 8)}
+                  </span>
+                  <span className="font-mono text-xs text-zinc-500">
+                    {instances.find((i) => i.id === logInstanceId)?.version}
+                  </span>
                 </div>
-                <div className="h-[400px]">
-                  <LogViewer
-                    key={logInstanceId}
-                    connection={connection}
-                    instanceId={logInstanceId}
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setLogInstanceId(null)}
+                  className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                  aria-label="Close log panel"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-            )}
+              <div className="h-[400px]">
+                <LogViewer key={logInstanceId} connection={connection} instanceId={logInstanceId} />
+              </div>
+            </div>
+          )}
         </section>
 
-        <div
-          className="relative -mx-6 mb-8 border-t border-b border-zinc-800/70 bg-zinc-900/40 py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.2)]"
-        >
+        <div className="relative -mx-6 mb-8 border-t border-b border-zinc-800/70 bg-zinc-900/40 py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.2)]">
           <div
             className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-500/35 to-transparent"
             aria-hidden
@@ -1011,9 +948,9 @@ export default function AppsPage() {
                       id="app-source-filters-popover"
                       role="dialog"
                       aria-label="Filter by repository"
-                      className="absolute right-0 top-full z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
+                      className="absolute top-full right-0 z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
                     >
-                      <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                      <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium tracking-wide text-zinc-500 uppercase">
                         Repository
                       </div>
                       <ul className="max-h-72 overflow-y-auto px-2 py-2">
@@ -1035,7 +972,7 @@ export default function AppsPage() {
                                 <span className="block text-sm font-medium text-zinc-100">
                                   {RELEASE_SOURCE_LABEL[source]}
                                 </span>
-                                <span className="mt-0.5 block break-all font-mono text-xs text-zinc-500">
+                                <span className="mt-0.5 block font-mono text-xs break-all text-zinc-500">
                                   {RELEASE_SOURCE_REPO[source]}
                                 </span>
                               </span>
@@ -1100,10 +1037,7 @@ export default function AppsPage() {
                   const { repository, tag, img } = row;
                   const shortName = repoNameFromOwnerRepo(repository);
                   const hasTag = tag.length > 0;
-                  const canRun =
-                    hasTag &&
-                    connection &&
-                    (connection.token || isLocalRobotHost(connection));
+                  const canRun = hasTag && connection && (connection.token || isLocalRobotHost(connection));
                   const highlighted =
                     (hasTag && isActive(localProjectUrl(repository, tag))) ||
                     (hasTag && isVersionRunningOnRobot(shortName, tag));
@@ -1117,17 +1051,14 @@ export default function AppsPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-zinc-100">{shortName}</div>
-                        <div className="mt-0.5 font-mono text-sm text-zinc-400">
-                          {hasTag ? tag : "(untagged)"}
-                        </div>
+                        <div className="mt-0.5 font-mono text-sm text-zinc-400">{hasTag ? tag : "(untagged)"}</div>
                         <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="break-all rounded bg-zinc-700 px-2 py-0.5 text-xs text-zinc-300">
+                          <span className="rounded bg-zinc-700 px-2 py-0.5 text-xs break-all text-zinc-300">
                             {repository}
                           </span>
                         </div>
                         <div className="mt-2 text-xs text-zinc-500">
-                          <span className="text-zinc-600">Size</span>{" "}
-                          <span className="text-zinc-400">{img.size}</span>
+                          <span className="text-zinc-600">Size</span> <span className="text-zinc-400">{img.size}</span>
                           <span className="mx-2 text-zinc-700">·</span>
                           <span className="text-zinc-600">Created</span>{" "}
                           <span className="text-zinc-400">{img.created_at}</span>
@@ -1154,9 +1085,7 @@ export default function AppsPage() {
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Online</h2>
 
           {loadingAvailableReleases && (
-            <div className="flex items-center justify-center py-12 text-zinc-400">
-              Loading releases…
-            </div>
+            <div className="flex items-center justify-center py-12 text-zinc-400">Loading releases…</div>
           )}
 
           {availableError && (
@@ -1179,9 +1108,12 @@ export default function AppsPage() {
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingAvailableReleases && !availableError && availableGroups.length > 0 && filteredAvailableGroups.length === 0 && (
-            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
-          )}
+          {!loadingAvailableReleases &&
+            !availableError &&
+            availableGroups.length > 0 &&
+            filteredAvailableGroups.length === 0 && (
+              <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
+            )}
 
           {!loadingAvailableReleases && !availableError && filteredAvailableGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1215,11 +1147,7 @@ export default function AppsPage() {
                           />
                         ))}
                         {cardRepos.map((repo) => (
-                          <ReleaseTag
-                            key={repo}
-                            label={repo}
-                            className="bg-zinc-700 text-zinc-300"
-                          />
+                          <ReleaseTag key={repo} label={repo} className="bg-zinc-700 text-zinc-300" />
                         ))}
                       </div>
                     </div>
@@ -1228,13 +1156,9 @@ export default function AppsPage() {
                       appSlug={groupNameToSlug(group.groupName)}
                       onSelectVersion={handleSelectVersion}
                       activeProjectUrls={activeProjectUrls}
-                      isVersionRunningOnRobot={(tagName) =>
-                        isVersionRunningOnRobot(group.groupName, tagName)
-                      }
+                      isVersionRunningOnRobot={(tagName) => isVersionRunningOnRobot(group.groupName, tagName)}
                       open={openMenuGroup === menuKey}
-                      onToggle={() =>
-                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
-                      }
+                      onToggle={() => setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))}
                       onClose={() => setOpenMenuGroup(null)}
                     />
                   </div>
@@ -1248,9 +1172,7 @@ export default function AppsPage() {
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Components</h2>
 
           {loadingComponentReleases && (
-            <div className="flex items-center justify-center py-12 text-zinc-400">
-              Loading releases…
-            </div>
+            <div className="flex items-center justify-center py-12 text-zinc-400">Loading releases…</div>
           )}
 
           {componentsError && (
@@ -1273,9 +1195,12 @@ export default function AppsPage() {
             <div className="py-12 text-center text-zinc-400">No releases found.</div>
           )}
 
-          {!loadingComponentReleases && !componentsError && componentGroups.length > 0 && filteredComponentGroups.length === 0 && (
-            <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
-          )}
+          {!loadingComponentReleases &&
+            !componentsError &&
+            componentGroups.length > 0 &&
+            filteredComponentGroups.length === 0 && (
+              <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
+            )}
 
           {!loadingComponentReleases && !componentsError && filteredComponentGroups.length > 0 && (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -1309,11 +1234,7 @@ export default function AppsPage() {
                           />
                         ))}
                         {cardRepos.map((repo) => (
-                          <ReleaseTag
-                            key={repo}
-                            label={repo}
-                            className="bg-zinc-700 text-zinc-300"
-                          />
+                          <ReleaseTag key={repo} label={repo} className="bg-zinc-700 text-zinc-300" />
                         ))}
                       </div>
                     </div>
@@ -1322,13 +1243,9 @@ export default function AppsPage() {
                       appSlug={groupNameToSlug(group.groupName)}
                       onSelectVersion={handleSelectVersion}
                       activeProjectUrls={activeProjectUrls}
-                      isVersionRunningOnRobot={(tagName) =>
-                        isVersionRunningOnRobot(group.groupName, tagName)
-                      }
+                      isVersionRunningOnRobot={(tagName) => isVersionRunningOnRobot(group.groupName, tagName)}
                       open={openMenuGroup === menuKey}
-                      onToggle={() =>
-                        setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))
-                      }
+                      onToggle={() => setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))}
                       onClose={() => setOpenMenuGroup(null)}
                     />
                   </div>

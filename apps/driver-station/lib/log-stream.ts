@@ -82,8 +82,7 @@ export function useLogStream(
         });
 
         if (!res.ok || !res.body) {
-          if (alive)
-            onErrorRef.current(`Log stream failed: HTTP ${res.status}`);
+          if (alive) onErrorRef.current(`Log stream failed: HTTP ${res.status}`);
           scheduleReconnect();
           return;
         }
@@ -135,8 +134,7 @@ export function useLogStream(
             } else if (event === "error") {
               try {
                 const errData = JSON.parse(data) as { message?: string };
-                if (alive)
-                  onErrorRef.current(errData.message || "Stream ended");
+                if (alive) onErrorRef.current(errData.message || "Stream ended");
               } catch {
                 if (alive) onErrorRef.current("Stream ended");
               }
