@@ -2,7 +2,7 @@
 packages:
   - "apps/*"
   - "packages/*"
-minimumReleaseAge: 4320 # 1 day
+minimumReleaseAge: 4320 # 3 day
 
 # Keep these dependency install scripts disabled.
 allowBuilds:
