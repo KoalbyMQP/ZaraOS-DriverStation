@@ -298,6 +298,9 @@ importers:
       '@repo/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@repo/oxfmt-config':
+        specifier: workspace:*
+        version: link:../oxfmt-config
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.3
@@ -319,9 +322,9 @@ importers:
       next:
         specifier: 16.3.6
         version: 16.3.6(@babel/core@7.29.7)(@playwright/test@1.63.0)(@types/node@20.19.37)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      prettier:
-        specifier: ^3.8.2
-        version: 3.9.9
+      oxfmt:
+        specifier: 0.71.0
+        version: 0.71.0
       react:
         specifier: 19.3.0
         version: 19.3.0
