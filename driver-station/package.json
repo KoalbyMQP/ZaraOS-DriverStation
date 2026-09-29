@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:auth": "playwright test --config=playwright.auth.config.ts"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.6.2",

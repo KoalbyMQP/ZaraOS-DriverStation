@@ -1,29 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { Header } from "@/components/Header";
 import { LogViewer } from "@/components/LogViewer";
 import { getInstances, type RobotAppInstance } from "@/lib/robot-api";
 
 export default function LogsPage() {
-  const router = useRouter();
-  const { user, loading } = useAuth();
   const { connection } = useConnection();
   const [instances, setInstances] = useState<RobotAppInstance[]>([]);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(
     null
   );
   const [loadingInstances, setLoadingInstances] = useState(true);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.replace("/authenticate");
-    }
-  }, [loading, user, router]);
 
   useEffect(() => {
     if (!connection) {
@@ -49,14 +38,6 @@ export default function LogsPage() {
     const interval = setInterval(fetchInstances, 30000);
     return () => clearInterval(interval);
   }, [connection, selectedInstanceId]);
-
-  if (loading || !user) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
-        Loading...
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
