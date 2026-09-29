@@ -14,6 +14,9 @@ importers:
       '@repo/oxfmt-config':
         specifier: workspace:*
         version: link:packages/oxfmt-config
+      '@types/node':
+        specifier: 20.19.37
+        version: 20.19.37
       eslint:
         specifier: ^9
         version: 9.39.5(jiti@2.7.0)
@@ -105,6 +108,9 @@ importers:
       '@eslint/markdown':
         specifier: ^8.0.1
         version: 8.0.3
+      '@types/eslint-plugin-jsx-a11y':
+        specifier: ^6.10.1
+        version: 6.10.1(jiti@2.7.0)
       '@types/node':
         specifier: 20.19.37
         version: 20.19.37
@@ -151,6 +157,9 @@ importers:
 
   packages/oxfmt-config:
     devDependencies:
+      '@types/node':
+        specifier: 20.19.37
+        version: 20.19.37
       oxfmt:
         specifier: 0.71.0
         version: 0.71.0
@@ -1348,6 +1357,9 @@ packages:
 
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
+
+  '@types/eslint-plugin-jsx-a11y@6.10.1':
+    resolution: {integrity: sha512-5RtuPVe0xz8BAhrkn2oww6Uw885atf962Q4fqZo48QdO3EQA7oCEDSXa6optgJ1ZMds3HD9ITK5bfm4AWuoXFQ==}
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
@@ -5374,6 +5386,13 @@ snapshots:
   '@types/debug@4.1.13':
     dependencies:
       '@types/ms': 2.1.0
+
+  '@types/eslint-plugin-jsx-a11y@6.10.1(jiti@2.7.0)':
+    dependencies:
+      eslint: 9.39.5(jiti@2.7.0)
+    transitivePeerDependencies:
+      - jiti
+      - supports-color
 
   '@types/estree@1.0.9': {}
 

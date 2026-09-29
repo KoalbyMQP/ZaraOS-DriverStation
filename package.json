@@ -1,5 +1,6 @@
 {
   "name": "zaraos-driverstation",
+  "type": "module",
   "version": "1.0.0",
   "packageManager": "pnpm@10.17.1",
   "description": "New driver station for ZaraOS robots.",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/oxfmt-config": "workspace:*",
+    "@types/node": "20.19.37",
     "eslint": "^9",
     "oxfmt": "0.71.0",
     "turbo": "^2.11.3",

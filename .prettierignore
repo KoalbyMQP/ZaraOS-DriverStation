@@ -1,3 +1,0 @@
-# Global exclusions for Oxfmt. Package exclusions belong in oxfmt.config.mts.
-pnpm-lock.yaml
-.turbo/

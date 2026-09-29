@@ -34,7 +34,7 @@ Run `pnpm format` to format the root and every package with Oxfmt, or
 `pnpm --filter @repo/driver-station format` to format only the app.
 Run `pnpm exec oxfmt --check .` to check formatting without changing files.
 
-Each package owns its rules and exclusions in `oxfmt.config.mts`. Install the
+Each package owns its rules and exclusions in `oxfmt.config.ts`. Install the
 recommended Oxc extension for VS Code formatting on save in a single-folder
 workspace. See [the shared config](packages/oxfmt-config/README.md) for details.
 
