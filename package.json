@@ -2,7 +2,7 @@
   "name": "zaraos-driverstation",
   "type": "module",
   "version": "1.0.0",
-  "packageManager": "pnpm@10.17.1",
+  "packageManager": "pnpm@12.3.4",
   "description": "New driver station for ZaraOS robots.",
   "main": "index.js",
   "scripts": {
@@ -32,11 +32,5 @@
     "oxfmt": "0.71.0",
     "turbo": "^2.11.3",
     "typescript": "5.9.3"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "12.3.4"
-    }
   }
 }
