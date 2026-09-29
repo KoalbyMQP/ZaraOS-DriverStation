@@ -6,27 +6,36 @@ dependencies, then create `oxfmt.config.ts`:
 
 ```ts
 import repo from "@repo/oxfmt-config";
-import { defineConfig } from "oxfmt";
 
-export default defineConfig({
-  ...repo.base,
-  ignorePatterns: ["dist/", "coverage/"],
-});
+const config = structuredClone(repo.base);
+
+(config.ignorePatterns ??= []).push("dist/", "coverage/");
+
+export default config;
 ```
 
 The base preset preserves the existing formatting style, including a 120-column
-print width and package.json field order. Override options in each package's
-config as needed. Configs do not automatically merge with the root config.
+print width and package.json field order. Clone the base before changing options
+or appending to arrays. The deep copy keeps each package's changes independent
+of the shared preset. Configs do not automatically merge with the root config.
+
+These configs run in Node.js, which provides `structuredClone` natively. For
+packages with only ECMAScript libraries in their TypeScript config, install
+`@types/node` to provide its global declarations. TypeScript loads these types
+automatically unless `compilerOptions.types` restricts them.
 
 For Tailwind v4, enable the built-in sorter in the app config:
 
 ```ts
-export default defineConfig({
-  ...repo.base,
-  sortTailwindcss: {
-    stylesheet: "./app/globals.css",
-  },
-});
+import repo from "@repo/oxfmt-config";
+
+const config = structuredClone(repo.base);
+
+config.sortTailwindcss = {
+  stylesheet: "./app/globals.css",
+};
+
+export default config;
 ```
 
 The stylesheet path is relative to that config. No separate Prettier plugin is
@@ -38,10 +47,11 @@ Each package has a `format` script running `oxfmt --write .`. Run
 `pnpm --filter @repo/driver-station format` for the app, or `pnpm format` for the
 whole workspace through Turbo.
 
-Put package-specific exclusions in that package's `ignorePatterns`. They apply
-to files using that config, including files formatted through bundled Prettier.
-The root `.prettierignore` is retained for global exclusions and must not exclude
-`apps/` or `packages/`.
+The base preset excludes `pnpm-lock.yaml` and `.turbo/`. Append package-specific
+exclusions to the cloned config with `(config.ignorePatterns ??= []).push(...)`,
+as shown above. The `??=` initializes the array if it is missing. These exclusions
+apply to files using that config, including files formatted through bundled
+Prettier.
 
 The root config excludes `apps/` and `packages/`. Its `format:root` command passes
 `--disable-nested-config` so it only formats files owned by the root, while Turbo

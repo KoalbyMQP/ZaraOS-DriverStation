@@ -1,7 +1,7 @@
 import repo from "@repo/oxfmt-config";
-import { defineConfig } from "oxfmt";
 
-export default defineConfig({
-  ...repo.base,
-  ignorePatterns: ["dist/", "build/", "coverage/", "*.tsbuildinfo"],
-});
+const config = structuredClone(repo.base);
+
+(config.ignorePatterns ??= []).push("dist/", "build/", "coverage/", "*.tsbuildinfo");
+
+export default config;
