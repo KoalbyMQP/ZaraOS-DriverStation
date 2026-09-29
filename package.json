@@ -10,9 +10,15 @@
     "preinstall": "pnpx only-allow@1.2.2 pnpm",
     "dev": "turbo dev",
     "lint": "turbo run lint lint:root",
+    "lint:check": "turbo run lint:check lint:root:check",
     "format": "turbo run format format:root",
+    "format:check": "turbo run format:check format:root:check",
+    "typecheck": "turbo run typecheck typecheck:root",
     "lint:root": "eslint --fix",
-    "format:root": "oxfmt --write --disable-nested-config ."
+    "lint:root:check": "eslint",
+    "format:root": "oxfmt --write --disable-nested-config .",
+    "format:root:check": "oxfmt --check --disable-nested-config .",
+    "typecheck:root": "tsc --noEmit"
   },
   "repository": {
     "type": "git",

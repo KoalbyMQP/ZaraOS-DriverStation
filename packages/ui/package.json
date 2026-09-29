@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "lint": "eslint",
+    "lint:check": "eslint",
     "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

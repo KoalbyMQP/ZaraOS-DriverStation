@@ -13,26 +13,33 @@
       "persistent": true,
       "cache": false
     },
+    "test:auth": {
+      "dependsOn": ["^test:auth"]
+    },
     "lint": {
       "dependsOn": ["^lint"],
       "cache": false
     },
-    "test:auth": {
-      "dependsOn": ["^test:auth"]
-    },
     "//#lint:root": {},
+    "lint:check": {
+      "dependsOn": ["^lint:check"]
+    },
+    "//#lint:root:check": {},
     "format": {
       "dependsOn": ["^format"],
       "cache": false
     },
-    "//#format:root": {}
+    "//#format:root": {},
+    "format:check": {
+      "dependsOn": ["^format:check"]
+    },
+    "//#format:root:check": {},
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "cache": false
+    },
+    "//#typecheck:root": {}
   },
-  "globalEnv": [
-    "AUTH_BYPASS_LOCAL",
-    "AZURE_CLIENT_SECRET",
-    "AZURE_TENANT_ID",
-    "NEXT_PUBLIC_*",
-    "NODE_ENV"
-  ],
+  "globalEnv": ["AUTH_BYPASS_LOCAL", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "NEXT_PUBLIC_*", "NODE_ENV"],
   "globalPassThroughEnv": ["CI", "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
 }

@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "format": "oxfmt --write ."
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
   "devDependencies": {
     "@types/node": "20.19.37",

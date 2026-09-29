@@ -48,3 +48,4 @@ package settings.
 Run `pnpm --filter @repo/eslint-config lint`, `format`, or `typecheck` from the
 workspace root. The lint and format scripts apply fixes, matching the root
 `pnpm lint` and `pnpm format` workflows.
+Use `lint:check` or `format:check` to report problems without applying fixes.

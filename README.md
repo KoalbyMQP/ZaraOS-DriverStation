@@ -36,7 +36,9 @@ We use ShadCN with a custom [TweakCN theme](https://tweakcn.com/themes/cmulobjp9
 
 Run `pnpm format` to format the root and every package with Oxfmt, or
 `pnpm --filter @repo/driver-station format` to format only the app.
-Run `pnpm exec oxfmt --check .` to check formatting without changing files.
+Run `pnpm format:check` to check formatting without changing files.
+Run `pnpm lint:check` to check lint rules without applying fixes. CI runs both
+checks from the repository root.
 
 Each package owns its rules and exclusions in `oxfmt.config.ts`. Install the
 recommended Oxc extension for VS Code formatting on save in a single-folder

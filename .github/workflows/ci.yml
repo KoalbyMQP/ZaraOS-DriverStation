@@ -7,7 +7,7 @@ on:
 
 jobs:
   ci:
-    name: Lint, Typecheck & Build
+    name: Lint, Format, Typecheck & Build
     runs-on: blacksmith-2vcpu-ubuntu-2404
     defaults:
       run:
@@ -28,12 +28,19 @@ jobs:
         run: pnpm ci
 
       - name: Lint
-        run: pnpm run lint
+        working-directory: .
+        run: pnpm run lint:check
+
+      - name: Format
+        working-directory: .
+        run: pnpm run format:check
 
       - name: Typecheck
-        run: pnpm exec tsc --noEmit
+        working-directory: .
+        run: pnpm run typecheck
 
       - name: Build
+        working-directory: .
         run: pnpm run build
 
       # - name: Install Playwright browsers

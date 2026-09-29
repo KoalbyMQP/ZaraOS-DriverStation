@@ -6,7 +6,9 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint --fix",
-    "format": "oxfmt --write ."
+    "lint:check": "eslint",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
   "dependencies": {
     "@eslint/css": "^1.1.0",

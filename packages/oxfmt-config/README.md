@@ -48,6 +48,8 @@ needed.
 Each package has a `format` script running `oxfmt --write .`. Run
 `pnpm --filter @repo/driver-station format` for the app, or `pnpm format` for the
 whole workspace through Turbo.
+Each package also has a `format:check` script running `oxfmt --check .`.
+Run `pnpm format:check` to check the whole workspace without changing files.
 
 The base preset excludes `pnpm-lock.yaml` and `.turbo/`. Append package-specific
 exclusions to the cloned config with `(config.ignorePatterns ??= []).push(...)`,
@@ -55,8 +57,8 @@ as shown above. The `??=` initializes the array if it is missing. These exclusio
 apply to files using that config, including files formatted through bundled
 Prettier.
 
-The root config excludes `apps/` and `packages/`. Its `format:root` command passes
-`--disable-nested-config` so it only formats files owned by the root, while Turbo
+The root config excludes `apps/` and `packages/`. Its `format:root` and
+`format:root:check` commands pass `--disable-nested-config` so they only process files owned by the root, while Turbo
 runs each package's command separately. Direct `pnpm exec oxfmt --check .` from
 the root checks the whole repo using each file's nearest config.
 
