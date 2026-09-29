@@ -28,7 +28,7 @@
   "devDependencies": {
     "@repo/oxfmt-config": "workspace:*",
     "eslint": "^9",
-    "oxfmt": "0.71.0",
+    "oxfmt": "0.70.0",
     "typescript": "5.9.3"
   },
   "peerDependencies": {
