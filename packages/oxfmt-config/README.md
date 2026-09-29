@@ -2,7 +2,7 @@
 
 Shared formatting rules for this workspace. Add `@repo/oxfmt-config` with
 `workspace:*` and `oxfmt` at version `0.71.0` to a package's development
-dependencies, then create `oxfmt.config.mts`:
+dependencies, then create `oxfmt.config.ts`:
 
 ```ts
 import repo from "@repo/oxfmt-config";
@@ -14,7 +14,7 @@ export default defineConfig({
 });
 ```
 
-The base preset preserves the existing formatting style, including an 80-column
+The base preset preserves the existing formatting style, including a 120-column
 print width and package.json field order. Override options in each package's
 config as needed. Configs do not automatically merge with the root config.
 
@@ -58,9 +58,10 @@ disabled because this repo uses ESLint.
 
 ## Maintaining this package
 
-The presets live in `index.js`; `oxfmt.config.mts` uses them to format this package
-itself. This package does not depend on `@repo/eslint-config`, which would create
-a dependency cycle in Turbo.
+The presets live in `index.ts`; `oxfmt.config.ts` uses them to format this package
+itself. The package exposes its TypeScript source directly, so no build or separate
+type declarations are needed. This package does not depend on
+`@repo/eslint-config`, which would create a dependency cycle in Turbo.
 
 Run `pnpm --filter @repo/oxfmt-config typecheck` to check the shared preset and its
 config. Update Oxfmt versions together across the root and packages.

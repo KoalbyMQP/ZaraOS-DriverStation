@@ -1,6 +1,6 @@
 {
   "name": "@repo/oxfmt-config",
-  "main": "index.js",
+  "main": "index.ts",
   "type": "module",
   "private": true,
   "scripts": {

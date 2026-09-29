@@ -1,5 +1,6 @@
-/** @type {import("oxfmt").OxfmtConfig} */
-const base = {
+import type { OxfmtConfig } from "oxfmt";
+
+const base: OxfmtConfig = {
   printWidth: 120,
   sortPackageJson: false,
   singleQuote: false,

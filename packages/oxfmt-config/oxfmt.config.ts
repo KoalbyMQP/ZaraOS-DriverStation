@@ -1,5 +1,5 @@
 import { defineConfig } from "oxfmt";
-import repo from "./index.js";
+import repo from "./index.ts";
 
 export default defineConfig({
   ...repo.base,
