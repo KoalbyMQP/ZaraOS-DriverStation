@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Header } from "@/components/Header";
 import { ConnectionStatusWidget } from "@/components/ConnectionStatusWidget";
 import { ProjectStatusWidget } from "@/components/ProjectStatusWidget";
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <Header />
-      <main className="p-6">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
+      <div className="p-6">
         <div className="flex flex-wrap gap-4">
           <ConnectionStatusWidget />
           <ProjectStatusWidget />
@@ -35,7 +33,7 @@ export default function HomePage() {
                 robot to finish pairing. Your connection is saved in the browser until you disconnect.
               </li>
               <li>
-                While connected, open the connect control again to{" "}
+                While connected, use the disconnect icon beside the robot name to{" "}
                 <span className="font-medium text-zinc-200">Disconnect</span>.
               </li>
             </ul>
@@ -113,7 +111,7 @@ export default function HomePage() {
             </ul>
           </section>
         </article>
-      </main>
+      </div>
     </div>
   );
 }

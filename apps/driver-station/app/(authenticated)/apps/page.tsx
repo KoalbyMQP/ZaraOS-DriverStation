@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useProject } from "@/contexts/ProjectContext";
-import { Header } from "@/components/Header";
 import { LogViewer } from "@/components/LogViewer";
 import {
   getCombinedReleases,
@@ -643,9 +642,8 @@ export default function AppsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <Header />
-      <main className="p-6">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
+      <div className="p-6">
         <section className="mb-8">
           <h2 className="mb-4 text-lg font-medium text-zinc-200">Active</h2>
           {startError && (
@@ -1254,7 +1252,7 @@ export default function AppsPage() {
             </div>
           )}
         </section>
-      </main>
+      </div>
     </div>
   );
 }

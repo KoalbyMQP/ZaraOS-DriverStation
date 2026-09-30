@@ -1,5 +1,5 @@
 import repo from "@repo/eslint-config";
-import { defineConfig, globalIgnores } from "eslint/config";
+import { defineConfig } from "eslint/config";
 
 export default defineConfig([
   ...repo.next,
@@ -24,6 +24,4 @@ export default defineConfig([
       "css/no-invalid-properties": "off",
     },
   },
-  // Example workflow sources are excluded from this app's lint checks.
-  globalIgnores(["workflows/**"]),
 ]);

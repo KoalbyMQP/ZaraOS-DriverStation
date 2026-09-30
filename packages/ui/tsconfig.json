@@ -13,7 +13,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "paths": {
-      "@workspace/ui/*": ["./src/*"]
+      "@repo/ui/*": ["./src/*"]
     }
   },
   "include": ["src", "*.config.ts"],

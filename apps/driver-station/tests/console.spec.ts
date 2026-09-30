@@ -10,7 +10,6 @@ test.describe.serial("Console tests", () => {
   test("Disconnect from the robot", async ({ page }) => {
     await page.goto("http://localhost:3000/");
     await page.getByRole("button", { name: "Dev Mode" }).click();
-    await page.getByRole("button", { name: "Connected in Dev Mode" }).click();
     await page.getByRole("button", { name: /disconnect/i }).click();
     await expect(page.getByText("Not connected")).toBeVisible();
   });
@@ -23,14 +22,14 @@ test.describe.serial("Console tests", () => {
 
   test("Check going to console route", async ({ page }) => {
     await page.goto("http://localhost:3000/");
-    await page.getByRole("link", { name: "Console" }).click();
+    await page.getByRole("link", { name: "Terminals" }).click();
     await expect(page.getByText("No robot connected. Use the")).toBeVisible();
   });
 
   test("Check going to console with robot connected", async ({ page }) => {
     await page.goto("http://localhost:3000/");
     await page.getByRole("button", { name: "Dev Mode" }).click();
-    await page.getByRole("link", { name: "Console" }).click();
+    await page.getByRole("link", { name: "Terminals" }).click();
     await expect(page.getByText("#################################")).toBeVisible();
   });
 

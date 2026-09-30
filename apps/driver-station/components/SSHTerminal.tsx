@@ -15,11 +15,18 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const styles = getComputedStyle(containerRef.current);
     const term = new Terminal({
       cursorBlink: true,
-      fontFamily: "monospace",
+      fontFamily: styles.fontFamily,
       fontSize: 14,
-      theme: { background: "#0d1117" },
+      lineHeight: 1.4,
+      theme: {
+        background: styles.backgroundColor,
+        foreground: styles.color,
+        cursor: styles.color,
+        cursorAccent: styles.backgroundColor,
+      },
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
@@ -28,6 +35,10 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
 
     let ws: WebSocket | null = null;
     let cancelled = false;
+
+    void document.fonts.ready.then(() => {
+      if (!cancelled) fitAddon.fit();
+    });
 
     const ro = new ResizeObserver(() => {
       fitAddon.fit(); // triggers term.onResize which calls sendResize
@@ -103,15 +114,11 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
       ws?.close();
       term.dispose();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [robotUrl]);
+  }, [robotUrl, signedFetch, onClose]);
 
   return (
-    <div
-      className="blue-outline flex h-full w-full flex-col overflow-hidden rounded-lg p-2"
-      style={{ background: "#0d1117" }}
-    >
-      <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden" style={{ background: "#0d1117" }} />
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background p-1">
+      <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden bg-background font-mono text-foreground" />
     </div>
   );
 }

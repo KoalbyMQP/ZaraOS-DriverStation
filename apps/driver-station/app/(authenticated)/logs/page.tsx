@@ -1,12 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { Header } from "@/components/Header";
 import { LogViewer } from "@/components/LogViewer";
 import { getInstances, type RobotAppInstance } from "@/lib/robot-api";
 
 export default function LogsPage() {
+  return (
+    <Suspense fallback={<p className="p-6 text-muted-foreground">Loading logs…</p>}>
+      <ProjectLogs />
+    </Suspense>
+  );
+}
+
+function ProjectLogs() {
+  const params = useSearchParams();
+  const app = params.get("app");
+  const version = params.get("version");
+  return <LogsView key={JSON.stringify([app, version])} requestedApp={app} requestedVersion={version} />;
+}
+
+function LogsView({
+  requestedApp,
+  requestedVersion,
+}: {
+  requestedApp: string | null;
+  requestedVersion: string | null;
+}) {
   const { connection } = useConnection();
   const [instances, setInstances] = useState<RobotAppInstance[]>([]);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
@@ -25,7 +46,19 @@ export default function LogsPage() {
         .then((data) => {
           setInstances(data.instances);
           if (data.instances.length > 0 && !selectedInstanceId) {
-            setSelectedInstanceId(data.instances[0].id);
+            const slug = requestedApp
+              ?.toLowerCase()
+              .trim()
+              .replace(/\s+/g, "-")
+              .replace(/[^a-z0-9-]/g, "");
+            const requestedInstance = requestedApp
+              ? data.instances.find(
+                  (instance) =>
+                    (instance.app === requestedApp || instance.app === slug) &&
+                    (!requestedVersion || instance.version === requestedVersion)
+                )
+              : data.instances[0];
+            setSelectedInstanceId(requestedInstance?.id ?? null);
           }
         })
         .catch(() => setInstances([]))
@@ -35,12 +68,11 @@ export default function LogsPage() {
     fetchInstances();
     const interval = setInterval(fetchInstances, 30000);
     return () => clearInterval(interval);
-  }, [connection, selectedInstanceId]);
+  }, [connection, selectedInstanceId, requestedApp, requestedVersion]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <Header />
-      <main className="p-6">
+    <div className="min-h-full bg-zinc-950 text-zinc-100">
+      <div className="p-6">
         {!connection ? (
           <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
             No robot connected. Use the Connect button in the header to view logs.
@@ -91,7 +123,7 @@ export default function LogsPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

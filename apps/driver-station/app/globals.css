@@ -1,42 +1,13 @@
-@import "tailwindcss";
-
+/* Styles retained for the original pages and dialogs during the UI migration. */
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
   --blue-glow: 59, 130, 246;
   --blue-outline:
     0 0 0 1px rgba(var(--blue-glow), 0.3), 0 0 12px 1px rgba(var(--blue-glow), 0.12),
     0 0 24px 2px rgba(var(--blue-glow), 0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
 html {
-  color-scheme: dark;
-}
-
-html[data-theme="light"] {
   color-scheme: light;
-  --background: #f8fafc;
-  --foreground: #0f172a;
-}
-
-html[data-theme="dark"] {
-  color-scheme: dark;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
 }
 
 .blue-outline {

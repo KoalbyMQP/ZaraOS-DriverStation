@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { connectBLEAndGetIP } from "@/lib/ble-get-ip";
