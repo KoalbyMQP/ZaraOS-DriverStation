@@ -2,6 +2,48 @@
 
 New driver station for ZaraOS robots.
 
+## Stack Overview
+
+This repo is a monorepo. It contains a few packages:
+
+1. The driver station webapp itself
+2. A UI library built on top of ShadCN
+3. Linter & formatter configurations
+
+We use Turborepo to manage the repo. Turborepo is an incremental build system that works well with javascript (and some other languages too, but we're not using those here). Package management is handled by `pnpm`, for a few reasons:
+
+1. It's faster than `npm`
+2. Alternatives like `cnpm`, `nub`, or `aube` aren't very popular and tools might not integrate as well with them as they do `pnpm`
+3. `yarn` is old
+4. We don't use the buntime, so Bun doesn't give us any benefits that `pnpm` doesn't already provide
+
+You can download `pnpm` using `corepack` ([not recommended](https://x.com/pnpmjs/status/2087964982289854928)), the `pnpm` installer, or `nvm`.
+
+However, we don't recommend installing devtools yourself. Either:
+
+1. Use the `flake.nix` file via `nix develop` or `nix-direnv`
+2. Use the devcontainer either via the CLI, your IDE, or Devpod
+
+### Driver Station
+
+The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely
+
+#### UI
+
+We use ShadCN with a custom [TweakCN theme](https://tweakcn.com/themes/cmulobjp9000004l39em7guus).
+
+## Formatting
+
+Run `pnpm format` to format the root and every package with Oxfmt, or
+`pnpm --filter @repo/driver-station format` to format only the app.
+Run `pnpm format:check` to check formatting without changing files.
+Run `pnpm lint:check` to check lint rules without applying fixes. CI runs both
+checks from the repository root.
+
+Each package owns its rules and exclusions in `oxfmt.config.ts`. Install the
+recommended Oxc extension for VS Code formatting on save in a single-folder
+workspace. See [the shared config](packages/oxfmt-config/README.md) for details.
+
 ## Running locally (development)
 
 **Frontend** (driver-station):
@@ -28,16 +70,16 @@ Build and run both the backend and frontend in one command. From the repo root:
 docker compose up -d --build
 ```
 
-- **Frontend:** http://localhost:3000  
-- **Backend API:** http://localhost:3001  
+- **Frontend:** http://localhost:3000
+- **Backend API:** http://localhost:3001
 
 The frontend is built with `NEXT_PUBLIC_API_URL=http://localhost:3001`, so the browser talks to the backend on port 3001. Ensure `backend/.env` exists and has the required variables (e.g. `DATABASE_URL`, `JWT_SECRET`, SMTP settings). See backend docs for full env list.
 
 **Useful commands:**
 
-- `docker compose up -d --build` — build images (if needed) and start containers in the background  
-- `docker compose down` — stop and remove the containers  
-- `docker compose logs -f` — stream logs from both services  
+- `docker compose up -d --build` — build images (if needed) and start containers in the background
+- `docker compose down` — stop and remove the containers
+- `docker compose logs -f` — stream logs from both services
 
 ### Individual containers
 
@@ -53,7 +95,7 @@ docker run -p 3001:3001 --env-file backend/.env -d --name backend zara-backend
 **Frontend** (driver-station):
 
 ```bash
-docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./driver-station
+docker build -t zara-frontend --build-arg NEXT_PUBLIC_API_URL=http://localhost:3001 ./apps/driver-station
 docker run -p 3000:3000 -d --name frontend zara-frontend
 ```
 
@@ -70,11 +112,11 @@ We used PlayWright to write our test cases for the Driver Station. This is for f
 ### `npx playwright test tests/___.spec.js`
 
 on windows to run all of the tests or the second option for specific tests.
-If you want to see it run on the brower you can add --headed to the command. 
-If using local host make sure it is actually running when you run these tests. 
+If you want to see it run on the brower you can add --headed to the command.
+If using local host make sure it is actually running when you run these tests.
 
-Some notes about potential bugs: 
-If you are having issues with any of the browsers and it says they are not installed and you run the command given and it still does not work, it may be your antivirus. Some antiviruses stop browsers from being downloaded, especially fire fox, so watch out for that. 
-Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login. 
+Some notes about potential bugs:
+If you are having issues with any of the browsers and it says they are not installed and you run the command given and it still does not work, it may be your antivirus. Some antiviruses stop browsers from being downloaded, especially fire fox, so watch out for that.
+Additionally, just know that all tests run in parallel. So for let's say signup and login, if you use the same email from signup for login, it will not work because both tests ran at the same time and thus that email is not signed up yet for login.
 
-Do not use firefox, it has so many browser specific bugs it is not worth it. 
+Do not use firefox, it has so many browser specific bugs it is not worth it.
