@@ -31,10 +31,10 @@
     "@repo/oxfmt-config": "workspace:*",
     "eslint": "^9",
     "oxfmt": "0.70.0",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "peerDependencies": {
     "eslint": "^9.39.5",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }

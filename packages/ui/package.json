@@ -34,7 +34,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "peerDependencies": {
     "next": "^16.0.0",
