@@ -4,6 +4,35 @@ packages:
   - "packages/*"
 minimumReleaseAge: 4320 # 3 day
 
+# Next.js and the shared presets must load the same TypeScript ESLint plugin.
+overrides:
+  typescript-eslint: ^8.71.0
+
+# These exact plugin releases run through @eslint/compat in the shared config.
+peerDependencyRules:
+  allowedVersions:
+    "eslint-plugin-import@2.32.0>eslint": "^10.11.0"
+    "eslint-plugin-jsx-a11y@6.10.2>eslint": "^10.11.0"
+    "eslint-plugin-react@7.37.5>eslint": "^10.11.0"
+
+# Exact releases selected for the TypeScript 7 / ESLint 10 upgrade.
+minimumReleaseAgeExclude:
+  - "@next/eslint-plugin-next@16.3.7"
+  - "@typescript-eslint/eslint-plugin@8.71.0"
+  - "@typescript-eslint/parser@8.71.0"
+  - "@typescript-eslint/project-service@8.71.0"
+  - "@typescript-eslint/scope-manager@8.71.0"
+  - "@typescript-eslint/tsconfig-utils@8.71.0"
+  - "@typescript-eslint/type-utils@8.71.0"
+  - "@typescript-eslint/types@8.71.0"
+  - "@typescript-eslint/typescript-estree@8.71.0"
+  - "@typescript-eslint/utils@8.71.0"
+  - "@typescript-eslint/visitor-keys@8.71.0"
+  - "eslint-config-next@16.3.7"
+  - "eslint-plugin-turbo@2.11.5"
+  - "tailwind-csstree@0.4.1"
+  - "typescript-eslint@8.71.0"
+
 # Keep these dependency install scripts disabled.
 allowBuilds:
   "@swc/core": false

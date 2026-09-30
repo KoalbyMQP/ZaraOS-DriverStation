@@ -35,9 +35,9 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/oxfmt-config": "workspace:*",
     "@types/node": "20.19.37",
-    "eslint": "^9",
+    "eslint": "^10.11.0",
     "oxfmt": "0.70.0",
     "turbo": "^2.11.3",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   }
 }

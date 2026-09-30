@@ -1,5 +1,6 @@
-import nextVitals from "eslint-config-next/core-web-vitals";
+import nextVitalsConfig from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import { fixupPluginRules } from "@eslint/compat";
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
@@ -8,7 +9,7 @@ import markdown from "@eslint/markdown";
 import css from "@eslint/css";
 import { defineConfig, globalIgnores } from "eslint/config";
 import type { ESLint, Linter } from "eslint";
-import jsxA11y from "eslint-plugin-jsx-a11y";
+import jsxA11yPlugin from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import turbo from "eslint-plugin-turbo";
@@ -16,6 +17,20 @@ import { tailwind4 } from "tailwind-csstree";
 
 // The JSON plugin uses language-specific rule types that ESLint's generic plugin type cannot represent.
 const jsonPlugins = { json: json as unknown as ESLint.Plugin };
+
+// These plugins still use rule APIs removed in ESLint 10.
+const jsxA11y = fixupPluginRules(jsxA11yPlugin);
+const nextVitals = nextVitalsConfig.map((config) => {
+  if (!config.plugins) return config;
+
+  const plugins = { ...config.plugins };
+  for (const name of ["react", "import"]) {
+    if (plugins[name]) plugins[name] = fixupPluginRules(plugins[name]);
+  }
+  if (plugins["jsx-a11y"]) plugins["jsx-a11y"] = jsxA11y;
+
+  return { ...config, plugins };
+});
 
 export default {
   submodules: {
