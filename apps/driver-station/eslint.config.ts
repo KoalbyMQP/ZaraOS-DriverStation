@@ -1,7 +1,8 @@
 import repo from "@repo/eslint-config";
-import { defineConfig } from "eslint/config";
+import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
+  globalIgnores(["test-results/**", "playwright-report/**", "blob-report/**"]),
   ...repo.next,
   ...repo.base,
   {
@@ -15,13 +16,4 @@ export default defineConfig([
   ...repo.json,
   ...repo.markdown,
   ...repo.css,
-  {
-    files: ["app/globals.css"],
-    rules: {
-      // Theme overrides intentionally take precedence over utility classes.
-      "css/no-important": "off",
-      // The validator misreads nested color variables in --blue-outline.
-      "css/no-invalid-properties": "off",
-    },
-  },
 ]);

@@ -1,103 +1,219 @@
 "use client";
 
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@repo/ui/components/collapsible";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@repo/ui/components/input-group";
 import { Kbd } from "@repo/ui/components/kbd";
 import {
-  AppStoreIcon,
-  ArrowRight01Icon,
-  CheckmarkCircle02Icon,
-  ComputerTerminal01Icon,
-  DashboardSquare01Icon,
-  HugeiconsIcon,
-  Search01Icon,
-  Settings02Icon,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+  SidebarSeparator,
+  SidebarMenuSkeleton,
+  useSidebar,
+} from "@repo/ui/components/sidebar";
+import {
+  PresentationChartIcon,
+  TerminalWindowIcon,
+  AppStoreLogoIcon,
+  MagnifyingGlassIcon,
+  CheckCircleIcon,
+  WarningCircleIcon,
+  CaretRightIcon,
 } from "@repo/ui/icons";
-import { cn } from "@repo/ui/lib/utils";
 import { useProject } from "@/contexts/ProjectContext";
+import { useConnection } from "@/contexts/ConnectionContext";
+import { installedApps } from "@/lib/installed-apps";
+
+const subscribePlatform = () => () => {};
+const platformShortcut = () => (/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl K");
 
 const robotLinks = [
-  { href: "/", label: "Dashboards", icon: DashboardSquare01Icon },
-  { href: "/console", label: "Terminals", icon: ComputerTerminal01Icon },
-  { href: "/apps", label: "App Store", icon: AppStoreIcon },
-  { href: "https://example.com", label: "Settings", icon: Settings02Icon },
+  { href: "/", label: "Dashboards", icon: PresentationChartIcon },
+  { href: "/console", label: "Terminals", icon: TerminalWindowIcon },
+  { href: "/apps", label: "App Store", icon: AppStoreLogoIcon },
 ];
+
+function AppStatus({ state }: { state: string }) {
+  if (state === "running")
+    return (
+      <Badge variant="success">
+        <CheckCircleIcon />
+        OK
+      </Badge>
+    );
+  if (["error", "failed"].includes(state))
+    return (
+      <Badge variant="error">
+        <WarningCircleIcon />
+        Error
+      </Badge>
+    );
+  if (state === "starting" || state === "stopping")
+    return <Badge variant="secondary">{state === "starting" ? "Starting" : "Stopping"}</Badge>;
+  if (state === "unknown") return <Badge variant="outline">Unknown</Badge>;
+  return <Badge variant="off">Off</Badge>;
+}
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { activeProjects } = useProject();
+  const { connection } = useConnection();
+  const { images, instances, imagesLoading, imagesError, loading, error } = useProject();
+  const { setOpenMobile, isMobile } = useSidebar();
+  const [search, setSearch] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
+  const shortcut = useSyncExternalStore(subscribePlatform, platformShortcut, () => "⌘K");
+  const matches = (name: string) => name.toLowerCase().includes(search.trim().toLowerCase());
+  const closeMobile = () => setOpenMobile(false);
+  const apps = installedApps(images, instances);
+
+  useEffect(() => {
+    function focusSearch(event: KeyboardEvent) {
+      if (event.key.toLowerCase() !== "k" || !(event.metaKey || event.ctrlKey)) return;
+      event.preventDefault();
+      if (isMobile) setOpenMobile(true);
+      requestAnimationFrame(() => searchInput.current?.focus());
+    }
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, [isMobile, setOpenMobile]);
 
   return (
-    <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto border-b border-sidebar-border bg-sidebar p-2 text-sidebar-foreground md:border-r md:border-b-0">
-      <div className="relative">
-        <HugeiconsIcon
-          icon={Search01Icon}
-          className="pointer-events-none absolute top-2 left-2 size-4 text-muted-foreground"
-          strokeWidth={1.5}
-          aria-hidden="true"
-        />
-        <Input aria-label="Search" placeholder="Search..." className="h-8 bg-background pr-12 pl-8" />
-        <Kbd className="pointer-events-none absolute top-1.5 right-2" aria-hidden="true">
-          ⌘K
-        </Kbd>
-      </div>
-      <nav aria-label="Robot">
-        <h2 className="flex h-8 items-center px-2 text-xs font-medium text-muted-foreground">Robot</h2>
-        <ul className="grid grid-cols-2 gap-1 md:grid-cols-1">
-          {robotLinks.map(({ href, label, icon }) => (
-            <li key={label}>
-              <Button
-                variant="ghost"
-                nativeButton={false}
-                role="link"
-                render={<Link href={href} />}
-                aria-current={pathname === href ? "page" : undefined}
-                className={cn(
-                  "h-9 w-full justify-start gap-2 px-2 font-normal md:h-8",
-                  pathname === href && "bg-sidebar-accent text-sidebar-accent-foreground"
+    <Sidebar className="border-shell-border">
+      <SidebarHeader className="h-14 shrink-0 justify-center p-4">
+        <Link
+          href="/"
+          aria-label="Driver Station"
+          onClick={closeMobile}
+          className="w-fit rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <Image src="/icons/android-head.png" width={41} height={24} alt="" unoptimized />
+        </Link>
+      </SidebarHeader>
+      <SidebarSeparator className="mx-0 bg-shell-border" />
+      <SidebarContent className="gap-2 p-2">
+        <InputGroup className="shrink-0">
+          <InputGroupAddon>
+            <MagnifyingGlassIcon aria-hidden="true" />
+          </InputGroupAddon>
+          <InputGroupInput
+            ref={searchInput}
+            aria-label="Search navigation"
+            aria-keyshortcuts="Meta+K Control+K"
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <InputGroupAddon align="inline-end">
+            <Kbd>{shortcut}</Kbd>
+          </InputGroupAddon>
+        </InputGroup>
+        <SidebarGroup className="gap-2 p-0">
+          <SidebarGroupLabel>Robot</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <nav aria-label="Robot">
+              <SidebarMenu className="gap-1">
+                {robotLinks
+                  .filter(({ label }) => matches(label))
+                  .map(({ href, label, icon: Icon }) => (
+                    <SidebarMenuItem key={href}>
+                      <SidebarMenuButton
+                        render={<Link href={href} />}
+                        isActive={pathname === href}
+                        aria-current={pathname === href ? "page" : undefined}
+                        onClick={closeMobile}
+                      >
+                        <Icon aria-hidden="true" />
+                        <span>{label}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+              </SidebarMenu>
+            </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="gap-2 p-0">
+          <SidebarGroupLabel>Apps</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <nav aria-label="Apps">
+              <SidebarMenu className="gap-1">
+                {imagesLoading ? (
+                  <SidebarMenuItem>
+                    <SidebarMenuSkeleton />
+                  </SidebarMenuItem>
+                ) : (
+                  apps
+                    .filter((app) => matches(app.name))
+                    .map((app) => (
+                      <Collapsible key={app.repository} render={<SidebarMenuItem />}>
+                        <CollapsibleTrigger
+                          render={<SidebarMenuButton />}
+                          aria-label={`${app.name}: ${loading || error ? "status unavailable" : app.state}`}
+                          className="group/app"
+                        >
+                          <AppStatus state={loading || error ? "unknown" : app.state} />
+                          <span className="min-w-0 flex-1 truncate text-left">{app.name}</span>
+                          <CaretRightIcon className="group-data-panel-open/app:rotate-90" aria-hidden="true" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {app.instances.map((instance) => (
+                              <SidebarMenuSubItem key={instance.id}>
+                                <SidebarMenuSubButton
+                                  render={
+                                    <Link
+                                      href={{
+                                        pathname: "/logs",
+                                        query: { instance: instance.id, app: instance.app, version: instance.version },
+                                      }}
+                                    />
+                                  }
+                                  onClick={closeMobile}
+                                >
+                                  <span>{instance.version} · Logs</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                            <SidebarMenuSubItem>
+                              <SidebarMenuSubButton render={<Link href="/apps" />} onClick={closeMobile}>
+                                <span>Open in App Store</span>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    ))
                 )}
-              >
-                <HugeiconsIcon icon={icon} strokeWidth={1.5} aria-hidden="true" />
-                <span className="flex-1 text-left">{label}</span>
-                {label !== "Terminals" && (
-                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={1.5} aria-hidden="true" />
-                )}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </nav>
-      <nav aria-label="Running apps">
-        <h2 className="flex h-8 items-center px-2 text-xs font-medium text-muted-foreground">Apps</h2>
-        {activeProjects.length > 0 ? (
-          <ul className="flex flex-col gap-1">
-            {activeProjects.map((project) => (
-              <li key={project.url}>
-                <Button
-                  variant="ghost"
-                  nativeButton={false}
-                  role="link"
-                  render={<Link href={{ pathname: "/logs", query: { app: project.name, version: project.version } }} />}
-                  title={`${project.name} ${project.version}`}
-                  className="h-8 w-full justify-start gap-2 px-2 font-normal"
-                >
-                  <Badge className="gap-1 rounded-full border-transparent bg-green-600 px-2 text-white">
-                    <HugeiconsIcon icon={CheckmarkCircle02Icon} className="size-3" aria-hidden="true" />
-                    OK
-                  </Badge>
-                  <span className="min-w-0 flex-1 truncate text-left">{project.name}</span>
-                  <HugeiconsIcon icon={ArrowRight01Icon} strokeWidth={1.5} aria-hidden="true" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-2 py-1 text-xs leading-5 text-muted-foreground">No running apps.</p>
-        )}
-      </nav>
-    </aside>
+              </SidebarMenu>
+              {imagesError ? (
+                <p role="status" className="px-2 py-1 text-xs text-muted-foreground">
+                  Could not load installed apps.
+                </p>
+              ) : (
+                !imagesLoading &&
+                apps.length === 0 && (
+                  <p className="px-2 py-1 text-xs text-muted-foreground">
+                    {connection ? "No installed apps." : "Connect to view installed apps."}
+                  </p>
+                )
+              )}
+            </nav>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }

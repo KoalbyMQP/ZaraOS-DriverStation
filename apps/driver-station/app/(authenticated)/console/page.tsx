@@ -1,17 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { Button } from "@repo/ui/components/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@repo/ui/components/empty";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@repo/ui/components/tabs";
+import { Spinner } from "@repo/ui/components/spinner";
+import { PlusIcon, TerminalWindowIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { signedFetch } from "@/lib/robot-api";
+import { robotBaseUrl, signedFetch } from "@/lib/robot-api";
 
 const RobotTerminal = dynamic(() => import("@/components/SSHTerminal"), {
   ssr: false,
-  loading: () => <p className="p-4 font-mono text-sm text-muted-foreground">Opening terminal…</p>,
+  loading: () => (
+    <div role="status" className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+      <Spinner />
+      Opening terminal…
+    </div>
+  ),
 });
 
 export default function ConsolePage() {
   const { connection } = useConnection();
+  const [sessions, setSessions] = useState([{ id: "1", title: "Terminal" }]);
+  const [active, setActive] = useState<string | null>("1");
   const fetchTerminal = useCallback(
     (url: string, init?: RequestInit) => {
       if (!connection) return Promise.reject(new Error("No robot connected"));
@@ -20,35 +32,55 @@ export default function ConsolePage() {
     [connection]
   );
 
+  function addSession() {
+    const id = crypto.randomUUID();
+    setSessions((previous) => [...previous, { id, title: `Terminal ${previous.length + 1}` }]);
+    setActive(id);
+  }
+
   return (
-    <div className="flex h-full min-h-[28rem] flex-col md:min-h-0">
-      <div role="tablist" aria-label="Terminal sessions" className="flex shrink-0 bg-sidebar">
-        <button
-          id="terminal-tab"
-          type="button"
-          role="tab"
-          aria-selected="true"
-          aria-controls="terminal-panel"
-          className="border-t border-r border-t-primary border-r-border bg-background px-3 py-2.5 font-mono text-[13px] leading-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-        >
-          Terminal
-        </button>
-        <div className="flex-1 border-b border-border" />
+    <Tabs value={active} onValueChange={setActive} className="h-full min-h-80 gap-0">
+      <div className="flex h-[41px] shrink-0 overflow-x-auto bg-sidebar">
+        <TabsList variant="terminal" aria-label="Terminal sessions" className="w-auto shrink-0">
+          {sessions.map((session) => (
+            <TabsTrigger key={session.id} value={session.id}>
+              {session.title}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <Button variant="terminal" size="terminal" onClick={addSession} disabled={!connection}>
+          <PlusIcon data-icon="inline-start" />
+          New session
+        </Button>
       </div>
-      <section
-        id="terminal-panel"
-        role="tabpanel"
-        aria-labelledby="terminal-tab"
-        className="min-h-0 flex-1 overflow-hidden"
-      >
-        {connection ? (
-          <RobotTerminal robotUrl={`http://${connection.ip}:8080`} signedFetch={fetchTerminal} />
-        ) : (
-          <p className="p-4 font-mono text-sm text-muted-foreground">
-            No robot connected. Use the Connect button in the header.
-          </p>
-        )}
-      </section>
-    </div>
+      {sessions.map((session) => (
+        <TabsContent
+          key={session.id}
+          value={session.id}
+          keepMounted
+          className="min-h-0 overflow-hidden data-[hidden]:hidden [&[inert]]:hidden"
+        >
+          {connection ? (
+            <RobotTerminal
+              robotUrl={robotBaseUrl(connection)}
+              signedFetch={fetchTerminal}
+              onTitleChange={(title) =>
+                setSessions((previous) => previous.map((item) => (item.id === session.id ? { ...item, title } : item)))
+              }
+            />
+          ) : (
+            <Empty className="h-full">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <TerminalWindowIcon />
+                </EmptyMedia>
+                <EmptyTitle>No robot connected</EmptyTitle>
+                <EmptyDescription>Open the robot connection in the topbar to connect or use Dev Mode.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

@@ -1,1257 +1,377 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, AlertDescription } from "@repo/ui/components/alert";
+import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@repo/ui/components/empty";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@repo/ui/components/input-group";
+import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "@repo/ui/components/item";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { Spinner } from "@repo/ui/components/spinner";
+import { ArrowClockwiseIcon, CaretRightIcon, FunnelIcon, MagnifyingGlassIcon, PackageIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { useProject } from "@/contexts/ProjectContext";
-import { LogViewer } from "@/components/LogViewer";
+import { appSlug, useProject, type AppLaunch } from "@/contexts/ProjectContext";
 import {
   getCombinedReleases,
-  getReleaseChannel,
   getComponentsReleases,
-  getReleaseGroupName,
+  getReleaseChannel,
   groupReleasesByTitle,
-  type ReleaseChannel,
-  type ReleaseGroup,
   type ReleaseSource,
   type ReleaseWithSource,
 } from "@/lib/api";
-import {
-  getInstances,
-  getInstance,
-  createInstance,
-  deleteInstance,
-  getImages,
-  isLocalRobotHost,
-  type LocalContainerImage,
-  type RobotAppInstance,
-} from "@/lib/robot-api";
 
-/** Prevents duplicate Core/Apps fetches when React Strict Mode double-invokes the effect. */
-let releasesFetchInFlight = false;
-
-/** Prevents duplicate GET /instances when React Strict Mode double-invokes the effect. */
-let instancesFetchInFlight = false;
-
-/** One row per runnable (repository, tag); untagged images use an empty tag and no Run. */
-function buildLocalRunRows(images: LocalContainerImage[]): {
-  repository: string;
-  tag: string;
-  img: LocalContainerImage;
-}[] {
-  const seen = new Set<string>();
-  const rows: { repository: string; tag: string; img: LocalContainerImage }[] = [];
-  for (const img of images) {
-    const tagList = img.tags.length > 0 ? img.tags : [""];
-    for (const tag of tagList) {
-      const key = `${img.repository}:${tag}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push({ repository: img.repository, tag, img });
-    }
-  }
-  rows.sort((a, b) => {
-    const c = a.repository.localeCompare(b.repository);
-    return c !== 0 ? c : a.tag.localeCompare(b.tag);
-  });
-  return rows;
-}
-
-/** Normalize group/release name to match robot instance app slug (e.g. "ROS2 Nav" → "ros2-nav"). */
-function groupNameToSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9-]/g, "");
-}
-
-function repoNameFromOwnerRepo(ownerRepo: string): string {
-  const [, repo] = ownerRepo.split("/");
-  return repo || ownerRepo;
-}
-
-/** Stable id for Active list / isActive when starting apps from local images (not a fetchable URL). */
-function localProjectUrl(repository: string, tag: string): string {
-  return `local:${encodeURIComponent(repository)}:${encodeURIComponent(tag)}`;
-}
-
-function localAppSlugFromRepository(repository: string): string {
-  return groupNameToSlug(repoNameFromOwnerRepo(repository));
-}
-
-function uniqueReposForGroup(group: ReleaseGroup): string[] {
-  return Array.from(new Set(group.versions.map((v) => repoNameFromOwnerRepo(v.repo)))).sort((a, b) =>
-    a.localeCompare(b)
-  );
-}
-
-/** All whitespace-separated terms must appear in `name` (case-insensitive). Empty query matches everything. */
-function matchesAppSearchQuery(query: string, name: string): boolean {
-  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return true;
-  const h = name.toLowerCase();
-  return tokens.every((t) => h.includes(t));
-}
-
-const RELEASE_SOURCE_ORDER: ReleaseSource[] = ["core", "apps", "drivers", "control", "sensing"];
-
-const RELEASE_SOURCE_LABEL: Record<ReleaseSource, string> = {
+const sources: Record<ReleaseSource, string> = {
   core: "Core",
   apps: "Apps",
   drivers: "Drivers",
   control: "Control",
   sensing: "Sensing",
 };
-
-/** Display repo path (defaults align with driver-station/lib/api.ts). */
-const RELEASE_SOURCE_REPO: Record<ReleaseSource, string> = {
-  core: "KoalbyMQP/Core",
-  apps: (typeof process !== "undefined" && process.env.NEXT_PUBLIC_GITHUB_APPS_REPO) || "KoalbyMQP/Apps",
-  drivers: "KoalbyMQP/Drivers",
-  control: "KoalbyMQP/Control",
-  sensing: "KoalbyMQP/Sensing",
-};
-
-function allReleaseSourcesEnabled(): Record<ReleaseSource, boolean> {
-  return {
-    core: true,
-    apps: true,
-    drivers: true,
-    control: true,
-    sensing: true,
-  };
-}
-
-function groupHasEnabledReleaseSource(group: ReleaseGroup, enabled: Record<ReleaseSource, boolean>): boolean {
-  return group.versions.some((v) => enabled[v.source]);
-}
-
-function releaseSourcesFilterActive(enabled: Record<ReleaseSource, boolean>): boolean {
-  return RELEASE_SOURCE_ORDER.some((s) => !enabled[s]);
-}
-
-function catalogNoMatchMessage(hasSearch: boolean, filtersActive: boolean): string {
-  if (hasSearch && filtersActive) return "No apps match your search or filters.";
-  if (hasSearch) return "No apps match your search.";
-  if (filtersActive) return "No apps match your filters.";
-  return "No apps match your search.";
-}
-
-const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
-  alpha: "Alpha",
-  beta: "Beta",
-  rc: "RC",
-  preview: "Preview",
-  nightly: "Nightly",
-  canary: "Canary",
-  prerelease: "Prerelease",
-};
-
-const RELEASE_CHANNEL_BADGE_CLASSES: Record<ReleaseChannel, string> = {
-  alpha: "bg-amber-500/15 text-amber-200 ring-1 ring-inset ring-amber-400/20",
-  beta: "bg-sky-500/15 text-sky-200 ring-1 ring-inset ring-sky-400/20",
-  rc: "bg-violet-500/15 text-violet-200 ring-1 ring-inset ring-violet-400/20",
-  preview: "bg-cyan-500/15 text-cyan-200 ring-1 ring-inset ring-cyan-400/20",
-  nightly: "bg-indigo-500/15 text-indigo-200 ring-1 ring-inset ring-indigo-400/20",
-  canary: "bg-lime-500/15 text-lime-200 ring-1 ring-inset ring-lime-400/20",
-  prerelease: "bg-zinc-700 text-zinc-200 ring-1 ring-inset ring-zinc-600",
-};
-
-function getCommonReleaseChannels(versions: ReleaseWithSource[]): ReleaseChannel[] {
-  const channels = Array.from(
-    new Set(
-      versions
-        .map((version) => getReleaseChannel(version))
-        .filter((channel): channel is ReleaseChannel => channel !== null)
-    )
+const imageName = (repository: string) => repository.split("/").at(-1) || repository;
+const runnableTags = (tags: string[]) =>
+  [...new Set(tags.filter((tag) => tag && tag !== "<none>"))].sort((a, b) =>
+    b.localeCompare(a, undefined, { numeric: true })
   );
 
-  return channels.length === 1 ? channels : [];
-}
-
-function ReleaseTag({ label, className }: { label: string; className: string }) {
-  return <span className={`rounded px-2 py-0.5 text-xs ${className}`}>{label}</span>;
-}
-
-function VersionMenu({
-  group,
-  appSlug,
-  onSelectVersion,
-  activeProjectUrls,
-  isVersionRunningOnRobot,
-  open,
-  onToggle,
-  onClose,
-}: {
-  group: ReleaseGroup;
-  appSlug: string;
-  onSelectVersion: (release: ReleaseWithSource, appSlug: string) => void;
-  activeProjectUrls: Set<string>;
-  isVersionRunningOnRobot: (tagName: string) => boolean;
-  open: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-}) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open, onClose]);
-
-  return (
-    <div className="relative" ref={wrapperRef}>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggle();
-        }}
-        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
-        aria-label="Select version"
-        aria-expanded={open}
-      >
-        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <circle cx="12" cy="6" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="18" r="1.5" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute top-full right-0 z-50 mt-1 min-w-[10rem] rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-lg">
-          {group.versions.map((r) => {
-            const isActive = activeProjectUrls.has(r.html_url) || isVersionRunningOnRobot(r.tag_name);
-            const releaseChannel = getReleaseChannel(r);
-            return (
-              <button
-                key={`${r.source}-${r.id}`}
-                type="button"
-                onClick={() => {
-                  onSelectVersion(r, appSlug);
-                  onClose();
-                }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate">{r.tag_name}</span>
-                  {releaseChannel && (
-                    <ReleaseTag
-                      label={RELEASE_CHANNEL_LABELS[releaseChannel]}
-                      className={RELEASE_CHANNEL_BADGE_CLASSES[releaseChannel]}
-                    />
-                  )}
-                  {group.versions.some((v) => v.tag_name === r.tag_name && v.source !== r.source) && (
-                    <span className="ml-1 text-zinc-500">({r.source})</span>
-                  )}
-                </span>
-                {isActive && (
-                  <svg className="h-4 w-4 shrink-0 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-type InstanceState = "running" | "starting" | "stopping";
-
-type Instance = {
+type CatalogApp = {
   id: string;
-  app: string;
-  version: string;
-  state: InstanceState;
-  /** When state is "starting": used to add to activeProjects once running */
-  displayName?: string;
-  projectUrl?: string;
+  name: string;
+  source: string;
+  versions: AppLaunch[];
+  installed?: boolean;
+  installationKnown?: boolean;
+  channel?: string | null;
 };
 
-function newPendingInstanceId(): string {
-  return `pending:${crypto.randomUUID()}`;
+function AppRow({ app }: { app: CatalogApp }) {
+  const { connection } = useConnection();
+  const { startApp, pendingRuns } = useProject();
+  const latest = app.versions[0];
+  const pending = app.versions.some((v) => pendingRuns.includes(v.url));
+  const channel =
+    app.channel ?? (latest ? getReleaseChannel({ name: app.name, tag_name: latest.version, prerelease: false }) : null);
+  return (
+    <Item role="listitem" size="sm" className="flex-nowrap">
+      <ItemContent className="min-w-0 flex-row flex-wrap items-center gap-2">
+        <ItemTitle className="max-w-full truncate" title={app.name}>
+          {app.name}
+        </ItemTitle>
+        <Badge variant="secondary">{app.source}</Badge>
+        {latest && (
+          <Badge variant="outline" className="max-w-full truncate" title={latest.version}>
+            {latest.version}
+            {channel && !latest.version.toLowerCase().includes(channel) ? ` (${channel})` : ""}
+          </Badge>
+        )}
+        <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+          {app.versions.length} {app.versions.length === 1 ? "version" : "versions"}
+        </span>
+        {app.installationKnown && (
+          <span className="text-xs text-muted-foreground">{app.installed ? "Installed" : "Not installed"}</span>
+        )}
+      </ItemContent>
+      <ItemActions className="ml-auto shrink-0">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                size="sm"
+                disabled={!connection || !latest || pending}
+                aria-label={`Run ${app.name}`}
+                title={
+                  !connection ? "Connect to a robot to run apps" : !latest ? "No tagged versions available" : undefined
+                }
+              />
+            }
+          >
+            {pending ? <Spinner data-icon="inline-start" /> : null}
+            {pending ? "Starting…" : "Run"}
+            <CaretRightIcon data-icon="inline-end" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Run a version</DropdownMenuLabel>
+              {app.versions.map((version) => (
+                <DropdownMenuItem key={version.url} onClick={() => void startApp(version)}>
+                  <span className="truncate">{version.version}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </ItemActions>
+    </Item>
+  );
 }
 
-/** First occurrence wins — avoids duplicate React keys if GET /instances repeats an id. */
-function dedupeInstancesById(instances: Instance[]): Instance[] {
-  const seen = new Set<string>();
-  const out: Instance[] = [];
-  for (const inst of instances) {
-    if (seen.has(inst.id)) continue;
-    seen.add(inst.id);
-    out.push(inst);
-  }
-  return out;
+function CatalogList({
+  apps,
+  loading,
+  emptyTitle,
+  emptyDescription,
+}: {
+  apps: CatalogApp[];
+  loading: boolean;
+  emptyTitle: string;
+  emptyDescription: string;
+}) {
+  if (loading)
+    return (
+      <div className="flex flex-col gap-3" aria-label="Loading apps">
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  if (apps.length === 0)
+    return (
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <PackageIcon />
+          </EmptyMedia>
+          <EmptyTitle>{emptyTitle}</EmptyTitle>
+          <EmptyDescription>{emptyDescription}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  return (
+    <ItemGroup className="gap-1">
+      {apps.map((app) => (
+        <AppRow key={app.id} app={app} />
+      ))}
+    </ItemGroup>
+  );
 }
 
 export default function AppsPage() {
   const { connection } = useConnection();
-  const { activeProjects, addActiveProject, removeActiveProject, isActive } = useProject();
-  const [availableGroups, setAvailableGroups] = useState<ReleaseGroup[]>([]);
-  const [componentGroups, setComponentGroups] = useState<ReleaseGroup[]>([]);
-  const [loadingAvailableReleases, setLoadingAvailableReleases] = useState(true);
-  const [loadingComponentReleases, setLoadingComponentReleases] = useState(true);
-  const [availableError, setAvailableError] = useState<string | null>(null);
-  const [componentsError, setComponentsError] = useState<string | null>(null);
-  const [openMenuGroup, setOpenMenuGroup] = useState<string | null>(null);
-  /** Single source of truth for all instance states (running, starting, stopping). */
-  const [instances, setInstances] = useState<Instance[]>([]);
-  const [startError, setStartError] = useState<string | null>(null);
-  const [logInstanceId, setLogInstanceId] = useState<string | null>(null);
-  const [localImages, setLocalImages] = useState<LocalContainerImage[]>([]);
-  const [loadingLocalImages, setLoadingLocalImages] = useState(false);
-  const [localImagesError, setLocalImagesError] = useState<string | null>(null);
-  const [appSearchQuery, setAppSearchQuery] = useState("");
-  const [enabledReleaseSources, setEnabledReleaseSources] =
-    useState<Record<ReleaseSource, boolean>>(allReleaseSourcesEnabled);
-  const [filtersPopoverOpen, setFiltersPopoverOpen] = useState(false);
-  const filtersBarRef = useRef<HTMLDivElement>(null);
+  const {
+    actionError,
+    notice,
+    images,
+    imagesLoading: loadingInstalled,
+    imagesError: installedError,
+    refresh: refreshRobot,
+  } = useProject();
+  const [releases, setReleases] = useState<ReleaseWithSource[]>([]);
+  const [loadingOnline, setLoadingOnline] = useState(true);
+  const [onlineError, setOnlineError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [enabledSources, setEnabledSources] = useState<string[]>(Object.values(sources));
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    if (!filtersPopoverOpen) return;
-    const handlePointerDown = (e: MouseEvent) => {
-      if (filtersBarRef.current && !filtersBarRef.current.contains(e.target as Node)) {
-        setFiltersPopoverOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [filtersPopoverOpen]);
-
-  const activeProjectUrls = new Set(activeProjects.map((p) => p.url));
-
-  const setInstanceState = (
-    id: string,
-    state: InstanceState,
-    extra?: { displayName?: string; projectUrl?: string }
-  ) => {
-    setInstances((prev) => prev.map((i) => (i.id === id ? { ...i, state, ...extra } : i)));
-  };
-
-  const removeInstance = (id: string) => {
-    setInstances((prev) => prev.filter((i) => i.id !== id));
-    setLogInstanceId((prev) => (prev === id ? null : prev));
-  };
-
-  // Fetch GET /instances when robot is connected, then every 60s
-  useEffect(() => {
-    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setInstances([]);
-      return;
-    }
-    const fetchInstances = (isInitial = false) => {
-      if (isInitial && instancesFetchInFlight) return;
-      if (isInitial) instancesFetchInFlight = true;
-      getInstances(connection)
-        .then((data) => {
-          const apiList = data.instances
-            .filter((i: RobotAppInstance) => i.state === "running" || i.state === "starting")
-            .map((i: RobotAppInstance) => ({
-              id: i.id,
-              app: i.app,
-              version: i.version,
-              state: i.state as InstanceState,
-            }));
-          setInstances((prev) => {
-            const stoppingIds = new Set(prev.filter((p) => p.state === "stopping").map((p) => p.id));
-            const apiIds = new Set(apiList.map((a) => a.id));
-            const merged = apiList.map((api) => {
-              let row: Instance = stoppingIds.has(api.id) ? { ...api, state: "stopping" as const } : api;
-              const optimistic = prev.find(
-                (p) =>
-                  p.id.startsWith("pending:") &&
-                  p.state === "starting" &&
-                  p.app === api.app &&
-                  p.version === api.version
-              );
-              if (optimistic && row.state !== "stopping") {
-                row = {
-                  ...row,
-                  displayName: optimistic.displayName ?? row.displayName,
-                  projectUrl: optimistic.projectUrl ?? row.projectUrl,
-                };
-              }
-              return row;
-            });
-            const localStarting = prev.filter((p) => {
-              if (p.state !== "starting" || apiIds.has(p.id)) return false;
-              if (p.id.startsWith("pending:")) {
-                const covered = apiList.some((a) => a.app === p.app && a.version === p.version);
-                return !covered;
-              }
-              return true;
-            });
-            return dedupeInstancesById([...merged, ...localStarting]);
-          });
-        })
-        .catch(() => setInstances([]))
-        .finally(() => {
-          if (isInitial) instancesFetchInFlight = false;
-        });
-    };
-    fetchInstances(true);
-    const interval = setInterval(() => fetchInstances(false), 60_000);
-    return () => clearInterval(interval);
-  }, [connection]);
-
-  useEffect(() => {
-    if (!connection?.devMode) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalImages([]);
-      setLocalImagesError(null);
-      setLoadingLocalImages(false);
-      return;
-    }
     let cancelled = false;
-    const c = connection;
-    const fetchLocalImages = (isInitial: boolean) => {
-      if (isInitial) {
-        setLoadingLocalImages(true);
-        setLocalImagesError(null);
-      }
-      getImages(c)
-        .then((data) => {
-          if (cancelled) return;
-          setLocalImages(Array.isArray(data.images) ? data.images : []);
-          setLocalImagesError(null);
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          setLocalImages([]);
-          setLocalImagesError(e instanceof Error ? e.message : "Failed to load local images");
-        })
-        .finally(() => {
-          if (!cancelled && isInitial) setLoadingLocalImages(false);
-        });
-    };
-    fetchLocalImages(true);
-    const interval = setInterval(() => fetchLocalImages(false), 60_000);
+    Promise.allSettled([getCombinedReleases(), getComponentsReleases()]).then((results) => {
+      if (cancelled) return;
+      setReleases(results.flatMap((r) => (r.status === "fulfilled" ? r.value.filter((v) => !v.draft) : [])));
+      setOnlineError(
+        results.some((r) => r.status === "rejected")
+          ? "Some online apps could not be loaded. Refresh to try again."
+          : null
+      );
+      setLoadingOnline(false);
+    });
     return () => {
       cancelled = true;
-      clearInterval(interval);
     };
-  }, [connection]);
+  }, [revision]);
 
-  useEffect(() => {
-    // Guard against double-invocation in React Strict Mode (dev) so we don't call release endpoints twice
-    if (releasesFetchInFlight) return;
-    releasesFetchInFlight = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoadingAvailableReleases(true);
-    setLoadingComponentReleases(true);
-    setAvailableError(null);
-    setComponentsError(null);
-    Promise.allSettled([getCombinedReleases(), getComponentsReleases()])
-      .then(([availableResult, componentsResult]) => {
-        if (availableResult.status === "fulfilled") {
-          setAvailableGroups(groupReleasesByTitle(availableResult.value));
-        } else {
-          const reason = availableResult.reason;
-          setAvailableError(reason instanceof Error ? reason.message : "Failed to load available releases");
-          setAvailableGroups([]);
-        }
-        if (componentsResult.status === "fulfilled") {
-          setComponentGroups(groupReleasesByTitle(componentsResult.value));
-        } else {
-          const reason = componentsResult.reason;
-          setComponentsError(reason instanceof Error ? reason.message : "Failed to load component releases");
-          setComponentGroups([]);
-        }
-      })
-      .finally(() => {
-        setLoadingAvailableReleases(false);
-        setLoadingComponentReleases(false);
-        releasesFetchInFlight = false;
-      });
-  }, []);
-
-  const runningInstances = instances.filter((i) => i.state === "running");
-  const startingInstances = instances.filter((i) => i.state === "starting");
-  const stoppingInstanceIds = new Set(instances.filter((i) => i.state === "stopping").map((i) => i.id));
-
-  // Running (or stopping) instances not in user's active list — show as "on robot" cards
-  const runningOnly = instances.filter(
-    (i) =>
-      (i.state === "running" || i.state === "stopping") &&
-      !activeProjects.some((p) => p.version === i.version && (groupNameToSlug(p.name) === i.app || p.name === i.app))
-  );
-
-  const isVersionRunningOnRobot = (groupName: string, tagName: string) => {
-    const match = (i: Instance) =>
-      i.version === tagName && (groupNameToSlug(groupName) === i.app || groupName === i.app);
-    return runningInstances.some(match) || startingInstances.some(match);
-  };
-
-  const startInstanceOnRobot = (
-    appSlug: string,
-    version: string,
-    displayName: string,
-    projectUrl: string,
-    image?: string
-  ) => {
-    if (!connection || (!connection.token && !isLocalRobotHost(connection))) {
-      setStartError("Connect to a device to add apps to Active");
-      return;
-    }
-    setStartError(null);
-    const pendingId = newPendingInstanceId();
-    setInstances((prev) => [
-      ...prev,
-      {
-        id: pendingId,
-        app: appSlug,
-        version,
-        state: "starting",
-        displayName,
-        projectUrl,
-      },
-    ]);
-    createInstance(connection, appSlug, version, image)
-      .then((created) => {
-        setInstances((prev) => {
-          const withoutPending = prev.filter((i) => i.id !== pendingId);
-          const existingIdx = withoutPending.findIndex((i) => i.id === created.id);
-          if (existingIdx >= 0) {
-            const next = [...withoutPending];
-            next[existingIdx] = {
-              ...next[existingIdx],
-              state: "starting",
-              displayName,
-              projectUrl,
+  const online = useMemo<CatalogApp[]>(
+    () =>
+      Object.entries(sources)
+        .flatMap(([source, label]) =>
+          groupReleasesByTitle(releases.filter((r) => r.source === source)).map((group) => {
+            const versions = [...group.versions].sort(
+              (a, b) => Date.parse(b.published_at) - Date.parse(a.published_at)
+            );
+            return {
+              id: `${source}:${group.groupName}`,
+              name: group.groupName,
+              source: label,
+              channel: getReleaseChannel(versions[0]),
+              installed: images.some(
+                (image) =>
+                  appSlug(imageName(image.repository)) === appSlug(group.groupName) &&
+                  runnableTags(image.tags).length > 0
+              ),
+              installationKnown: !!connection && !loadingInstalled && !installedError,
+              versions: versions.map((version) => ({
+                url: version.html_url,
+                name: group.groupName,
+                app: appSlug(group.groupName),
+                version: version.tag_name,
+              })),
             };
-            return next;
-          }
-          return [
-            ...withoutPending,
-            {
-              id: created.id,
-              app: appSlug,
-              version: created.version,
-              state: "starting",
-              displayName,
-              projectUrl,
-            },
-          ];
-        });
-        const pollUntilRunning = () => {
-          getInstance(connection!, created.id)
-            .then((updated) => {
-              if (updated.state === "running") {
-                setInstances((prev) =>
-                  prev.map((i) =>
-                    i.id === created.id
-                      ? { ...i, state: "running" as const, displayName: undefined, projectUrl: undefined }
-                      : i
-                  )
-                );
-                addActiveProject({ url: projectUrl, name: displayName, version });
-                return;
-              }
-              if (updated.state === "crashed" || updated.state === "stopped") {
-                removeInstance(created.id);
-                setStartError(`${displayName} ${version} failed to start (${updated.state})`);
-                return;
-              }
-              setTimeout(pollUntilRunning, 800);
-            })
-            .catch(() => {
-              removeInstance(created.id);
-              setStartError(`Failed to check status for ${displayName}`);
-            });
-        };
-        pollUntilRunning();
-      })
-      .catch((err) => {
-        removeInstance(pendingId);
-        setStartError(err instanceof Error ? err.message : "Failed to start app");
-      });
-  };
-
-  const handleSelectVersion = (release: ReleaseWithSource, appSlug: string) => {
-    const name = getReleaseGroupName(release);
-    const version = release.tag_name;
-    const url = release.html_url;
-    startInstanceOnRobot(appSlug, version, name, url);
-  };
-
-  const handleRunLocalImage = (repository: string, tag: string) => {
-    const displayName = repoNameFromOwnerRepo(repository);
-    const appSlug = localAppSlugFromRepository(repository);
-    const imageRef = `${repository}:${tag}`;
-    startInstanceOnRobot(appSlug, tag, displayName, localProjectUrl(repository, tag), imageRef);
-  };
-
-  const findInstanceForProject = (project: { name: string; version: string }) =>
-    instances.find(
-      (i) =>
-        (i.state === "running" || i.state === "stopping") &&
-        i.version === project.version &&
-        (groupNameToSlug(project.name) === i.app || project.name === i.app)
-    );
-
-  const handleStopInstance = (instance: Instance) => {
-    if (!connection || (!connection.token && !isLocalRobotHost(connection)) || stoppingInstanceIds.has(instance.id))
-      return;
-    setInstanceState(instance.id, "stopping");
-    deleteInstance(connection, instance.id)
-      .then(() => removeInstance(instance.id))
-      .catch(() => setInstanceState(instance.id, "running"));
-  };
-
-  const hasAppSearch = appSearchQuery.trim().length > 0;
-  const sourceFiltersOn = releaseSourcesFilterActive(enabledReleaseSources);
-  const catalogEmptyMessage = catalogNoMatchMessage(hasAppSearch, sourceFiltersOn);
-
-  const localRunRows = buildLocalRunRows(localImages);
-  const filteredLocalRows = localRunRows.filter((row) =>
-    matchesAppSearchQuery(appSearchQuery, repoNameFromOwnerRepo(row.repository))
-  );
-  const filteredAvailableGroups = availableGroups.filter(
-    (g) => groupHasEnabledReleaseSource(g, enabledReleaseSources) && matchesAppSearchQuery(appSearchQuery, g.groupName)
-  );
-  const filteredComponentGroups = componentGroups.filter(
-    (g) => groupHasEnabledReleaseSource(g, enabledReleaseSources) && matchesAppSearchQuery(appSearchQuery, g.groupName)
+          })
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [releases, images, connection, loadingInstalled, installedError]
   );
 
-  const handleRemoveActive = (project: { url: string; name: string; version: string }) => {
-    const instance = findInstanceForProject(project);
-    if (connection && (connection.token || isLocalRobotHost(connection)) && instance) {
-      setInstanceState(instance.id, "stopping");
-      deleteInstance(connection, instance.id)
-        .then(() => {
-          removeInstance(instance.id);
-          removeActiveProject(project.url);
-        })
-        .catch(() => setInstanceState(instance.id, "running"));
-    } else {
-      removeActiveProject(project.url);
+  const installed = useMemo<CatalogApp[]>(() => {
+    const grouped = new Map<string, string[]>();
+    for (const image of images) {
+      if (image.repository === "<none>") continue;
+      grouped.set(image.repository, [...(grouped.get(image.repository) ?? []), ...image.tags]);
     }
-  };
+    return [...grouped]
+      .map(([repository, tags]) => {
+        const name = imageName(repository);
+        const match = online.find((app) => appSlug(app.name) === appSlug(name));
+        return {
+          id: repository,
+          name: match?.name ?? name,
+          source: match?.source ?? "Local",
+          versions: runnableTags(tags).map((tag) => ({
+            name,
+            app: appSlug(name),
+            version: tag,
+            url: `local:${repository}:${tag}`,
+            image: `${repository}:${tag}`,
+          })),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [images, online]);
+  const matches = (app: CatalogApp) =>
+    query
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .every((word) => `${app.name} ${app.source}`.toLowerCase().includes(word));
+  const filteredOnline = online.filter((app) => matches(app) && enabledSources.includes(app.source));
+  const filteredInstalled = installed.filter(matches);
+
+  function refresh() {
+    setLoadingOnline(true);
+    void refreshRobot();
+    setRevision((r) => r + 1);
+  }
 
   return (
-    <div className="min-h-full bg-zinc-950 text-zinc-100">
-      <div className="p-6">
-        <section className="mb-8">
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Active</h2>
-          {startError && (
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{startError}</span>
-              <button
-                type="button"
-                onClick={() => setStartError(null)}
-                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
-                aria-label="Dismiss"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-          {activeProjects.length === 0 && runningOnly.length === 0 && startingInstances.length === 0 ? (
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-              No active apps. Select an app from Available to add it here, or connect to a robot to see running apps.
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {startingInstances.map((inst) => (
-                <div
-                  key={inst.id}
-                  className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                  style={{ boxShadow: "var(--blue-outline)" }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium text-zinc-100">{inst.displayName ?? inst.app}</div>
-                    <div className="mt-0.5 font-mono text-sm text-zinc-400">{inst.version}</div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setLogInstanceId((prev) => (prev === inst.id ? null : inst.id))}
-                      className={`cursor-pointer rounded p-1.5 transition-colors ${
-                        logInstanceId === inst.id
-                          ? "bg-blue-900/50 text-blue-300"
-                          : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
-                      }`}
-                      aria-label="Toggle logs"
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </button>
-                    <div
-                      className="flex h-9 w-9 items-center justify-center rounded p-1.5 text-zinc-400"
-                      aria-label="Starting…"
-                    >
-                      <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden>
-                        <circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="3"
-                          strokeDasharray="24 48"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {activeProjects.map((project) => {
-                const matchingInstance = findInstanceForProject(project);
-                const isStopping = matchingInstance?.state === "stopping";
-                return (
-                  <div
-                    key={project.url}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                    style={{ boxShadow: "var(--blue-outline)" }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-100">{project.name}</div>
-                      <div className="mt-0.5 font-mono text-sm text-zinc-400">{project.version}</div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {matchingInstance && !isStopping && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setLogInstanceId((prev) => (prev === matchingInstance.id ? null : matchingInstance.id))
-                          }
-                          className={`cursor-pointer rounded p-1.5 transition-colors ${
-                            logInstanceId === matchingInstance?.id
-                              ? "bg-blue-900/50 text-blue-300"
-                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
-                          }`}
-                          aria-label="Toggle logs"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveActive(project)}
-                        disabled={isStopping}
-                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                        aria-label="Stop and remove from active"
-                      >
-                        {isStopping ? (
-                          <svg
-                            className="h-5 w-5 animate-spin text-zinc-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            aria-hidden
-                          >
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray="24 48"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        ) : (
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-              {runningOnly.map((inst) => {
-                const isStopping = inst.state === "stopping";
-                return (
-                  <div
-                    key={inst.id}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                    style={{ boxShadow: "var(--blue-outline)" }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-100">{inst.app}</div>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <span className="font-mono text-sm text-zinc-400">{inst.version}</span>
-                        <span className="rounded bg-zinc-700 px-1.5 py-0.5 text-xs text-zinc-400">on robot</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {!isStopping && (
-                        <button
-                          type="button"
-                          onClick={() => setLogInstanceId((prev) => (prev === inst.id ? null : inst.id))}
-                          className={`cursor-pointer rounded p-1.5 transition-colors ${
-                            logInstanceId === inst.id
-                              ? "bg-blue-900/50 text-blue-300"
-                              : "text-zinc-400 hover:bg-zinc-700 hover:text-zinc-100"
-                          }`}
-                          aria-label="Toggle logs"
-                        >
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleStopInstance(inst)}
-                        disabled={isStopping}
-                        className="cursor-pointer rounded p-1.5 text-zinc-400 hover:bg-zinc-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-70"
-                        aria-label="Stop on robot"
-                      >
-                        {isStopping ? (
-                          <svg
-                            className="h-5 w-5 animate-spin text-zinc-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            aria-hidden
-                          >
-                            <circle
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeDasharray="24 48"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        ) : (
-                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Log panel for selected instance */}
-          {logInstanceId && connection && instances.some((i) => i.id === logInstanceId) && (
-            <div className="mt-4">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-zinc-400">Streaming logs from</span>
-                  <span className="font-mono font-medium text-zinc-200">
-                    {instances.find((i) => i.id === logInstanceId)?.app ?? logInstanceId.slice(0, 8)}
-                  </span>
-                  <span className="font-mono text-xs text-zinc-500">
-                    {instances.find((i) => i.id === logInstanceId)?.version}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setLogInstanceId(null)}
-                  className="cursor-pointer rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                  aria-label="Close log panel"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="h-[400px]">
-                <LogViewer key={logInstanceId} connection={connection} instanceId={logInstanceId} />
-              </div>
-            </div>
-          )}
-        </section>
-
-        <div className="relative -mx-6 mb-8 border-t border-b border-zinc-800/70 bg-zinc-900/40 py-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),inset_0_-1px_0_0_rgba(0,0,0,0.2)]">
-          <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-zinc-500/35 to-transparent"
-            aria-hidden
-          />
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-zinc-500/25 to-transparent"
-            aria-hidden
-          />
-          <div className="relative px-6">
-            <div className="flex justify-center px-2">
-              <div ref={filtersBarRef} className="flex w-full max-w-2xl items-center gap-3">
-                <label htmlFor="apps-search" className="sr-only">
-                  Search apps
-                </label>
-                <input
-                  id="apps-search"
-                  type="search"
-                  value={appSearchQuery}
-                  onChange={(e) => setAppSearchQuery(e.target.value)}
-                  placeholder="Search available apps and components…"
-                  autoComplete="off"
-                  className="focus-blue-glow min-w-0 flex-1 rounded-md border border-zinc-600 bg-zinc-800 px-3 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none"
-                />
-                <div className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setFiltersPopoverOpen((o) => !o)}
-                    aria-expanded={filtersPopoverOpen}
-                    aria-haspopup="dialog"
-                    aria-controls="app-source-filters-popover"
-                    className={`rounded-md border px-3 py-2.5 text-sm font-medium transition-colors ${
-                      sourceFiltersOn
-                        ? "border-blue-500/60 bg-zinc-800 text-blue-200 hover:bg-zinc-700"
-                        : "border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
-                    }`}
-                  >
-                    Filters
-                  </button>
-                  {filtersPopoverOpen && (
-                    <div
-                      id="app-source-filters-popover"
-                      role="dialog"
-                      aria-label="Filter by repository"
-                      className="absolute top-full right-0 z-50 mt-2 w-72 rounded-lg border border-zinc-700 bg-zinc-800 py-3 shadow-xl"
-                    >
-                      <div className="border-b border-zinc-700 px-3 pb-2 text-xs font-medium tracking-wide text-zinc-500 uppercase">
-                        Repository
-                      </div>
-                      <ul className="max-h-72 overflow-y-auto px-2 py-2">
-                        {RELEASE_SOURCE_ORDER.map((source) => (
-                          <li key={source}>
-                            <label className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-2 hover:bg-zinc-700/80">
-                              <input
-                                type="checkbox"
-                                checked={enabledReleaseSources[source]}
-                                onChange={() =>
-                                  setEnabledReleaseSources((prev) => ({
-                                    ...prev,
-                                    [source]: !prev[source],
-                                  }))
-                                }
-                                className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 bg-zinc-900 text-blue-500 focus:ring-blue-500/50"
-                              />
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-medium text-zinc-100">
-                                  {RELEASE_SOURCE_LABEL[source]}
-                                </span>
-                                <span className="mt-0.5 block font-mono text-xs break-all text-zinc-500">
-                                  {RELEASE_SOURCE_REPO[source]}
-                                </span>
-                              </span>
-                            </label>
-                          </li>
-                        ))}
-                      </ul>
-                      <div className="border-t border-zinc-700 px-3 pt-3">
-                        <button
-                          type="button"
-                          onClick={() => setEnabledReleaseSources(allReleaseSourcesEnabled())}
-                          className="text-xs font-medium text-blue-400 hover:text-blue-300"
-                        >
-                          Reset filters
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+    <div className="flex flex-col gap-6 p-4 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">App Store</h1>
+          <p className="text-sm text-muted-foreground">Choose an app, pick a version, and run it on your robot.</p>
         </div>
-
-        {connection?.devMode && (
-          <section className="mb-8">
-            <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Locally</h2>
-            <p className="mb-4 text-sm text-zinc-500">
-              Container images on this machine from your local Cortex server.
-            </p>
-            {loadingLocalImages && (
-              <div className="flex items-center justify-center py-8 text-zinc-400">Loading local images…</div>
-            )}
-            {localImagesError && (
-              <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-                <span className="flex-1">{localImagesError}</span>
-                <button
-                  type="button"
-                  onClick={() => setLocalImagesError(null)}
-                  className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
-                  aria-label="Dismiss"
+        <Button variant="outline" size="sm" onClick={refresh} disabled={loadingOnline || loadingInstalled}>
+          <ArrowClockwiseIcon data-icon="inline-start" />
+          Refresh
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <InputGroup className="max-w-sm">
+          <InputGroupAddon>
+            <MagnifyingGlassIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            type="search"
+            aria-label="Search apps"
+            placeholder="Search apps…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </InputGroup>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="outline" />}>
+            <FunnelIcon data-icon="inline-start" />
+            Sources
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Online repositories</DropdownMenuLabel>
+              {Object.values(sources).map((source) => (
+                <DropdownMenuCheckboxItem
+                  key={source}
+                  checked={enabledSources.includes(source)}
+                  onCheckedChange={(checked) =>
+                    setEnabledSources((prev) => (checked ? [...prev, source] : prev.filter((s) => s !== source)))
+                  }
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+                  {source}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {actionError && (
+        <Alert variant="destructive">
+          <AlertDescription>{actionError}</AlertDescription>
+        </Alert>
+      )}
+      {notice && (
+        <Alert role="status">
+          <AlertDescription>{notice}</AlertDescription>
+        </Alert>
+      )}
+      <div className="grid items-start gap-6 xl:grid-cols-2">
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>
+              <h2>Online apps</h2>
+            </CardTitle>
+            <CardDescription>Releases from Core, Apps, Drivers, Control, and Sensing.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {onlineError && (
+              <Alert variant="destructive">
+                <AlertDescription>{onlineError}</AlertDescription>
+              </Alert>
             )}
-            {!loadingLocalImages && !localImagesError && localImages.length === 0 && (
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-                No local container images reported.
-              </div>
+            <CatalogList
+              apps={filteredOnline}
+              loading={loadingOnline}
+              emptyTitle={query || enabledSources.length < 5 ? "No matching apps" : "No online apps"}
+              emptyDescription="Try another search, adjust the sources, or refresh the catalog."
+            />
+          </CardContent>
+        </Card>
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>
+              <h2>Installed apps</h2>
+            </CardTitle>
+            <CardDescription>
+              {connection?.devMode
+                ? "Container images installed on this computer."
+                : "Container images installed on the connected robot."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {installedError && (
+              <Alert variant="destructive">
+                <AlertDescription>{installedError}</AlertDescription>
+              </Alert>
             )}
-            {!loadingLocalImages && !localImagesError && localImages.length > 0 && filteredLocalRows.length === 0 && (
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-                No apps match your search.
-              </div>
-            )}
-            {!loadingLocalImages && !localImagesError && filteredLocalRows.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredLocalRows.map((row) => {
-                  const { repository, tag, img } = row;
-                  const shortName = repoNameFromOwnerRepo(repository);
-                  const hasTag = tag.length > 0;
-                  const canRun = hasTag && connection && (connection.token || isLocalRobotHost(connection));
-                  const highlighted =
-                    (hasTag && isActive(localProjectUrl(repository, tag))) ||
-                    (hasTag && isVersionRunningOnRobot(shortName, tag));
-                  return (
-                    <div
-                      key={`${repository}:${tag}:${img.id}`}
-                      className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                      style={{
-                        boxShadow: highlighted ? "var(--blue-outline)" : "none",
-                      }}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="font-medium text-zinc-100">{shortName}</div>
-                        <div className="mt-0.5 font-mono text-sm text-zinc-400">{hasTag ? tag : "(untagged)"}</div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="rounded bg-zinc-700 px-2 py-0.5 text-xs break-all text-zinc-300">
-                            {repository}
-                          </span>
-                        </div>
-                        <div className="mt-2 text-xs text-zinc-500">
-                          <span className="text-zinc-600">Size</span> <span className="text-zinc-400">{img.size}</span>
-                          <span className="mx-2 text-zinc-700">·</span>
-                          <span className="text-zinc-600">Created</span>{" "}
-                          <span className="text-zinc-400">{img.created_at}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRunLocalImage(repository, tag)}
-                        disabled={!canRun}
-                        title={!hasTag ? "Image has no tag" : !connection ? "Connect to a robot" : undefined}
-                        className="shrink-0 cursor-pointer rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Run
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        )}
-
-        <section>
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Available Online</h2>
-
-          {loadingAvailableReleases && (
-            <div className="flex items-center justify-center py-12 text-zinc-400">Loading releases…</div>
-          )}
-
-          {availableError && (
-            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{availableError}</span>
-              <button
-                type="button"
-                onClick={() => setAvailableError(null)}
-                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
-                aria-label="Dismiss"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {!loadingAvailableReleases && !availableError && availableGroups.length === 0 && (
-            <div className="py-12 text-center text-zinc-400">No releases found.</div>
-          )}
-
-          {!loadingAvailableReleases &&
-            !availableError &&
-            availableGroups.length > 0 &&
-            filteredAvailableGroups.length === 0 && (
-              <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
-            )}
-
-          {!loadingAvailableReleases && !availableError && filteredAvailableGroups.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredAvailableGroups.map((group) => {
-                const cardRepos = uniqueReposForGroup(group);
-                const commonChannels = getCommonReleaseChannels(group.versions);
-                const menuKey = `available:${group.groupName}`;
-                return (
-                  <div
-                    key={menuKey}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                    style={{
-                      boxShadow:
-                        group.versions.some((v) => isActive(v.html_url)) ||
-                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
-                          ? "var(--blue-outline)"
-                          : "none",
-                    }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-100">{group.groupName}</div>
-                      <div className="mt-0.5 text-sm text-zinc-400">
-                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {commonChannels.map((channel) => (
-                          <ReleaseTag
-                            key={channel}
-                            label={RELEASE_CHANNEL_LABELS[channel]}
-                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
-                          />
-                        ))}
-                        {cardRepos.map((repo) => (
-                          <ReleaseTag key={repo} label={repo} className="bg-zinc-700 text-zinc-300" />
-                        ))}
-                      </div>
-                    </div>
-                    <VersionMenu
-                      group={group}
-                      appSlug={groupNameToSlug(group.groupName)}
-                      onSelectVersion={handleSelectVersion}
-                      activeProjectUrls={activeProjectUrls}
-                      isVersionRunningOnRobot={(tagName) => isVersionRunningOnRobot(group.groupName, tagName)}
-                      open={openMenuGroup === menuKey}
-                      onToggle={() => setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))}
-                      onClose={() => setOpenMenuGroup(null)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-8">
-          <h2 className="mb-4 text-lg font-medium text-zinc-200">Components</h2>
-
-          {loadingComponentReleases && (
-            <div className="flex items-center justify-center py-12 text-zinc-400">Loading releases…</div>
-          )}
-
-          {componentsError && (
-            <div className="flex items-start gap-3 rounded-lg border border-red-900/50 bg-red-950/30 px-4 py-3 text-sm text-red-300">
-              <span className="flex-1">{componentsError}</span>
-              <button
-                type="button"
-                onClick={() => setComponentsError(null)}
-                className="shrink-0 rounded p-1 text-red-300 hover:bg-red-900/30 hover:text-red-200"
-                aria-label="Dismiss"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          )}
-
-          {!loadingComponentReleases && !componentsError && componentGroups.length === 0 && (
-            <div className="py-12 text-center text-zinc-400">No releases found.</div>
-          )}
-
-          {!loadingComponentReleases &&
-            !componentsError &&
-            componentGroups.length > 0 &&
-            filteredComponentGroups.length === 0 && (
-              <div className="py-12 text-center text-sm text-zinc-400">{catalogEmptyMessage}</div>
-            )}
-
-          {!loadingComponentReleases && !componentsError && filteredComponentGroups.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredComponentGroups.map((group) => {
-                const cardRepos = uniqueReposForGroup(group);
-                const commonChannels = getCommonReleaseChannels(group.versions);
-                const menuKey = `components:${group.groupName}`;
-                return (
-                  <div
-                    key={menuKey}
-                    className="flex items-center justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/80 px-4 py-4 transition-all"
-                    style={{
-                      boxShadow:
-                        group.versions.some((v) => isActive(v.html_url)) ||
-                        group.versions.some((v) => isVersionRunningOnRobot(group.groupName, v.tag_name))
-                          ? "var(--blue-outline)"
-                          : "none",
-                    }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-zinc-100">{group.groupName}</div>
-                      <div className="mt-0.5 text-sm text-zinc-400">
-                        {group.versions.length} version{group.versions.length !== 1 ? "s" : ""}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {commonChannels.map((channel) => (
-                          <ReleaseTag
-                            key={channel}
-                            label={RELEASE_CHANNEL_LABELS[channel]}
-                            className={RELEASE_CHANNEL_BADGE_CLASSES[channel]}
-                          />
-                        ))}
-                        {cardRepos.map((repo) => (
-                          <ReleaseTag key={repo} label={repo} className="bg-zinc-700 text-zinc-300" />
-                        ))}
-                      </div>
-                    </div>
-                    <VersionMenu
-                      group={group}
-                      appSlug={groupNameToSlug(group.groupName)}
-                      onSelectVersion={handleSelectVersion}
-                      activeProjectUrls={activeProjectUrls}
-                      isVersionRunningOnRobot={(tagName) => isVersionRunningOnRobot(group.groupName, tagName)}
-                      open={openMenuGroup === menuKey}
-                      onToggle={() => setOpenMenuGroup((prev) => (prev === menuKey ? null : menuKey))}
-                      onClose={() => setOpenMenuGroup(null)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+            <CatalogList
+              apps={filteredInstalled}
+              loading={loadingInstalled}
+              emptyTitle={
+                !connection ? "Connect to view installed apps" : query ? "No matching apps" : "No installed apps"
+              }
+              emptyDescription={
+                !connection
+                  ? "Open the robot connection in the topbar, or choose Dev Mode for local apps."
+                  : "Run an online app to install its image, or build an image in your container runtime."
+              }
+            />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

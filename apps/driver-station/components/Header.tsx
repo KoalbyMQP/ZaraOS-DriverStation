@@ -1,59 +1,50 @@
 "use client";
 
-import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
+import { SidebarTrigger } from "@repo/ui/components/sidebar";
 import {
-  BatteryMedium02Icon,
-  CellularNetworkIcon,
+  BatteryVerticalHighIcon,
+  CellSignalFullIcon,
   CpuIcon,
-  Database01Icon,
-  GpuIcon,
-  HugeiconsIcon,
-  Moon02Icon,
-  RamMemoryIcon,
+  DatabaseIcon,
+  GraphicsCardIcon,
+  MemoryIcon,
 } from "@repo/ui/icons";
 import { AccountMenu } from "@/components/AccountMenu";
 import { RobotConnectionControl } from "@/components/RobotConnectionControl";
 
 const metrics = [
-  { label: "Battery", icon: BatteryMedium02Icon },
+  { label: "Battery", icon: BatteryVerticalHighIcon },
   { label: "CPU", icon: CpuIcon },
-  { label: "Memory", icon: RamMemoryIcon },
-  { label: "Storage", icon: Database01Icon },
-  { label: "GPU", icon: GpuIcon },
-  { label: "Latency", icon: CellularNetworkIcon },
+  { label: "Memory", icon: MemoryIcon },
+  { label: "Storage", icon: DatabaseIcon },
+  { label: "GPU", icon: GraphicsCardIcon },
+  { label: "Latency", icon: CellSignalFullIcon },
 ];
 
 export function Header() {
   return (
-    <header className="flex min-h-14 min-w-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-border bg-sidebar px-4 py-2">
+    <header
+      role="banner"
+      className="flex min-h-[57px] shrink-0 flex-wrap items-center gap-2 border-b border-shell-border bg-sidebar px-4 py-4 md:h-[57px] md:py-0"
+    >
+      <SidebarTrigger className="md:hidden" />
       <RobotConnectionControl />
       <ul
         aria-label="Robot metrics"
-        className="order-last flex w-full items-center justify-center gap-4 py-1 text-muted-foreground xl:order-none xl:min-w-0 xl:flex-1 xl:py-0"
+        className="order-last flex w-full items-center justify-center gap-4 py-1 text-muted-foreground lg:order-none lg:min-w-0 lg:flex-1 lg:py-0"
       >
-        {metrics.map(({ label, icon }) => (
-          <li key={label} className="flex items-center gap-0.5" aria-label={`${label}: unknown`} title={label}>
-            <HugeiconsIcon icon={icon} className="size-4" strokeWidth={1.5} aria-hidden="true" />
+        {metrics.map(({ label, icon: Icon }) => (
+          <li key={label} className="flex items-center" aria-label={`${label}: unknown`} title={label}>
+            <Icon className="size-4" aria-hidden="true" />
             <span className="font-mono text-[10px] leading-none tabular-nums">???</span>
           </li>
         ))}
       </ul>
-      <div className="ml-auto flex shrink-0 items-center gap-2">
-        <Button
-          variant="secondary"
-          size="xs"
-          nativeButton={false}
-          role="link"
-          render={<a href="https://example.com" />}
-        >
+      <div className="ml-auto flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="xs" nativeButton={false} role="link" render={<Link href="/documentation" />}>
           Documentation
-        </Button>
-        <Button variant="secondary" size="icon-xs" disabled aria-label="Dark mode (unavailable)">
-          <HugeiconsIcon icon={Moon02Icon} strokeWidth={1.5} aria-hidden="true" />
-        </Button>
-        <Button size="xs" nativeButton={false} role="link" render={<a href="https://example.com" />}>
-          Settings
         </Button>
         <AccountMenu />
       </div>

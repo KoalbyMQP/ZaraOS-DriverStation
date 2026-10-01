@@ -2,7 +2,7 @@ import repo from "@repo/eslint-config";
 import { defineConfig, globalIgnores } from "eslint/config";
 
 export default defineConfig([
-  globalIgnores(["apps/**/*", "packages/**/*"]),
+  globalIgnores(["apps/**/*", "packages/**/*", ".agents/skills/**"]),
   ...repo.base,
   {
     files: ["**/*.{js,mjs,cjs,jsx,mjsx,cjsx,ts,mts,cts,tsx,mtsx,ctsx}"],

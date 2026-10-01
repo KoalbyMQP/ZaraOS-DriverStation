@@ -9,7 +9,7 @@
     "baseColor": "neutral",
     "cssVariables": true
   },
-  "iconLibrary": "hugeicons",
+  "iconLibrary": "phosphor",
   "aliases": {
     "components": "@repo/ui/components",
     "utils": "@repo/ui/lib/utils",

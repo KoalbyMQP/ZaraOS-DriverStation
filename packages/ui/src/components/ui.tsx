@@ -1,7 +1,9 @@
 import type { ComponentProps } from "react";
-import { Geist, Source_Serif_4, JetBrains_Mono } from "next/font/google";
+import { Geist, Inter, Source_Serif_4, JetBrains_Mono } from "next/font/google";
 import "../styles/globals.css";
 import { cn } from "../lib/utils";
+
+const fontInterface = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 const fontSans = Geist({
   subsets: ["latin"],
@@ -21,7 +23,14 @@ const fontMono = JetBrains_Mono({
 export function UI({ children, className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn(fontSans.variable, fontSerif.variable, fontMono.variable, "font-sans antialiased", className)}
+      className={cn(
+        fontInterface.variable,
+        fontSans.variable,
+        fontSerif.variable,
+        fontMono.variable,
+        "font-sans antialiased",
+        className
+      )}
       {...props}
     >
       {children}

@@ -7,10 +7,15 @@ interface Props {
   robotUrl: string; // e.g. "http://192.168.1.10:8080"
   signedFetch: (url: string, init?: RequestInit) => Promise<Response>;
   onClose?: () => void;
+  onTitleChange?: (title: string) => void;
 }
 
-export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props) {
+export default function RobotTerminal({ robotUrl, signedFetch, onClose, onTitleChange }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const titleCallback = useRef(onTitleChange);
+  useEffect(() => {
+    titleCallback.current = onTitleChange;
+  }, [onTitleChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -30,6 +35,7 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
     });
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
+    term.onTitleChange((title) => titleCallback.current?.(title));
     term.open(containerRef.current);
     fitAddon.fit();
 
@@ -41,7 +47,7 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose }: Props)
     });
 
     const ro = new ResizeObserver(() => {
-      fitAddon.fit(); // triggers term.onResize which calls sendResize
+      if (containerRef.current?.clientWidth && containerRef.current.clientHeight) fitAddon.fit();
     });
     if (containerRef.current) ro.observe(containerRef.current);
 
