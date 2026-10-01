@@ -30,8 +30,8 @@ export default function AuthenticatePage() {
 
   // Show a brief loading state while MSAL initialises or redirects
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
-      <p className="text-zinc-400">Redirecting to sign-in…</p>
+    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <p className="text-muted-foreground">Redirecting to sign-in…</p>
     </div>
   );
 }

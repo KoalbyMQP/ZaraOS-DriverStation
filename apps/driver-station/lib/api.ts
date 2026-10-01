@@ -53,14 +53,21 @@ function mapGitHubRelease(raw: {
 }
 
 async function fetchGitHubReleases(ownerRepo: string): Promise<Release[]> {
-  const url = `${GITHUB_API}/repos/${ownerRepo}/releases?per_page=50`;
-  const res = await fetch(url, { headers: GITHUB_HEADERS });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = (data as { message?: string }).message || res.statusText;
-    throw new Error(msg);
+  let url: string | undefined = `${GITHUB_API}/repos/${ownerRepo}/releases?per_page=100`;
+  const releases: Release[] = [];
+  while (url) {
+    const res: Response = await fetch(url, { headers: GITHUB_HEADERS });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error((data as { message?: string }).message || res.statusText);
+    releases.push(...(Array.isArray(data) ? data : []).map(mapGitHubRelease));
+    // Follow GitHub pagination so version menus include older releases too.
+    const next = res.headers
+      .get("link")
+      ?.split(",")
+      .find((link) => link.includes('rel="next"'));
+    url = next?.match(/<([^>]+)>/)?.[1];
   }
-  return (Array.isArray(data) ? data : []).map(mapGitHubRelease);
+  return releases;
 }
 
 export async function getCoreReleases(): Promise<{ releases: Release[] }> {
@@ -138,7 +145,7 @@ export function getReleaseGroupName(release: Release): string {
   return name;
 }
 
-export function getReleaseChannel(release: Release): ReleaseChannel | null {
+export function getReleaseChannel(release: Pick<Release, "tag_name" | "name" | "prerelease">): ReleaseChannel | null {
   const haystack = `${release.tag_name} ${release.name ?? ""}`.toLowerCase();
   const channelMatchers: Array<[ReleaseChannel, RegExp]> = [
     ["alpha", /(?:^|[.\-_/+\s])alpha(?:[.\-_/+\s]?\d+)?(?:$|[.\-_/+\s])/],

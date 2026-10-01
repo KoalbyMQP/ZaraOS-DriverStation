@@ -91,9 +91,9 @@ test("restores a cached account without redirecting and allows app navigation", 
 
   await page.goto("/console");
   await expect(page.getByRole("banner")).toBeVisible();
-  await expect(page.getByText("No robot connected. Use the Connect button in the header.")).toBeVisible();
+  await expect(page.getByText("Open the robot connection in the topbar to connect or use Dev Mode.")).toBeVisible();
 
-  await page.getByRole("link", { name: "Apps", exact: true }).click();
+  await page.getByRole("link", { name: "App Store", exact: true }).click();
   await expect(page).toHaveURL("/apps");
   await expect(page.getByRole("banner")).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();

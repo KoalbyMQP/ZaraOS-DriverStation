@@ -10,11 +10,13 @@
     "lint": "eslint --fix",
     "lint:check": "eslint",
     "test:auth": "playwright test --config=playwright.auth.config.ts",
+    "test:ui": "playwright test --config=playwright.ui.config.ts",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@repo/ui": "workspace:*",
     "@azure/msal-browser": "^5.6.2",
     "@azure/msal-react": "^5.2.0",
     "@xterm/addon-fit": "^0.11.0",
