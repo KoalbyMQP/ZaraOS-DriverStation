@@ -10,7 +10,7 @@ import { PlusIcon, TerminalWindowIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { robotBaseUrl, signedFetch } from "@/lib/robot-api";
 
-const RobotTerminal = dynamic(() => import("@/components/SSHTerminal"), {
+const RobotTerminal = dynamic(async () => (await import("@/components/SSHTerminal")).default, {
   ssr: false,
   loading: () => (
     <div role="status" className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
