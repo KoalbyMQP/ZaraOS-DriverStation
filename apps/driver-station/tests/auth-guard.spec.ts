@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("before hydration", () => {
   test.use({ javaScriptEnabled: false });
 
-  for (const path of ["/", "/console", "/apps", "/logs"]) {
+  for (const path of ["/", "/console", "/appstore", "/logs"]) {
     test(`${path} serves a loading screen without app content`, async ({ page }) => {
       await page.goto(path);
 
@@ -49,7 +49,7 @@ test("signed-out users redirect before page or connection effects run", async ({
     );
   });
 
-  await page.goto("/apps");
+  await page.goto("/appstore");
 
   await expect(page.getByRole("heading", { name: "Microsoft sign-in" })).toBeVisible();
   expect(visitedPaths).toContain("/authenticate");
@@ -94,7 +94,7 @@ test("restores a cached account without redirecting and allows app navigation", 
   await expect(page.getByText("Open the robot connection in the topbar to connect or use Dev Mode.")).toBeVisible();
 
   await page.getByRole("link", { name: "App Store", exact: true }).click();
-  await expect(page).toHaveURL("/apps");
+  await expect(page).toHaveURL("/appstore");
   await expect(page.getByRole("banner")).toBeVisible();
   await page.getByRole("button", { name: "Account menu" }).click();
   await expect(page.getByText("Test User", { exact: true })).toBeVisible();

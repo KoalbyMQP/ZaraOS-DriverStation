@@ -79,7 +79,7 @@ test("version menus include paginated GitHub releases", async ({ page }) => {
       ],
     });
   });
-  await page.goto("/apps");
+  await page.goto("/appstore");
   const online = page.locator('[data-slot="card"]').filter({ has: page.getByRole("heading", { name: "Online apps" }) });
   await expect(online.getByText("2 versions")).toBeVisible();
   await expect(online.getByRole("button", { name: "Run Face" })).toBeDisabled();
