@@ -58,7 +58,7 @@ export default function ConsolePage() {
           key={session.id}
           value={session.id}
           keepMounted
-          className="min-h-0 overflow-hidden data-[hidden]:hidden [&[inert]]:hidden"
+          className="min-h-0 overflow-hidden data-hidden:hidden [[inert]]:hidden"
         >
           {connection ? (
             <RobotTerminal

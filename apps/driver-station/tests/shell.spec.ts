@@ -28,8 +28,8 @@ test("navigation, documentation, account menu, and mobile sidebar use the new sh
   await expect(page.getByText("ROBOT CONNECTION", { exact: true })).toHaveCount(0);
   await expect(page.getByText("ACTIVE PROJECTS", { exact: true })).toHaveCount(0);
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("documentation.png") });
-  await page.getByRole("link", { name: "Dashboards", exact: true }).click();
-  await expect(page.getByText("Dashboards aren't implemented yet.", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page.getByText("Connect to a robot and open an App from the sidebar.", { exact: true })).toBeVisible();
   await expect(page.locator("#page-content").getByRole("button")).toHaveCount(0);
   await expect(page.locator("#page-content").getByRole("link")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "User Guide" })).toHaveCount(0);
@@ -160,7 +160,11 @@ const release = (id: number, name: string, tag: string) => ({
 test("App Store lists versions and installed images; launched apps update the sidebar", async ({ page }, testInfo) => {
   await page.route("https://api.github.com/repos/KoalbyMQP/Core/releases?*", (route) =>
     route.fulfill({
-      json: [release(1, "Face", "v2.0.0-alpha"), release(2, "Face", "v1.0.0"), release(3, "Navigation", "v1.0.0")],
+      json: [
+        release(1, "Face", "v2.0.0-alpha"),
+        release(2, "Face", "v1.0.0"),
+        release(3, "Navigation", "navigation/v1.0.0"),
+      ],
     })
   );
   await page.route("http://127.0.0.1:8080/images", (route) =>
@@ -190,7 +194,7 @@ test("App Store lists versions and installed images; launched apps update the si
     instances = instances.filter((i) => i.id !== id);
     return route.fulfill({ json: { state: "stopped" } });
   });
-  await page.goto("/apps");
+  await page.goto("/appstore");
   await connectDev(page);
   const online = page
     .locator('[data-slot="card"]')
@@ -211,22 +215,119 @@ test("App Store lists versions and installed images; launched apps update the si
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("app-store.png") });
   await page.getByRole("menuitem", { name: "v1.0.0", exact: true }).click();
   await expect.poll(() => launches.length).toBe(1);
-  expect(launches[0]).toEqual({ app: "face", version: "v1.0.0" });
+  expect(launches[0]).toEqual({ app: "face", version: "v1.0.0", image: "ghcr.io/koalbymqp/face:v1.0.0" });
   await expect(page.getByRole("heading", { name: "Running apps", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Stop", exact: true })).toHaveCount(0);
   await installed.getByRole("button", { name: "Run motor-tester", exact: true }).click();
   await page.getByRole("menuitem", { name: "latest", exact: true }).click();
   await expect.poll(() => launches.length).toBe(2);
   expect(launches[1]).toEqual({ app: "motor-tester", version: "latest", image: "local/motor-tester:latest" });
-  await page.getByRole("link", { name: "Dashboards", exact: true }).click();
-  await expect(page.getByText("Dashboards aren't implemented yet.", { exact: true })).toBeVisible();
+  await online.getByRole("button", { name: "Run Navigation", exact: true }).click();
+  await page.getByRole("menuitem", { name: "navigation/v1.0.0", exact: true }).click();
+  await expect.poll(() => launches.length).toBe(3);
+  expect(launches[2]).toEqual({
+    app: "navigation",
+    version: "navigation/v1.0.0",
+    image: "ghcr.io/koalbymqp/navigation:navigation-v1.0.0",
+  });
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page).toHaveURL("/");
   await expect(
     page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("button", { name: "Face: running" })
   ).toBeVisible();
   await expect(
     page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("button", { name: "Motor Tester: running" })
   ).toBeVisible();
-  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("dashboard.png") });
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("home.png") });
+});
+
+test("online apps can launch an image directly and show it in the sidebar", async ({ page }, testInfo) => {
+  const launches: Record<string, string>[] = [];
+  let running = false;
+  const instance = () => ({
+    id: "direct-image-1",
+    app: "python-example",
+    version: "test-1",
+    image: "ghcr.io/koalbymqp/python-example:test-1",
+    state: running ? "running" : "starting",
+  });
+  await page.route("http://127.0.0.1:8080/images", (route) =>
+    route.fulfill({
+      json: {
+        images: running ? [{ repository: "ghcr.io/koalbymqp/python-example", tags: ["test-1"] }] : [],
+      },
+    })
+  );
+  await page.route("http://127.0.0.1:8080/instances", (route) => {
+    if (route.request().method() === "POST") {
+      launches.push(route.request().postDataJSON());
+      return route.fulfill({ status: 201, json: instance() });
+    }
+    return route.fulfill({ json: { instances: launches.length ? [instance()] : [] } });
+  });
+  await page.route("http://127.0.0.1:8080/instances/direct-image-1", (route) => route.fulfill({ json: instance() }));
+  await page.goto("/appstore");
+  const form = page.getByRole("form", { name: "Run container image" });
+  const input = form.getByRole("textbox", { name: "Container image", exact: true });
+  const run = form.getByRole("button", { name: "Run image", exact: true });
+  await input.fill("ghcr.io/koalbymqp/python-example:test-1");
+  await expect(run).toBeDisabled();
+  await connectDev(page);
+  await input.fill("   ");
+  await expect(run).toBeDisabled();
+  await input.fill("https://ghcr.io/koalbymqp/python-example:test-1");
+  await run.click();
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  await expect(form.getByRole("alert")).toContainText("without https://");
+  expect(launches).toHaveLength(0);
+  await input.fill("  ghcr.io/koalbymqp/python-example:test-1  ");
+  await input.press("Enter");
+  await expect.poll(() => launches.length).toBe(1);
+  expect(launches[0]).toEqual({
+    app: "python-example",
+    version: "test-1",
+    image: "ghcr.io/koalbymqp/python-example:test-1",
+  });
+  await expect(input).toBeDisabled();
+  await expect(form.getByRole("button", { name: "Starting…", exact: true })).toBeDisabled();
+  running = true;
+  await expect(run).toBeEnabled();
+  await expect(page.getByRole("status")).toContainText("python-example test-1 started.");
+  await expect(
+    page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("button", { name: "Python Example: running" })
+  ).toBeVisible();
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("direct-image.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("direct-image-mobile.png") });
+});
+
+test("direct images preserve registry ports and digests, and failed launches remain retryable", async ({ page }) => {
+  const launches: Record<string, string>[] = [];
+  await page.route("http://127.0.0.1:8080/instances", (route) => {
+    if (route.request().method() !== "POST") return route.fulfill({ json: { instances: [] } });
+    const launch = route.request().postDataJSON();
+    launches.push(launch);
+    return route.fulfill({ status: 500, json: { error: `Could not pull ${launch.image}` } });
+  });
+  await page.goto("/appstore");
+  await connectDev(page);
+  const input = page.getByRole("textbox", { name: "Container image", exact: true });
+  const run = page.getByRole("button", { name: "Run image", exact: true });
+  const digest = `sha256:${"a".repeat(64)}`;
+  for (const [image, version] of [
+    ["registry.test:5000/team/face:v2", "v2"],
+    ["registry.test:5000/team/face", "latest"],
+    [`ghcr.io/koalbymqp/face@${digest}`, digest],
+  ]) {
+    await input.fill(image!);
+    await run.click();
+    await expect(page.getByRole("alert").filter({ hasText: `Could not pull ${image}` })).toBeVisible();
+    expect(launches.at(-1)).toEqual({ app: "face", version, image });
+    await expect(run).toBeEnabled();
+    await expect(input).toHaveValue(image!);
+  }
+  expect(launches).toHaveLength(3);
 });
 
 test("remote robots show installed apps and failed launches remain retryable", async ({ page }) => {
@@ -244,7 +345,7 @@ test("remote robots show installed apps and failed launches remain retryable", a
       return route.fulfill({ status: 500, json: { error: "Container runtime unavailable" } });
     return route.fulfill({ json: { status: "ok", instances: [] } });
   });
-  await page.goto("/apps");
+  await page.goto("/appstore");
   await page.getByRole("button", { name: "Run face", exact: true }).click();
   await page.getByRole("menuitem", { name: "v1", exact: true }).click();
   await expect(page.getByRole("alert").filter({ hasText: "Container runtime unavailable" })).toBeVisible();

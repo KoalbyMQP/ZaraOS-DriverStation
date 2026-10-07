@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Badge } from "@repo/ui/components/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@repo/ui/components/collapsible";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@repo/ui/components/input-group";
@@ -26,7 +26,7 @@ import {
   useSidebar,
 } from "@repo/ui/components/sidebar";
 import {
-  PresentationChartIcon,
+  HouseIcon,
   TerminalWindowIcon,
   AppStoreLogoIcon,
   MagnifyingGlassIcon,
@@ -37,14 +37,15 @@ import {
 import { useProject } from "@/contexts/ProjectContext";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { installedApps } from "@/lib/installed-apps";
+import { useInstanceUi } from "@/contexts/AppUiContext";
 
 const subscribePlatform = () => () => {};
 const platformShortcut = () => (/Mac|iPhone|iPad/.test(navigator.userAgent) ? "⌘K" : "Ctrl K");
 
 const robotLinks = [
-  { href: "/", label: "Dashboards", icon: PresentationChartIcon },
+  { href: "/", label: "Home", icon: HouseIcon },
   { href: "/console", label: "Terminals", icon: TerminalWindowIcon },
-  { href: "/apps", label: "App Store", icon: AppStoreLogoIcon },
+  { href: "/appstore", label: "App Store", icon: AppStoreLogoIcon },
 ];
 
 function AppStatus({ state }: { state: string }) {
@@ -66,6 +67,32 @@ function AppStatus({ state }: { state: string }) {
     return <Badge variant="secondary">{state === "starting" ? "Starting" : "Stopping"}</Badge>;
   if (state === "unknown") return <Badge variant="outline">Unknown</Badge>;
   return <Badge variant="off">Off</Badge>;
+}
+
+function AppPageLinks({ instanceId, closeMobile }: { instanceId: string; closeMobile: () => void }) {
+  const { instance, descriptor } = useInstanceUi(instanceId);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  if (!instance?.ui?.descriptor_url) return null;
+  const path = `/app/${encodeURIComponent(instanceId)}`;
+  const pages = Object.entries(descriptor?.pages ?? { "": { title: "Interface" } });
+  return pages.map(([id, page]) => {
+    const active = pathname === path && (searchParams.get("page") ?? pages[0]?.[0]) === id;
+    return (
+      <SidebarMenuSubItem key={id}>
+        <SidebarMenuSubButton
+          render={<Link href={id ? { pathname: path, query: { page: id } } : path} />}
+          isActive={active}
+          aria-current={active ? "page" : undefined}
+          onClick={closeMobile}
+        >
+          <span>
+            {instance.version} · {page.title}
+          </span>
+        </SidebarMenuSubButton>
+      </SidebarMenuSubItem>
+    );
+  });
 }
 
 export function AppSidebar() {
@@ -171,6 +198,13 @@ export function AppSidebar() {
                         <CollapsibleContent>
                           <SidebarMenuSub>
                             {app.instances.map((instance) => (
+                              <AppPageLinks
+                                key={`ui-${instance.id}`}
+                                instanceId={instance.id}
+                                closeMobile={closeMobile}
+                              />
+                            ))}
+                            {app.instances.map((instance) => (
                               <SidebarMenuSubItem key={instance.id}>
                                 <SidebarMenuSubButton
                                   render={
@@ -188,7 +222,7 @@ export function AppSidebar() {
                               </SidebarMenuSubItem>
                             ))}
                             <SidebarMenuSubItem>
-                              <SidebarMenuSubButton render={<Link href="/apps" />} onClick={closeMobile}>
+                              <SidebarMenuSubButton render={<Link href="/appstore" />} onClick={closeMobile}>
                                 <span>Open in App Store</span>
                               </SidebarMenuSubButton>
                             </SidebarMenuSubItem>

@@ -3,6 +3,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import ConnectionHealthMonitor from "@/components/ConnectionHealthMonitor";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ProjectProvider } from "@/contexts/ProjectContext";
+import { AppUiProvider } from "@/contexts/AppUiContext";
 import { DriverStationShell } from "@/components/DriverStationShell";
 
 export default function AuthenticatedLayout({ children }: { children: ReactNode }) {
@@ -10,8 +11,10 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
     <AuthGuard>
       <ConnectionProvider>
         <ProjectProvider>
-          <ConnectionHealthMonitor />
-          <DriverStationShell>{children}</DriverStationShell>
+          <AppUiProvider>
+            <ConnectionHealthMonitor />
+            <DriverStationShell>{children}</DriverStationShell>
+          </AppUiProvider>
         </ProjectProvider>
       </ConnectionProvider>
     </AuthGuard>

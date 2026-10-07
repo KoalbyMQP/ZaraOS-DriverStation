@@ -15,7 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@repo/ui/components/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@repo/ui/components/input-group";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@repo/ui/components/field";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@repo/ui/components/input-group";
 import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "@repo/ui/components/item";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Spinner } from "@repo/ui/components/spinner";
@@ -53,6 +54,74 @@ type CatalogApp = {
   installationKnown?: boolean;
   channel?: string | null;
 };
+
+function DirectImageForm() {
+  const { connection } = useConnection();
+  const { startApp, pendingRuns } = useProject();
+  const [value, setValue] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const image = value.trim();
+  const url = `image:${image}`;
+  const pending = pendingRuns.includes(url);
+
+  function runImage() {
+    if (!connection || !image || pending) return;
+    const [repository = "", digest] = image.split("@");
+    // Read the tag from the last path segment so registry ports stay intact.
+    const [name = "", tag] = (repository.split("/").at(-1) ?? "").split(":");
+    const app = appSlug(name);
+    if (!app || /\s|:\/\//.test(image) || tag === "" || digest === "") {
+      setError("Enter an image reference such as ghcr.io/koalbymqp/python-example:test-1, without https://.");
+      return;
+    }
+    setError(null);
+    void startApp({ url, name, app, version: digest ?? tag ?? "latest", image });
+  }
+
+  return (
+    <form
+      aria-label="Run container image"
+      onSubmit={(event) => {
+        event.preventDefault();
+        runImage();
+      }}
+    >
+      <FieldGroup>
+        <Field data-invalid={!!error} data-disabled={pending}>
+          <FieldLabel htmlFor="container-image">Container image</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="container-image"
+              name="image"
+              placeholder="ghcr.io/koalbymqp/python-example:test-1"
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+                setError(null);
+              }}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={pending}
+              aria-invalid={!!error}
+              aria-describedby={error ? "container-image-error" : "container-image-help"}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton type="submit" variant="default" disabled={!connection || !image || pending}>
+                {pending && <Spinner data-icon="inline-start" aria-hidden="true" />}
+                {pending ? "Starting…" : "Run image"}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+          <FieldDescription id="container-image-help">
+            {connection ? "Run an image directly on the connected robot." : "Connect to a robot to run an image."}
+          </FieldDescription>
+          {error && <FieldError id="container-image-error">{error}</FieldError>}
+        </Field>
+      </FieldGroup>
+    </form>
+  );
+}
 
 function AppRow({ app }: { app: CatalogApp }) {
   const { connection } = useConnection();
@@ -208,12 +277,19 @@ export default function AppsPage() {
                   runnableTags(image.tags).length > 0
               ),
               installationKnown: !!connection && !loadingInstalled && !installedError,
-              versions: versions.map((version) => ({
-                url: version.html_url,
-                name: group.groupName,
-                app: appSlug(group.groupName),
-                version: version.tag_name,
-              })),
+              versions: versions.map((version) => {
+                const app = appSlug(group.groupName);
+                const owner = version.repo.toLowerCase().split("/")[0];
+                // Match docker/metadata-action's tag sanitization (e.g. startup/v1 -> startup-v1).
+                const imageTag = version.tag_name.replace(/[^a-zA-Z0-9_.-]+/g, "-");
+                return {
+                  url: version.html_url,
+                  name: group.groupName,
+                  app,
+                  version: version.tag_name,
+                  image: `ghcr.io/${owner}/${app}:${imageTag}`,
+                };
+              }),
             };
           })
         )
@@ -320,7 +396,7 @@ export default function AppsPage() {
         </Alert>
       )}
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-white">
           <CardHeader>
             <CardTitle>
               <h2>Online apps</h2>
@@ -328,6 +404,7 @@ export default function AppsPage() {
             <CardDescription>Releases from Core, Apps, Drivers, Control, and Sensing.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
+            <DirectImageForm />
             {onlineError && (
               <Alert variant="destructive">
                 <AlertDescription>{onlineError}</AlertDescription>

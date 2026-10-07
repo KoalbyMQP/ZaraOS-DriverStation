@@ -17,6 +17,10 @@
     "test:auth": {
       "dependsOn": ["^test:auth"]
     },
+    "test:app-ui": {
+      "cache": false,
+      "env": ["APP_UI_TEST_PRODUCTION"]
+    },
     "lint": {
       "dependsOn": ["^lint"],
       "cache": false

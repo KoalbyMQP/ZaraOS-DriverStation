@@ -154,6 +154,8 @@ export type RobotAppInstance = {
   stopped_at: string | null;
   error?: string | null;
   image?: string;
+  /** Optional browser-loadable ZaraOS UI descriptor, resolved relative to the robot origin. */
+  ui?: { descriptor_url: string };
 };
 
 export type InstancesResponse = {
@@ -181,7 +183,9 @@ export async function getImages(connection: Connection, signal?: AbortSignal): P
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string })?.error ?? `images failed: ${res.status}`);
   }
-  return res.json() as Promise<ImagesResponse>;
+  const data = (await res.json()) as ImagesResponse;
+  console.log(`[Cortex] GET ${res.url} (${res.status})`, JSON.stringify(data, null, 2));
+  return data;
 }
 
 /**

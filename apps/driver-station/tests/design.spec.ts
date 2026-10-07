@@ -2,7 +2,7 @@ import { test, expect } from "./ui-fixture";
 
 test.use({ viewport: { width: 1440, height: 1024 } });
 
-test("Figma shell geometry, stable selection typography, installed status, and empty Dashboard", async ({
+test("Figma shell geometry, stable selection typography, installed status, and home screen", async ({
   page,
 }, testInfo) => {
   await page.clock.install();
@@ -106,15 +106,17 @@ test("Figma shell geometry, stable selection typography, installed status, and e
   expect((await page.getByRole("button", { name: "New session" }).boundingBox())!.height).toBe(tabBox!.height);
   await expect(page.locator(".xterm-rows")).toContainText("root@koalby");
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("figma-terminal.png") });
-  await nav.getByRole("link", { name: "Dashboards", exact: true }).click();
+  await nav.getByRole("link", { name: "Home", exact: true }).click();
   expect(await readType()).toEqual(selectedType);
   const content = page.locator("#page-content");
-  await expect(content.locator('[data-slot="empty"]')).toContainText("Dashboards aren't implemented yet.");
+  await expect(content.locator('[data-slot="empty"]')).toContainText(
+    "Connect to a robot and open an App from the sidebar."
+  );
   await expect(content.getByRole("link")).toHaveCount(0);
   await expect(content.getByRole("button")).toHaveCount(0);
   await expect(page.locator('[data-slot="sidebar-inset"]')).toHaveCSS("background-color", "rgb(245, 245, 245)");
   await expect(header).toHaveCSS("background-color", "rgb(245, 245, 245)");
-  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("figma-dashboard.png") });
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("figma-home.png") });
   motorState = "stopped";
   await page.clock.fastForward(15000);
   await expect(apps.getByRole("button", { name: "Motor Tester: stopped" })).toContainText("Off");
