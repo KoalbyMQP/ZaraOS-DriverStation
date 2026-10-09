@@ -4,6 +4,7 @@
  *   bodyHash = hex(SHA256(raw_request_body))
  *   message = timestamp + "\n" + METHOD + "\n" + path + "\n" + bodyHash
  *   signature = hex(HMAC-SHA256(key=token, message=message))
+ * path matches Cortex's r.URL.Path: decoded pathname, without query parameters.
  */
 
 import type { Connection } from "@/contexts/ConnectionContext";
@@ -76,8 +77,8 @@ export async function signedFetch(
   options?: { signal?: AbortSignal }
 ): Promise<Response> {
   const b = body ?? "";
+  const url = `${robotBaseUrl(connection)}${path}`;
   if (isLocalRobotHost(connection)) {
-    const url = `${robotBaseUrl(connection)}${path}`;
     return fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -89,8 +90,9 @@ export async function signedFetch(
   if (!token) {
     throw new Error("Connection has no token; cannot sign request");
   }
-  const { timestamp, signature } = await signRequest(token, method, path, b);
-  const url = `${robotBaseUrl(connection)}${path}`;
+  // Cortex verifies r.URL.Path, while fetch still needs the full URL (e.g. log stream options).
+  const signingPath = decodeURIComponent(new URL(url).pathname);
+  const { timestamp, signature } = await signRequest(token, method, signingPath, b);
   return fetch(url, {
     method,
     headers: {
