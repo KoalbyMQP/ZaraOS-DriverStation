@@ -102,7 +102,7 @@ function DirectImageForm() {
               autoComplete="off"
               autoCapitalize="none"
               spellCheck={false}
-              disabled={pending}
+              disabled={false}
               aria-invalid={!!error}
               aria-describedby={error ? "container-image-error" : "container-image-help"}
             />
@@ -396,7 +396,7 @@ export default function AppsPage() {
         </Alert>
       )}
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card className="min-w-0 bg-white">
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>
               <h2>Online apps</h2>
