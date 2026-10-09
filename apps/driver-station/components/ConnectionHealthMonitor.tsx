@@ -4,10 +4,10 @@ import { useEffect } from "react";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { checkRobotHealth } from "@/lib/robot-api";
 
-const INTERVAL_MS = 60_000;
+const INTERVAL_MS = 10_000;
 
 /**
- * After load and every 60s while a robot (or dev mode) connection exists,
+ * After load and every 10s while a robot (or dev mode) connection exists,
  * GET /health; disconnect if the robot is unreachable or unhealthy.
  */
 export default function ConnectionHealthMonitor() {
