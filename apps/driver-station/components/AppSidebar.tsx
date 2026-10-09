@@ -179,20 +179,22 @@ export function AppSidebar() {
             <nav aria-label="Apps">
               <SidebarMenu className="gap-1">
                 {matches("Motor control") && (
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      render={<Link href="/motor-control" />}
-                      isActive={pathname === "/motor-control"}
-                      aria-current={pathname === "/motor-control" ? "page" : undefined}
-                      onClick={closeMobile}
-                    >
-                      <SlidersHorizontalIcon aria-hidden="true" />
-                      <span>Motor control</span>
-                      <Badge variant="outline" className="ml-auto">
-                        Preview
-                      </Badge>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <>
+                    {/* <SidebarMenuItem>
+                      <SidebarMenuButton
+                        render={<Link href="/motor-control" />}
+                        isActive={pathname === "/motor-control"}
+                        aria-current={pathname === "/motor-control" ? "page" : undefined}
+                        onClick={closeMobile}
+                      >
+                        <SlidersHorizontalIcon aria-hidden="true" />
+                        <span>Motor control</span>
+                        <Badge variant="outline" className="ml-auto">
+                          Preview
+                        </Badge>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem> */}
+                  </>
                 )}
                 {imagesLoading ? (
                   <SidebarMenuItem>
