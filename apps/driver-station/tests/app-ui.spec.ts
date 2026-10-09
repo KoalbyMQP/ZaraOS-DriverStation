@@ -156,7 +156,7 @@ test("accepts component-only Apps without exposing or loading their components",
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("button", { name: /Test App:/ })
     .click();
-  await expect(page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("link")).toHaveCount(2);
+  await expect(page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("link")).toHaveCount(3);
   expect(await loadedModules(page)).toEqual([]);
   await page.goto("/app/test-1?page=counter");
   await expect(page.getByText("This App page is unavailable.")).toBeVisible();

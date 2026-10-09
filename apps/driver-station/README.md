@@ -51,6 +51,33 @@ returned by Cortex's `/images` endpoint.
 
 ## App UI host — stage 1
 
+### Motor control preview
+
+Open **Apps → Motor control · Preview** in the sidebar, or visit `/motor-control`.
+This local UI works without a robot or an installed app. It supports a joint name,
+target angle in degrees, movement time in milliseconds, and green/blue/red motor
+LED selection. **Review movement** validates and reviews the draft locally;
+editing a field clears the review and **Reset** restores the initial values.
+
+No motor API calls are implemented. Sending a movement, reading an angle, and
+enabling/disabling torque are disabled; feedback remains **Unknown**. Input
+validation checks for a nonempty joint, a finite angle, and positive whole-number
+milliseconds, but does not invent hardware limits. The 1,000 ms initial value is
+a UI draft, not a verified hardware setting.
+
+The app-owned component is `components/apps/motor-control/MotorControlPage.tsx`;
+it has no Next.js, connection-context, or transport dependency. `movement.ts`
+contains local UI types, not a proposed HTTP payload. Future integration needs
+the actual motor app endpoints, confirmed time units/limits and joint bounds,
+an instance-scoped transport, and a published federation descriptor/build. The
+preview is not registered as an installed app or a remote module.
+
+Run `pnpm --filter @repo/driver-station test:ui motor-control.spec.ts` to check
+validation, desktop/mobile interactions, reset, and the absence of motor requests
+even while connected to a robot.
+
+### Remote app pages
+
 Apps expose **pages** and **components** as React modules through Module Federation.
 The host discovers both, adds each page to its App's sidebar section, and loads the
 selected page in the main content area. Components are retained in the descriptor
