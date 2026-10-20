@@ -26,23 +26,17 @@ However, we don't recommend installing devtools yourself. Either:
 
 ### Driver Station
 
-The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler. It runs almost entirely
+The driver station is a Next.js app using the App router on Next.js 16 and React 19 with the React Compiler.
 
 #### UI
 
 We use ShadCN with a custom [TweakCN theme](https://tweakcn.com/themes/cmulobjp9000004l39em7guus).
 
-## Formatting
+## Linting & Formatting
 
-Run `pnpm format` to format the root and every package with Oxfmt, or
-`pnpm --filter @repo/driver-station format` to format only the app.
-Run `pnpm format:check` to check formatting without changing files.
-Run `pnpm lint:check` to check lint rules without applying fixes. CI runs both
-checks from the repository root.
+Run `pnpm format` to format the repo with Oxfmt. Run `pnpm lint` to lint the repo with ESLint.
 
-Each package owns its rules and exclusions in `oxfmt.config.ts`. Install the
-recommended Oxc extension for VS Code formatting on save in a single-folder
-workspace. See [the shared config](packages/oxfmt-config/README.md) for details.
+Each package contains its own ESLint and Oxfmt rules, based on the `eslint-config` and `oxfmt-config` packages.
 
 ## Running locally (development)
 

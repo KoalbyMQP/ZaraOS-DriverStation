@@ -27,3 +27,5 @@ RobotAPI.md
 # Worktrees
 .worktrees/*
 !.worktrees/.gitkeep
+
+.direnv
