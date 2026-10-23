@@ -4,6 +4,7 @@
  *   bodyHash = hex(SHA256(raw_request_body))
  *   message = timestamp + "\n" + METHOD + "\n" + path + "\n" + bodyHash
  *   signature = hex(HMAC-SHA256(key=token, message=message))
+ * path matches Cortex's r.URL.Path: decoded pathname, without query parameters.
  */
 
 import type { Connection } from "@/contexts/ConnectionContext";
@@ -40,22 +41,29 @@ async function signRequest(
   return { timestamp, signature };
 }
 
-function baseUrl(connection: Connection): string {
-  return `http://${connection.ip}:8080`;
+/** Accept a hostname or IP, with an optional port, consistently across pairing and API calls. */
+export function robotBaseUrl(connection: Pick<Connection, "ip">): string {
+  const address = connection.ip.trim();
+  const url = new URL(address.includes("://") ? address : `http://${address}`);
+  if (url.protocol !== "http:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+    throw new Error("Enter a robot hostname or IP address, optionally followed by a port.");
+  }
+  if (!url.port && !/:\d+$/.test(address.replace(/\/$/, ""))) url.port = "8080";
+  return url.origin;
 }
 
 /**
  * GET /health — public, no signing (RobotAPI.md).
  */
 export async function checkRobotHealth(connection: Connection): Promise<boolean> {
-  const res = await fetch(`${baseUrl(connection)}/health`, { method: "GET" });
+  const res = await fetch(`${robotBaseUrl(connection)}/health`, { method: "GET" });
   return res.ok;
 }
 
 /** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
 export function isLocalRobotHost(connection: Connection): boolean {
-  const ip = connection.ip.trim().toLowerCase();
-  return ip === "127.0.0.1" || ip === "localhost" || ip === "::1";
+  const ip = new URL(robotBaseUrl(connection)).hostname.toLowerCase();
+  return ip === "127.0.0.1" || ip === "localhost" || ip === "[::1]";
 }
 
 /**
@@ -69,8 +77,8 @@ export async function signedFetch(
   options?: { signal?: AbortSignal }
 ): Promise<Response> {
   const b = body ?? "";
+  const url = `${robotBaseUrl(connection)}${path}`;
   if (isLocalRobotHost(connection)) {
-    const url = `${baseUrl(connection)}${path}`;
     return fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
@@ -82,8 +90,9 @@ export async function signedFetch(
   if (!token) {
     throw new Error("Connection has no token; cannot sign request");
   }
-  const { timestamp, signature } = await signRequest(token, method, path, b);
-  const url = `${baseUrl(connection)}${path}`;
+  // Cortex verifies r.URL.Path, while fetch still needs the full URL (e.g. log stream options).
+  const signingPath = decodeURIComponent(new URL(url).pathname);
+  const { timestamp, signature } = await signRequest(token, method, signingPath, b);
   return fetch(url, {
     method,
     headers: {
@@ -145,6 +154,10 @@ export type RobotAppInstance = {
   state: string;
   started_at: string | null;
   stopped_at: string | null;
+  error?: string | null;
+  image?: string;
+  /** Optional browser-loadable ZaraOS UI descriptor, resolved relative to the robot origin. */
+  ui?: { descriptor_url: string };
 };
 
 export type InstancesResponse = {
@@ -166,20 +179,22 @@ export type ImagesResponse = {
 /**
  * GET /images — list locally available container images (grouped by repository in the payload).
  */
-export async function getImages(connection: Connection): Promise<ImagesResponse> {
-  const res = await signedFetch(connection, "GET", "/images");
+export async function getImages(connection: Connection, signal?: AbortSignal): Promise<ImagesResponse> {
+  const res = await signedFetch(connection, "GET", "/images", undefined, { signal });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string })?.error ?? `images failed: ${res.status}`);
   }
-  return res.json() as Promise<ImagesResponse>;
+  const data = (await res.json()) as ImagesResponse;
+  console.log(`[Cortex] GET ${res.url} (${res.status})`, JSON.stringify(data, null, 2));
+  return data;
 }
 
 /**
  * GET /instances — list all instances (running and recently stopped).
  */
-export async function getInstances(connection: Connection): Promise<InstancesResponse> {
-  const res = await signedFetch(connection, "GET", "/instances");
+export async function getInstances(connection: Connection, signal?: AbortSignal): Promise<InstancesResponse> {
+  const res = await signedFetch(connection, "GET", "/instances", undefined, { signal });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string })?.error ?? `instances failed: ${res.status}`);
@@ -196,11 +211,12 @@ export async function createInstance(
   connection: Connection,
   app: string,
   version: string,
-  image?: string
+  image?: string,
+  signal?: AbortSignal
 ): Promise<RobotAppInstance> {
   const payload = image !== undefined && image !== "" ? { app, version, image } : { app, version };
   const body = JSON.stringify(payload);
-  const res = await signedFetch(connection, "POST", "/instances", body);
+  const res = await signedFetch(connection, "POST", "/instances", body, { signal });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string })?.error ?? `start instance failed: ${res.status}`);
@@ -211,8 +227,12 @@ export async function createInstance(
 /**
  * GET /instances/:id — get status of a single instance. Use to poll until state === "running".
  */
-export async function getInstance(connection: Connection, instanceId: string): Promise<RobotAppInstance> {
-  const res = await signedFetch(connection, "GET", `/instances/${instanceId}`);
+export async function getInstance(
+  connection: Connection,
+  instanceId: string,
+  signal?: AbortSignal
+): Promise<RobotAppInstance> {
+  const res = await signedFetch(connection, "GET", `/instances/${instanceId}`, undefined, { signal });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string })?.error ?? `get instance failed: ${res.status}`);

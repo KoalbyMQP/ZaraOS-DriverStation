@@ -3,7 +3,7 @@ import repo from "@repo/oxfmt-config";
 const config = structuredClone(repo.base);
 
 config.sortTailwindcss = {
-  stylesheet: "./app/globals.css",
+  stylesheet: "../../packages/ui/src/styles/globals.css",
 };
 (config.ignorePatterns ??= []).push(
   ".next/",

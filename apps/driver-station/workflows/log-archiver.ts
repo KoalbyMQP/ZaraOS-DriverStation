@@ -9,17 +9,37 @@
  * - Alert on errors in logs
  *
  * Usage:
- *   const run = await start(logArchiverWorkflow, [instanceId, maxAgeHours]);
+ *   const run = await start(logArchiverWorkflow, [instanceId, robotUrl, bucketPath]);
  */
 
-import { sleep, fetch as workflowFetch, getWritable } from "workflow";
+import { getWritable } from "workflow";
 
-export type LogArchiveResult = {
-  instanceId: string;
-  logsCollected: number;
-  bytesArchived: number;
-  archivedAt: string;
-};
+export type LogArchiveResult =
+  | {
+      archived: true;
+      instanceId: string;
+      filename: string;
+      size: number;
+      timestamp: string;
+    }
+  | { archived: false; reason: string };
+
+async function writeStatus(writable: WritableStream<{ status: string }>, status: string) {
+  "use step";
+
+  const writer = writable.getWriter();
+  try {
+    await writer.write({ status });
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+async function closeStatusStream(writable: WritableStream<{ status: string }>) {
+  "use step";
+
+  await writable.close();
+}
 
 /**
  * Step to fetch and process logs from a running instance
@@ -62,28 +82,30 @@ async function uploadLogsToStorage(instanceId: string, content: string, bucketPa
 /**
  * Main workflow: archive logs from an instance
  */
-export async function logArchiverWorkflow(instanceId: string, robotUrl: string, bucketPath: string = "logs") {
+export async function logArchiverWorkflow(
+  instanceId: string,
+  robotUrl: string,
+  bucketPath: string = "logs"
+): Promise<LogArchiveResult> {
   "use workflow";
 
-  const writer = getWritable<{ status: string }>();
+  const writable = getWritable<{ status: string }>();
 
   try {
     // Step 1: Collect logs
-    await writer.write({ status: `Collecting logs from ${instanceId}...` });
+    await writeStatus(writable, `Collecting logs from ${instanceId}...`);
     const logContent = await collectInstanceLogs(instanceId, robotUrl);
 
     if (!logContent) {
-      await writer.write({ status: "No logs to archive" });
+      await writeStatus(writable, "No logs to archive");
       return { archived: false, reason: "No logs" };
     }
 
     // Step 2: Archive logs
-    await writer.write({ status: "Archiving logs..." });
+    await writeStatus(writable, "Archiving logs...");
     const archiveResult = await uploadLogsToStorage(instanceId, logContent, bucketPath);
 
-    await writer.write({
-      status: `Successfully archived ${archiveResult.filename}`,
-    });
+    await writeStatus(writable, `Successfully archived ${archiveResult.filename}`);
 
     return {
       archived: true,
@@ -91,11 +113,13 @@ export async function logArchiverWorkflow(instanceId: string, robotUrl: string, 
       filename: archiveResult.filename,
       size: archiveResult.size,
       timestamp: new Date().toISOString(),
-    } as LogArchiveResult;
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    await writer.write({ status: `Error: ${message}` });
+    await writeStatus(writable, `Error: ${message}`);
     throw error;
+  } finally {
+    await closeStatusStream(writable);
   }
 }
 

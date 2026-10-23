@@ -18,7 +18,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   // Keep children unmounted until it finishes restoring the account/redirect.
   if (loading || !user) {
     return (
-      <div role="status" className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-400">
+      <div role="status" className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         Loading...
       </div>
     );
