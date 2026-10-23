@@ -21,6 +21,7 @@ import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "@repo/ui/c
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Spinner } from "@repo/ui/components/spinner";
 import { ArrowClockwiseIcon, CaretRightIcon, FunnelIcon, MagnifyingGlassIcon, PackageIcon } from "@repo/ui/icons";
+import { cn } from "@repo/ui/lib/utils";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { appSlug, useProject, type AppLaunch } from "@/contexts/ProjectContext";
 import {
@@ -89,7 +90,10 @@ function DirectImageForm() {
       <FieldGroup>
         <Field data-invalid={!!error} data-disabled={pending}>
           <FieldLabel htmlFor="container-image">Container image</FieldLabel>
-          <InputGroup>
+          <InputGroup
+            // A disabled Run button should not dim the editable image field.
+            className={cn(!pending && "has-disabled:bg-control has-disabled:opacity-100 dark:has-disabled:bg-input/30")}
+          >
             <InputGroupInput
               id="container-image"
               name="image"
@@ -396,7 +400,7 @@ export default function AppsPage() {
         </Alert>
       )}
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-control">
           <CardHeader>
             <CardTitle>
               <h2>Online apps</h2>
@@ -418,7 +422,7 @@ export default function AppsPage() {
             />
           </CardContent>
         </Card>
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-control">
           <CardHeader>
             <CardTitle>
               <h2>Installed apps</h2>
