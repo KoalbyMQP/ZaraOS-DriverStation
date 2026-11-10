@@ -11,7 +11,6 @@ import {
   GraphicsCardIcon,
   MemoryIcon,
 } from "@repo/ui/icons";
-import { AccountMenu } from "@/components/AccountMenu";
 import { RobotConnectionControl } from "@/components/RobotConnectionControl";
 
 const metrics = [
@@ -46,7 +45,6 @@ export function Header() {
         <Button variant="ghost" size="xs" nativeButton={false} role="link" render={<Link href="/documentation" />}>
           Documentation
         </Button>
-        <AccountMenu />
       </div>
     </header>
   );

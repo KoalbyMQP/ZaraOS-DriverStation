@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { UI } from "@repo/ui/components/ui";
-import MsalWrapper from "@/components/MsalWrapper";
-import { AuthProvider } from "@/contexts/AuthContext";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,11 +12,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" data-theme="light">
       <body>
-        <UI>
-          <MsalWrapper>
-            <AuthProvider>{children}</AuthProvider>
-          </MsalWrapper>
-        </UI>
+        <UI>{children}</UI>
       </body>
     </html>
   );

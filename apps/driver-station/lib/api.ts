@@ -1,7 +1,5 @@
 /**
  * GitHub release helpers used by the Apps page.
- * All legacy backend auth functions have been removed — auth is now
- * handled entirely by Azure MSAL (see contexts/AuthContext.tsx).
  */
 
 export type Release = {
