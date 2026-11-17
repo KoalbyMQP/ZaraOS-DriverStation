@@ -11,7 +11,7 @@ import { Spinner } from "@repo/ui/components/spinner";
 import { CodeIcon, PlugIcon, WarningCircleIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { derivePairingToken } from "@/lib/robot-auth";
-import { robotBaseUrl } from "@/lib/robot-api";
+import { mixedContentHint, robotBaseUrl } from "@/lib/robot-api";
 
 type PendingPair = { baseUrl: string; name: string; ip: string; expiresIn: number };
 
@@ -32,10 +32,18 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   async function request(url: string, init?: RequestInit) {
-    const res = await fetch(url, {
-      ...init,
-      signal: AbortSignal.any([lifecycle.current.signal, AbortSignal.timeout(5000)]),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        ...init,
+        signal: AbortSignal.any([lifecycle.current.signal, AbortSignal.timeout(5000)]),
+      });
+    } catch (err) {
+      // A blocked request fails like an unreachable robot; name the likely cause.
+      const hint = err instanceof TypeError ? mixedContentHint(url) : null;
+      if (hint) throw new Error(`Could not reach the robot. ${hint}`);
+      throw err;
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status}).`);
     return data;
@@ -178,7 +186,10 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
                   disabled={!!loading}
                   autoComplete="off"
                 />
-                <FieldDescription>Use the robot’s IP address or hostname. The default port is 8080.</FieldDescription>
+                <FieldDescription>
+                  Use the robot’s IP address or hostname. The default port is 8080. Enter an https:// address if the
+                  robot has one.
+                </FieldDescription>
               </Field>
               <Button type="submit" disabled={!!loading || !ip.trim()}>
                 {loading === "pair" ? <Spinner data-icon="inline-start" /> : <PlugIcon data-icon="inline-start" />}

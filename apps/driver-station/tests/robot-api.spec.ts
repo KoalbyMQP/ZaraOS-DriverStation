@@ -1,6 +1,6 @@
 import { createHash, createHmac } from "node:crypto";
 import { test, expect } from "@playwright/test";
-import { signedFetch } from "../lib/robot-api";
+import { mixedContentHint, robotBaseUrl, signedFetch } from "../lib/robot-api";
 
 const connection = { name: "Test robot", ip: "robot.test:9090", token: "a1".repeat(32) };
 const originalFetch = globalThis.fetch;
@@ -79,4 +79,50 @@ test("localhost log requests remain unsigned", async () => {
   };
 
   await signedFetch({ name: "Dev Mode", ip: "127.0.0.1" }, "GET", "/instances/demo-1/logs?stream=true&tail=100");
+});
+
+test.describe("robot addresses", () => {
+  const originalLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
+  const servedOver = (protocol: string) =>
+    Object.defineProperty(globalThis, "location", { value: { protocol }, configurable: true });
+
+  test.afterEach(() => {
+    if (originalLocation) Object.defineProperty(globalThis, "location", originalLocation);
+    else delete (globalThis as { location?: unknown }).location;
+  });
+
+  test("bare addresses use Cortex's plain-HTTP port", () => {
+    expect(robotBaseUrl({ ip: "10.0.0.5" })).toBe("http://10.0.0.5:8080");
+    expect(robotBaseUrl({ ip: "robot.local:9000" })).toBe("http://robot.local:9000");
+  });
+
+  test("https:// addresses are accepted and keep their own port", () => {
+    expect(robotBaseUrl({ ip: "https://robot.example" })).toBe("https://robot.example");
+    expect(robotBaseUrl({ ip: "https://10.0.0.5:8443" })).toBe("https://10.0.0.5:8443");
+  });
+
+  test("other schemes and paths are rejected", () => {
+    for (const ip of ["ftp://robot", "https://robot/api", "https://user:pass@robot", "ws://robot"]) {
+      expect(() => robotBaseUrl({ ip })).toThrow("Enter a robot hostname");
+    }
+  });
+
+  test("an HTTPS-served page still accepts plain-HTTP addresses, but hints at mixed content", () => {
+    servedOver("https:");
+    // Not refused up front: some browsers allow private IP addresses from HTTPS pages.
+    expect(robotBaseUrl({ ip: "10.0.0.5" })).toBe("http://10.0.0.5:8080");
+    expect(mixedContentHint("http://10.0.0.5:8080")).toContain("https://");
+    expect(mixedContentHint("http://robot.local:8080/auth/pair/start")).toContain("https://");
+    // No hint where mixed content can't be the cause.
+    expect(mixedContentHint("https://10.0.0.5:8443")).toBeNull();
+    expect(mixedContentHint("http://127.0.0.1:8080")).toBeNull();
+    expect(mixedContentHint("http://localhost:8080")).toBeNull();
+  });
+
+  test("an HTTP-served page can use either, with no hint", () => {
+    servedOver("http:");
+    expect(robotBaseUrl({ ip: "10.0.0.5" })).toBe("http://10.0.0.5:8080");
+    expect(robotBaseUrl({ ip: "https://10.0.0.5:8443" })).toBe("https://10.0.0.5:8443");
+    expect(mixedContentHint("http://10.0.0.5:8080")).toBeNull();
+  });
 });

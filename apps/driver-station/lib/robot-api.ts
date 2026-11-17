@@ -44,12 +44,41 @@ async function signRequest(
 /** Accept a hostname or IP, with an optional port, consistently across pairing and API calls. */
 export function robotBaseUrl(connection: Pick<Connection, "ip">): string {
   const address = connection.ip.trim();
-  const url = new URL(address.includes("://") ? address : `http://${address}`);
-  if (url.protocol !== "http:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
+  const explicitScheme = address.includes("://");
+  const url = new URL(explicitScheme ? address : `http://${address}`);
+  if (
+    (url.protocol !== "http:" && url.protocol !== "https:") ||
+    url.username ||
+    url.password ||
+    url.pathname !== "/" ||
+    url.search ||
+    url.hash
+  ) {
     throw new Error("Enter a robot hostname or IP address, optionally followed by a port.");
   }
-  if (!url.port && !/:\d+$/.test(address.replace(/\/$/, ""))) url.port = "8080";
+  // A bare address means Cortex's plain-HTTP port. An explicit https:// address keeps the
+  // scheme's default port (443) unless one is given, e.g. a TLS endpoint in front of Cortex.
+  if (url.protocol === "http:" && !url.port && !/:\d+$/.test(address.replace(/\/$/, ""))) url.port = "8080";
   return url.origin;
+}
+
+/**
+ * When a request to the robot failed, explain the likely cause if this page is served over
+ * HTTPS and the robot is plain HTTP: browsers may block it as mixed content (loopback is
+ * exempt; some browsers allow private IP addresses after a local-network prompt, but not
+ * hostnames). Returns null when that can't be the cause.
+ */
+export function mixedContentHint(baseUrl: string): string | null {
+  const url = new URL(baseUrl);
+  if (url.protocol !== "http:" || globalThis.location?.protocol !== "https:" || isLoopbackHostname(url.hostname)) {
+    return null;
+  }
+  return "This page is served over HTTPS, and the browser may block plain-HTTP robot addresses. Use the robot's https:// address.";
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 }
 
 /**
@@ -62,8 +91,7 @@ export async function checkRobotHealth(connection: Connection): Promise<boolean>
 
 /** Cortex allows unsigned requests when the client connects to localhost (see RobotAPI.md). */
 export function isLocalRobotHost(connection: Connection): boolean {
-  const ip = new URL(robotBaseUrl(connection)).hostname.toLowerCase();
-  return ip === "127.0.0.1" || ip === "localhost" || ip === "[::1]";
+  return isLoopbackHostname(new URL(robotBaseUrl(connection)).hostname);
 }
 
 /**
