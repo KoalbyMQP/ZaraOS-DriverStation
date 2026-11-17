@@ -101,14 +101,21 @@ Cortex advertises the UI descriptor on each `/instances` item:
   "state": "running",
   "started_at": null,
   "stopped_at": null,
-  "ui": { "descriptor_url": "https://assets.example.com/vision/1.0.0/zara-ui.json" }
+  "ui": { "descriptor_url": "/ui/vision/1.0.0/zara-ui.json" }
 }
 ```
 
+An App ships its descriptor and federation build inside its container image at
+`/etc/zaraos/ui/`. Cortex reads that directory when an instance is running and
+serves it at `/ui/{app}/{version}/`; see "App UI bundles" in the Cortex README.
+The `ui` field appears once Cortex has read the image, so a newly started App's
+pages show up on the next instance refresh rather than immediately.
+
 Relative descriptor URLs resolve against the robot origin. The host validates the
 descriptor before loading code; `appId` and `appVersion` must match the instance.
-There is no manual registration UI. Cortex must provide this metadata to discover
-an App's pages.
+Cortex sets both to the name and version it runs the instance as, so the values
+in the image's own `zara-ui.json` do not matter. There is no manual registration
+UI.
 
 Example `zara-ui.json`:
 
@@ -181,12 +188,29 @@ copy for remotes dedicated to this host. Remote pages should avoid Next.js impor
 and private Driver Station contexts. Apps ship their own compiled CSS and scope
 selectors; the host does not generate remote Tailwind classes.
 
-`services.request("/status")` sends a signed request to
-`/instances/{instanceId}/api/status` on the selected robot and returns JSON
-(`null` for HTTP 204). Options support `method`, a JSON-object `body`, and an
-`AbortSignal`. Requests are cancelled when the page unmounts, the App stops, or
-the robot changes. **Cortex must implement this instance API proxy**; no backend
-endpoints are added here.
+`services` is how a page talks to its own instance. Every call is a signed request
+to Cortex's interactivity endpoints for that instance, and is cancelled when the
+page unmounts, the App stops, or the robot changes. The page never sees the
+pairing token.
+
+| Call                                                | Cortex endpoint                       | Result                                                           |
+| --------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------- |
+| `services.command("move", { angle: 90 })`           | `POST /instances/{id}/command`        | The handler's return value; rejects with the App's error message |
+| `services.commands()`                               | `GET /instances/{id}/commands`        | The commands the App accepts and their parameters                |
+| `services.controls()`                               | `GET /instances/{id}/controls`        | The App's controls and the values it last applied                |
+| `services.setControl("speed", 40)`                  | `PUT /instances/{id}/controls/{name}` | `{ accepted, stale, value }`                                     |
+| `services.telemetry((values) => {}, { maxHz: 20 })` | `GET /instances/{id}/telemetry`       | A function that ends the subscription                            |
+
+`setControl` resolves when the App has accepted the value, before its handler
+runs. Updates are ordered by when they were sent, so an older one that arrives
+late cannot move the value backwards; it resolves with `stale: true`. `telemetry` first delivers every key's latest
+value, then only the keys that changed, and reconnects on its own; its optional
+`onError` is called when the stream cannot be opened. Each call also accepts an
+`AbortSignal`. Types are in `lib/app-ui/types.ts`.
+
+On the App side these are the `@zc.command()`, `@zc.control()` and `zc.publish()`
+of the `zara_commands` SDK. The Cortex endpoints currently exist only on the
+ZaraOS `spike/app-interactivity-system` branch.
 
 Descriptors and federation assets must be browser-reachable with appropriate
 CORS, asset base paths, and HTTPS when the host uses HTTPS. They do not receive

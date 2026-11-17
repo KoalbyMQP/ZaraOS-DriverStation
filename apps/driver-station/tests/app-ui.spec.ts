@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { test, expect, descriptor, remoteOrigin, remoteHeaders } from "./app-ui-fixture";
 
 const instance = {
@@ -36,6 +36,12 @@ async function openAppNavigation(page: Page) {
   await expect(page.getByRole("link", { name: "1.0.0 · Overview", exact: true })).toBeVisible();
 }
 
+/** What Cortex answers to POST /instances/{id}/command when the App's handler returns `result`. */
+function commandReply(route: Route, result: unknown) {
+  const { command } = route.request().postDataJSON() as { command: string };
+  return { command, transport: "http", forward_us: 1, reply: { ok: true, result, error: null, handler_us: 1 } };
+}
+
 async function loadedModules(page: Page) {
   return page.evaluate(
     () => (window as unknown as { __fixtureModuleRequests?: string[] }).__fixtureModuleRequests ?? []
@@ -48,8 +54,8 @@ test("renders an App-owned page with shared React, its own layout, CSS and insta
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await setup(page);
-  await page.route("http://127.0.0.1:8080/instances/test-1/api/status", (route) =>
-    route.fulfill({ json: { status: "Instance request received" } })
+  await page.route("http://127.0.0.1:8080/instances/test-1/command", (route) =>
+    route.fulfill({ json: commandReply(route, { status: "Instance request received" }) })
   );
   await openAppNavigation(page);
   expect(await loadedModules(page)).toEqual([]);
@@ -120,9 +126,16 @@ test("retries a failed federation manifest without reloading the host", async ({
   await page.route(`${remoteOrigin}/mf-manifest.json`, (route) =>
     unavailable ? route.fulfill({ status: 503, body: "Unavailable", headers: remoteHeaders }) : route.fallback()
   );
+  // Before the saved connection is restored the page briefly offers a Retry of its own, so wait for
+  // the manifest to have actually failed before looking for the one this test is about.
+  const manifestFailed = page.waitForResponse(
+    (response) => response.url() === `${remoteOrigin}/mf-manifest.json` && response.status() === 503
+  );
   await setup(page, "/app/test-1");
+  await manifestFailed;
   const retry = page.locator("#page-content").getByRole("button", { name: "Retry", exact: true });
   await expect(retry).toBeVisible();
+  await expect(page.getByText("This App instance is unavailable.")).toHaveCount(0);
   unavailable = false;
   await retry.click();
   await expect(page.getByRole("heading", { name: "Remote overview" })).toBeVisible();
@@ -156,7 +169,7 @@ test("accepts component-only Apps without exposing or loading their components",
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("button", { name: /Test App:/ })
     .click();
-  await expect(page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("link")).toHaveCount(3);
+  await expect(page.getByRole("navigation", { name: "Apps", exact: true }).getByRole("link")).toHaveCount(2);
   expect(await loadedModules(page)).toEqual([]);
   await page.goto("/app/test-1?page=counter");
   await expect(page.getByText("This App page is unavailable.")).toBeVisible();
@@ -177,8 +190,8 @@ test("binds a shared UI build to the selected instance", async ({ page }) => {
   await page.route("http://127.0.0.1:8080/instances", (route) =>
     route.fulfill({ json: { instances: [instance, { ...instance, id: "test-2" }] } })
   );
-  await page.route("http://127.0.0.1:8080/instances/test-2/api/status", (route) =>
-    route.fulfill({ json: { status: "Second instance" } })
+  await page.route("http://127.0.0.1:8080/instances/test-2/command", (route) =>
+    route.fulfill({ json: commandReply(route, { status: "Second instance" }) })
   );
   await page.goto("/app/test-2");
   await expect(page.getByText("App instance: test-2", { exact: true })).toBeVisible();

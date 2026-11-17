@@ -66,7 +66,7 @@ function Counter({ label, services }) {
       {
         onClick: () =>
           services
-            .request("/status")
+            .command("status")
             .then((value) => setResult(value.status))
             .catch((error) => setResult(error.message)),
       },
