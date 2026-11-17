@@ -218,6 +218,32 @@ robot API signing headers. Federation executes trusted App code with the page's
 privileges. Each page has a loading state, timeout, error boundary, and retry;
 these contain rendering failures, not arbitrary script behavior.
 
+### Building a page with a bundler
+
+ZaraOS `examples/app-ui/hello-ui` is a complete App with a Python backend and
+pages built by Rsbuild + Module Federation, verified against this host. The parts
+that matter:
+
+- Share `react`, `react-dom` and `react/jsx-runtime` as `singleton` with
+  `import: false`, so the build never contains React and runs on the host's copy.
+- Set the asset prefix to `auto`, so chunks and assets resolve under
+  `/ui/{app}/{version}/` on whatever robot address the page was loaded from.
+- Use `mf-manifest.json` as the entry. Its own `remoteEntry.type` (for example
+  `global`) is what the runtime uses; the descriptor's `type` only applies to a
+  `remoteEntry.js` entry.
+- Style pages with scoped CSS (e.g. CSS Modules). The host generates Tailwind only
+  for its own sources, and its reset removes heading styles and page padding, so a
+  page styles its own headings and spacing.
+
+### Robots over HTTPS
+
+A robot address may be `https://host[:port]` (the port defaults to 443), for a TLS
+endpoint in front of Cortex. A bare address still means plain HTTP on port 8080.
+When this page is served over HTTPS, browsers may block a plain-HTTP robot as mixed
+content: in Chromium, a private IP address works after the user allows local
+network access, but a hostname is blocked. The connect dialog then suggests the
+robot's `https://` address.
+
 ### Verification
 
 ```bash
