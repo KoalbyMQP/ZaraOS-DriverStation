@@ -53,9 +53,9 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  --font-sans: var(--font-inter, Inter), ui-sans-serif, sans-serif, system-ui;
-  --font-mono: var(--font-jetbrains-mono, "JetBrains Mono"), ui-monospace, monospace;
-  --font-serif: var(--font-source-serif, "Source Serif 4"), ui-serif, serif;
+  --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, ui-monospace, monospace;
+  --font-serif: Source Serif 4, ui-serif, serif;
   --radius: 0.625rem;
   --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
   --tracking-tight: calc(var(--tracking-normal) - 0.025em);
@@ -83,7 +83,7 @@
 }
 
 :root {
-  --background: #f5f5f5;
+  --background: oklch(1 0 0);
   --control: #ffffff;
   --shell-border: #d4d4d4;
   --success: #16a34a;
@@ -92,7 +92,7 @@
   --status-off: #737373;
   --status-off-foreground: #fafafa;
   --foreground: oklch(0.1448 0 0);
-  --card: var(--background);
+  --card: oklch(1 0 0);
   --card-foreground: oklch(0.1448 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.1448 0 0);
@@ -113,12 +113,12 @@
   --chart-3: oklch(0.5465 0.2455 262.8657);
   --chart-4: oklch(0.4878 0.2432 264.4045);
   --chart-5: oklch(0.4242 0.1982 265.4989);
-  --radius: 0.625rem;
-  --sidebar: var(--background);
+  --radius: 0.45rem;
+  --sidebar: oklch(0.9851 0 0);
   --sidebar-foreground: oklch(0.1448 0 0);
   --sidebar-primary: oklch(0.623 0.214 259.815);
   --sidebar-primary-foreground: oklch(0.9705 0.0142 254.6042);
-  --sidebar-accent: #f5f5f5;
+  --sidebar-accent: oklch(0.9702 0 0);
   --sidebar-accent-foreground: oklch(0.2046 0 0);
   --sidebar-border: oklch(0.9219 0 0);
   --sidebar-ring: oklch(0.709 0 0);
@@ -218,4 +218,28 @@
   --typeset-size: 15px;
   --typeset-leading: 1.75;
   --typeset-flow: 1.25em;
+}
+
+/* TEMPORARY: light-mode contrast overrides, kept apart for A/B comparison.
+   Comment out a line (or the whole block) to fall back to the previous value
+   in the main :root block above. Fold these into that block when settled:
+   left here, they would also override .dark if that class is put on <html>. */
+:root {
+  /* Text: placeholders, captions, table headers, descriptions */
+  --muted-foreground: oklch(0.48 0 0); /* was 0.5555 | 6.54 on background, 5.82 on muted, 5.48 on accent */
+
+  /* Surfaces: hover and selected states */
+  --muted: oklch(0.96 0 0); /* was 0.9702 */
+  --secondary: oklch(0.94 0 0); /* was 0.9674 0.0013 286.3752 */
+  --accent: oklch(0.94 0 0); /* was 0.9702 */
+  --sidebar-accent: oklch(0.94 0 0); /* was 0.9702 */
+
+  /* Lines: decorative dividers and cards, no 3:1 needed */
+  --border: oklch(0.87 0 0); /* was 0.9219 */
+  --sidebar-border: oklch(0.87 0 0); /* was 0.9219 */
+
+  /* Form-control edges, need 3:1 */
+  --input: oklch(0.87 0 0); /* was 0.9219 | 3.23 on white, 3.10 on sidebar */
+
+  /* Focus: components render the ring at 50% alpha */
 }
