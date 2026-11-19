@@ -1,97 +1,109 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Alert, AlertDescription } from "@repo/ui/components/alert";
+import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@repo/ui/components/empty";
+import { Field, FieldLabel } from "@repo/ui/components/field";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { Header } from "@/components/Header";
+import { appSlug, useProject } from "@/contexts/ProjectContext";
 import { LogViewer } from "@/components/LogViewer";
-import { getInstances, type RobotAppInstance } from "@/lib/robot-api";
 
 export default function LogsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="m-6 h-80" />}>
+      <ProjectLogs />
+    </Suspense>
+  );
+}
+
+function ProjectLogs() {
+  const params = useSearchParams();
+  return (
+    <LogsView
+      key={params.toString()}
+      requestedId={params.get("instance")}
+      requestedApp={params.get("app")}
+      requestedVersion={params.get("version")}
+    />
+  );
+}
+
+function LogsView({
+  requestedId,
+  requestedApp,
+  requestedVersion,
+}: {
+  requestedId: string | null;
+  requestedApp: string | null;
+  requestedVersion: string | null;
+}) {
   const { connection } = useConnection();
-  const [instances, setInstances] = useState<RobotAppInstance[]>([]);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
-  const [loadingInstances, setLoadingInstances] = useState(true);
-
-  useEffect(() => {
-    if (!connection) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear list when disconnected
-      setInstances([]);
-      setLoadingInstances(false);
-      return;
-    }
-
-    const fetchInstances = () => {
-      getInstances(connection)
-        .then((data) => {
-          setInstances(data.instances);
-          if (data.instances.length > 0 && !selectedInstanceId) {
-            setSelectedInstanceId(data.instances[0].id);
-          }
-        })
-        .catch(() => setInstances([]))
-        .finally(() => setLoadingInstances(false));
-    };
-
-    fetchInstances();
-    const interval = setInterval(fetchInstances, 30000);
-    return () => clearInterval(interval);
-  }, [connection, selectedInstanceId]);
+  const { instances, loading, error } = useProject();
+  const [selected, setSelected] = useState<string | null>(null);
+  const requested = instances.find(
+    (i) =>
+      (!requestedId || i.id === requestedId) &&
+      (!requestedApp || i.app === requestedApp || i.app === appSlug(requestedApp)) &&
+      (!requestedVersion || i.version === requestedVersion)
+  );
+  const selectedId = instances.some((i) => i.id === selected) ? selected : (requested?.id ?? null);
+  const items = instances.map((i) => ({ value: i.id, label: `${i.app} · ${i.version}` }));
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <Header />
-      <main className="p-6">
-        {!connection ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-            No robot connected. Use the Connect button in the header to view logs.
-          </div>
-        ) : loadingInstances ? (
-          <div className="flex items-center justify-center py-12 text-zinc-400">Loading instances...</div>
-        ) : instances.length === 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-            No running instances. Start an app from the Apps page to view logs.
-          </div>
-        ) : (
-          <div className="flex gap-6">
-            {/* Instance list */}
-            <div className="w-48 flex-shrink-0">
-              <div className="rounded-lg border border-zinc-800 bg-zinc-900">
-                <div className="border-b border-zinc-800 px-4 py-3">
-                  <h3 className="font-medium text-zinc-100">Instances</h3>
-                </div>
-                <div className="max-h-96 overflow-y-auto">
-                  {instances.map((instance) => (
-                    <button
-                      key={instance.id}
-                      onClick={() => setSelectedInstanceId(instance.id)}
-                      className={`w-full border-b border-zinc-800 px-4 py-3 text-left text-sm transition-colors ${
-                        selectedInstanceId === instance.id
-                          ? "bg-blue-900/30 text-blue-300"
-                          : "text-zinc-300 hover:bg-zinc-800"
-                      }`}
-                    >
-                      <div className="font-mono text-xs text-zinc-500">{instance.id.slice(0, 8)}</div>
-                      <div className="font-medium">{instance.app}</div>
-                      <div className="text-xs text-zinc-500">v{instance.version}</div>
-                    </button>
+    <div className="flex h-full min-h-0 flex-col gap-4 p-4 md:p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">App logs</h1>
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      {!connection || (!loading && instances.length === 0) ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>{connection ? "No app instances" : "No robot connected"}</EmptyTitle>
+            <EmptyDescription>
+              {connection
+                ? "Start an app from the App Store to view its logs."
+                : "Open the robot connection in the topbar to view logs."}
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : loading ? (
+        <Skeleton className="h-80 w-full" />
+      ) : (
+        <>
+          <Field className="max-w-sm">
+            <FieldLabel htmlFor="log-instance">App instance</FieldLabel>
+            <Select items={items} value={selectedId} onValueChange={setSelected}>
+              <SelectTrigger id="log-instance">
+                <SelectValue placeholder="Select an instance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {items.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Log viewer */}
-            <div className="flex-1">
-              {selectedInstanceId ? (
-                <LogViewer key={selectedInstanceId} connection={connection} instanceId={selectedInstanceId} />
-              ) : (
-                <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-6 text-center text-sm text-zinc-400">
-                  Select an instance to view logs
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </Field>
+          {selectedId ? (
+            <LogViewer key={selectedId} connection={connection} instanceId={selectedId} />
+          ) : (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>Select an instance</EmptyTitle>
+                <EmptyDescription>Choose an app above to view its logs.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          )}
+        </>
+      )}
     </div>
   );
 }

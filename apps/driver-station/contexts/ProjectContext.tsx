@@ -1,121 +1,186 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { useConnection } from "@/contexts/ConnectionContext";
+import { useConnection, type Connection } from "@/contexts/ConnectionContext";
+import {
+  createInstance,
+  deleteInstance,
+  getInstance,
+  getInstances,
+  getImages,
+  type LocalContainerImage,
+  type RobotAppInstance,
+} from "@/lib/robot-api";
 
-const ACTIVE_PROJECTS_KEY = "driver-station-active-projects";
-
-export type SelectedProject = {
-  url: string;
-  name: string;
-  version: string;
-};
+export type SelectedProject = { url: string; name: string; version: string };
+export type AppLaunch = SelectedProject & { app: string; image?: string };
 
 type ProjectContextValue = {
-  activeProjects: SelectedProject[];
-  addActiveProject: (project: SelectedProject) => void;
-  removeActiveProject: (url: string) => void;
-  isActive: (url: string) => boolean;
+  images: LocalContainerImage[];
+  imagesLoading: boolean;
+  imagesError: string | null;
+  instances: RobotAppInstance[];
+  loading: boolean;
+  error: string | null;
+  actionError: string | null;
+  notice: string | null;
+  pendingRuns: string[];
+  stoppingIds: string[];
+  refresh: () => Promise<void>;
+  startApp: (app: AppLaunch) => Promise<void>;
+  stopApp: (instance: RobotAppInstance) => Promise<void>;
 };
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
-
-function loadFromStorage(): SelectedProject[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(ACTIVE_PROJECTS_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw) as unknown;
-    if (!Array.isArray(data)) return [];
-    return data.filter(
-      (item): item is SelectedProject =>
-        item &&
-        typeof item === "object" &&
-        "url" in item &&
-        "name" in item &&
-        "version" in item &&
-        typeof (item as SelectedProject).url === "string" &&
-        typeof (item as SelectedProject).name === "string" &&
-        typeof (item as SelectedProject).version === "string"
-    );
-  } catch {
-    return [];
-  }
-}
+export const appSlug = (name: string) =>
+  name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "");
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
   const { connection } = useConnection();
-  const [activeProjects, setActiveProjectsState] = useState<SelectedProject[]>([]);
-  const hadConnectionRef = useRef<boolean | null>(null);
+  // A different robot gets fresh requests and state; work from the old connection is cancelled.
+  return (
+    <ProjectSession key={JSON.stringify(connection)} connection={connection}>
+      {children}
+    </ProjectSession>
+  );
+}
 
-  // Hydrate from localStorage after SSR — must be in useEffect to avoid mismatch.
+function ProjectSession({ connection, children }: { connection: Connection | null; children: ReactNode }) {
+  const [images, setImages] = useState<LocalContainerImage[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(!!connection);
+  const [imagesError, setImagesError] = useState<string | null>(null);
+  const [instances, setInstances] = useState<RobotAppInstance[]>([]);
+  const [loading, setLoading] = useState(!!connection);
+  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pendingRuns, setPendingRuns] = useState<string[]>([]);
+  const [stoppingIds, setStoppingIds] = useState<string[]>([]);
+  const runningRequests = useRef(new Set<string>());
+  const lifecycle = useRef(new AbortController());
 
-  useEffect(() => {
-    // FIX: the proper paradigm for this in react 19 is useEffectEvent
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActiveProjectsState(loadFromStorage());
-  }, []);
-
-  useEffect(() => {
-    const connected = connection !== null;
-    if (hadConnectionRef.current === null) {
-      hadConnectionRef.current = connected;
-      return;
-    }
-    if (hadConnectionRef.current && !connected) {
-      setActiveProjectsState([]);
-      if (typeof window !== "undefined") {
-        localStorage.removeItem(ACTIVE_PROJECTS_KEY);
-      }
-    }
-    hadConnectionRef.current = connected;
+  const refresh = useCallback(async () => {
+    if (!connection) return;
+    const signal = lifecycle.current.signal;
+    await Promise.all([
+      getInstances(connection, signal)
+        .then((data) => {
+          if (signal.aborted) return;
+          setInstances(data.instances ?? []);
+          setError(null);
+        })
+        .catch((err: unknown) => {
+          if (!signal.aborted) setError(err instanceof Error ? err.message : "Could not load app status.");
+        })
+        .finally(() => {
+          if (!signal.aborted) setLoading(false);
+        }),
+      getImages(connection, signal)
+        .then((data) => {
+          if (signal.aborted) return;
+          setImages(data.images ?? []);
+          setImagesError(null);
+        })
+        .catch((err: unknown) => {
+          if (!signal.aborted) setImagesError(err instanceof Error ? err.message : "Could not load installed apps.");
+        })
+        .finally(() => {
+          if (!signal.aborted) setImagesLoading(false);
+        }),
+    ]);
   }, [connection]);
 
-  const persist = useCallback((list: SelectedProject[]) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(ACTIVE_PROJECTS_KEY, JSON.stringify(list));
+  useEffect(() => {
+    const controller = new AbortController();
+    lifecycle.current = controller;
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [refresh]);
+
+  async function startApp(app: AppLaunch) {
+    if (!connection || runningRequests.current.has(app.url)) return;
+    const signal = lifecycle.current.signal;
+    runningRequests.current.add(app.url);
+    setPendingRuns((prev) => [...prev, app.url]);
+    setActionError(null);
+    setNotice(null);
+    try {
+      let instance = await createInstance(connection, app.app, app.version, app.image, signal);
+      for (let attempt = 0; instance.state === "starting" && attempt < 38 && !signal.aborted; attempt++) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, 800));
+        if (signal.aborted) return;
+        instance = await getInstance(connection, instance.id, signal);
+      }
+      if (signal.aborted) return;
+      if (instance.state !== "running")
+        throw new Error(
+          instance.error ||
+            `${app.name} ${app.version} ${instance.state === "starting" ? "is still starting. Check the Apps sidebar for its status." : `failed to start (${instance.state}).`}`
+        );
+      setInstances((prev) => [...prev.filter((i) => i.id !== instance.id), instance]);
+      setNotice(`${app.name} ${app.version} started. View its status in the Apps sidebar.`);
+      await refresh();
+    } catch (err) {
+      if (!signal.aborted) {
+        setActionError(err instanceof Error ? err.message : "Failed to start app.");
+        void refresh();
+      }
+    } finally {
+      runningRequests.current.delete(app.url);
+      if (!signal.aborted) setPendingRuns((prev) => prev.filter((url) => url !== app.url));
     }
-  }, []);
+  }
 
-  const addActiveProject = useCallback(
-    (project: SelectedProject) => {
-      setActiveProjectsState((prev) => {
-        if (prev.some((p) => p.url === project.url)) return prev;
-        const next = [...prev, project];
-        persist(next);
-        return next;
-      });
-    },
-    [persist]
-  );
-
-  const removeActiveProject = useCallback(
-    (url: string) => {
-      setActiveProjectsState((prev) => {
-        const next = prev.filter((p) => p.url !== url);
-        persist(next);
-        return next;
-      });
-    },
-    [persist]
-  );
-
-  const isActive = useCallback(
-    (url: string) => {
-      return activeProjects.some((p) => p.url === url);
-    },
-    [activeProjects]
-  );
+  async function stopApp(instance: RobotAppInstance) {
+    if (!connection || stoppingIds.includes(instance.id)) return;
+    const signal = lifecycle.current.signal;
+    setStoppingIds((prev) => [...prev, instance.id]);
+    setActionError(null);
+    try {
+      await deleteInstance(connection, instance.id);
+      if (signal.aborted) return;
+      setInstances((prev) => prev.filter((i) => i.id !== instance.id));
+      await refresh();
+    } catch (err) {
+      if (!signal.aborted) setActionError(err instanceof Error ? err.message : "Failed to stop app.");
+    } finally {
+      if (!signal.aborted) setStoppingIds((prev) => prev.filter((id) => id !== instance.id));
+    }
+  }
 
   return (
-    <ProjectContext.Provider value={{ activeProjects, addActiveProject, removeActiveProject, isActive }}>
+    <ProjectContext.Provider
+      value={{
+        images,
+        imagesLoading,
+        imagesError,
+        instances,
+        loading,
+        error,
+        actionError,
+        notice,
+        pendingRuns,
+        stoppingIds,
+        refresh,
+        startApp,
+        stopApp,
+      }}
+    >
       {children}
     </ProjectContext.Provider>
   );
 }
 
 export function useProject() {
-  const ctx = useContext(ProjectContext);
-  if (!ctx) throw new Error("useProject must be used within ProjectProvider");
-  return ctx;
+  const context = useContext(ProjectContext);
+  if (!context) throw new Error("useProject must be used within ProjectProvider");
+  return context;
 }

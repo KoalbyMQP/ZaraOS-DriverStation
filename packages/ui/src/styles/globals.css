@@ -1,14 +1,20 @@
 @import "tailwindcss";
+@import "./typeset.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
-@source "../../../apps/**/*.{ts,tsx}";
-@source "../../../components/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-geist-sans, Geist), ui-sans-serif, sans-serif;
+  --color-control: var(--control);
+  --color-shell-border: var(--shell-border);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-status-error: var(--status-error);
+  --color-status-off: var(--status-off);
+  --color-status-off-foreground: var(--status-off-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -78,6 +84,13 @@
 
 :root {
   --background: oklch(1 0 0);
+  --control: #ffffff;
+  --shell-border: #d4d4d4;
+  --success: #16a34a;
+  --success-foreground: #fafafa;
+  --status-error: #dc2626;
+  --status-off: #737373;
+  --status-off-foreground: #fafafa;
   --foreground: oklch(0.1448 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.1448 0 0);
@@ -195,4 +208,72 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+.typeset-docs {
+  --typeset-size: 15px;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.25em;
+}
+
+/* TEMPORARY: light-mode contrast overrides, kept apart for A/B comparison.
+   Comment out a line (or the whole block) to fall back to the previous value
+   in the main :root block above. Fold these into that block when settled:
+   left here, they would also override .dark if that class is put on <html>. */
+:root {
+  /* Text: placeholders, captions, table headers, descriptions */
+  --muted-foreground: oklch(0.48 0 0); /* was 0.5555 | 6.54 on background, 5.82 on muted, 5.48 on accent */
+
+  /* Surfaces: hover and selected states */
+  --muted: oklch(0.96 0 0); /* was 0.9702 */
+  --secondary: oklch(0.94 0 0); /* was 0.9674 0.0013 286.3752 */
+  --accent: oklch(0.94 0 0); /* was 0.9702 */
+  --sidebar-accent: oklch(0.94 0 0); /* was 0.9702 */
+
+  /* Lines: decorative dividers and cards, no 3:1 needed */
+  --border: oklch(0.87 0 0); /* was 0.9219 */
+  --sidebar-border: oklch(0.87 0 0); /* was 0.9219 */
+
+  /* Form-control edges, need 3:1 */
+  --input: oklch(0.87 0 0); /* was 0.9219 | 3.23 on white, 3.10 on sidebar */
+
+  /* Focus: components render the ring at 50% alpha */
+}
+
+/* TRIAL: Cloudflare Kumo light-mode neutrals mapped onto the shadcn tokens.
+   Values match Kumo's theme-kumo.css and the computed styles on
+   dash.cloudflare.com; the Kumo token is named on each line.
+   This block wins over the one above because it comes later, so comment it out
+   (or delete it) to get the previous look back. */
+:root {
+  /* Layering: the page, header and nav sit on an off-white canvas, and every
+     card, popover and control is pure white on top of it. */
+  --background: oklch(0.9875 0 0); /* kumo-canvas | was white */
+  --sidebar: oklch(0.9875 0 0); /* kumo-canvas | was 0.9851 */
+  --card: oklch(1 0 0); /* kumo-base | unchanged */
+  --popover: oklch(1 0 0); /* kumo-base | unchanged */
+  --control: oklch(1 0 0); /* kumo-control | unchanged */
+
+  /* Text */
+  --foreground: oklch(0.205 0 0); /* text-kumo-default | was 0.1448 */
+  --card-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.556 0 0); /* text-kumo-subtle | was 0.48 | 4.27:1 on muted, below 4.5 */
+
+  /* Surfaces */
+  --muted: oklch(0.965 0 0); /* kumo-recessed: tab tracks, inset areas | was 0.96 */
+  --accent: oklch(0.97 0 0); /* kumo-tint: hover and highlighted rows | was 0.94 */
+  --sidebar-accent: oklch(0.965 0 0); /* measured on the dashboard's nav hover and active item | was 0.94 */
+  --secondary: oklch(0.922 0 0); /* kumo-fill | was 0.94 */
+
+  /* Lines: Kumo uses one translucent near-black for borders and control edges */
+  --border: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
+  --sidebar-border: oklch(0.145 0 0 / 0.1);
+  --input: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
+  --shell-border: oklch(0.145 0 0 / 0.1); /* kumo-line | was #d4d4d4 */
 }
