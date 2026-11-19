@@ -243,3 +243,37 @@
 
   /* Focus: components render the ring at 50% alpha */
 }
+
+/* TRIAL: Cloudflare Kumo light-mode neutrals mapped onto the shadcn tokens.
+   Values match Kumo's theme-kumo.css and the computed styles on
+   dash.cloudflare.com; the Kumo token is named on each line.
+   This block wins over the one above because it comes later, so comment it out
+   (or delete it) to get the previous look back. */
+:root {
+  /* Layering: the page, header and nav sit on an off-white canvas, and every
+     card, popover and control is pure white on top of it. */
+  --background: oklch(0.9875 0 0); /* kumo-canvas | was white */
+  --sidebar: oklch(0.9875 0 0); /* kumo-canvas | was 0.9851 */
+  --card: oklch(1 0 0); /* kumo-base | unchanged */
+  --popover: oklch(1 0 0); /* kumo-base | unchanged */
+  --control: oklch(1 0 0); /* kumo-control | unchanged */
+
+  /* Text */
+  --foreground: oklch(0.205 0 0); /* text-kumo-default | was 0.1448 */
+  --card-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.205 0 0);
+  --muted-foreground: oklch(0.556 0 0); /* text-kumo-subtle | was 0.48 | 4.27:1 on muted, below 4.5 */
+
+  /* Surfaces */
+  --muted: oklch(0.965 0 0); /* kumo-recessed: tab tracks, inset areas | was 0.96 */
+  --accent: oklch(0.97 0 0); /* kumo-tint: hover and highlighted rows | was 0.94 */
+  --sidebar-accent: oklch(0.965 0 0); /* measured on the dashboard's nav hover and active item | was 0.94 */
+  --secondary: oklch(0.922 0 0); /* kumo-fill | was 0.94 */
+
+  /* Lines: Kumo uses one translucent near-black for borders and control edges */
+  --border: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
+  --sidebar-border: oklch(0.145 0 0 / 0.1);
+  --input: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
+  --shell-border: oklch(0.145 0 0 / 0.1); /* kumo-line | was #d4d4d4 */
+}
