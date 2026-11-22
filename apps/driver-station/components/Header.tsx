@@ -48,7 +48,7 @@ export function Header() {
   return (
     <header
       role="banner"
-      className="flex min-h-[57px] shrink-0 flex-wrap items-center gap-2 border-b border-kumo-line bg-shell px-4 py-4 md:h-[57px] md:py-0"
+      className="flex min-h-[57px] shrink-0 flex-wrap items-center gap-2 border-b border-kumo-line bg-kumo-canvas px-4 py-4 md:h-[57px] md:py-0"
     >
       <MobileNavButton />
       <RobotConnectionControl />

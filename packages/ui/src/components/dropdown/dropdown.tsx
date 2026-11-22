@@ -5,6 +5,7 @@ import { Menu as DropdownMenuPrimitive } from "@base-ui/react/menu";
 // Changes from Kumo's file: import paths.
 // Also changed: hover/selected backgrounds that use Kumo's tint read --kumo-highlight first.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: the legacy href item renders its link through RenderLink, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -32,7 +33,7 @@ import { Menu as DropdownMenuPrimitive } from "@base-ui/react/menu";
 import * as React from "react";
 import { cn } from "@repo/ui/lib/utils";
 import { resolveVariant } from "@repo/ui/lib/kumo/resolve-variant";
-import { useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
+import { RenderLink, useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
 import { unwrapLazyElement } from "@repo/ui/lib/kumo/unwrap-lazy-element";
 import { usePortalContainer, type PortalContainer } from "@repo/ui/lib/kumo/portal-provider";
 import { CaretRightIcon as CaretRight, CheckIcon, CheckIcon as Check, type Icon } from "@repo/ui/lib/kumo/icons";
@@ -351,14 +352,15 @@ const DropdownMenuItem = React.forwardRef<
       );
     }
     return (
-      <LinkComponent
+      <RenderLink
+        component={LinkComponent}
         className={cn(styles, "w-full text-inherit! no-underline!")}
         href={href}
         to={href}
         onClick={(e) => e.stopPropagation()}
       >
         {innerContent}
-      </LinkComponent>
+      </RenderLink>
     );
   }, [href, innerContent, variant, LinkComponent]);
 

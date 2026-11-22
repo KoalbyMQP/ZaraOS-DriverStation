@@ -1,9 +1,10 @@
-import { forwardRef, useEffect, type SVGProps } from "react";
+import { forwardRef, useEffect, useState, type SVGProps } from "react";
 
 // Kumo, packages/kumo/src/components/link/link.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: renders through RenderLink and calls the `to` warning effect unconditionally, to pass the React Hooks lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -32,7 +33,7 @@ import { useRender } from "@base-ui/react/use-render";
 import { mergeProps } from "@base-ui/react/merge-props";
 import { cn } from "@repo/ui/lib/utils";
 import { resolveVariant } from "@repo/ui/lib/kumo/resolve-variant";
-import { useLinkComponent, type LinkComponentProps } from "@repo/ui/lib/kumo/link-provider";
+import { RenderLink, useLinkComponent, type LinkComponentProps } from "@repo/ui/lib/kumo/link-provider";
 
 /**
  * ExternalIcon - Visual indicator for links that open in a new tab/window.
@@ -179,10 +180,11 @@ const LinkBase = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
 ) {
   const LinkComponent = useLinkComponent();
 
-  if (process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- dev-only, conditional is stable
-    useEffect(() => {
-      if ("to" in props && props.to !== undefined) {
+  // Only the first render counts, so the deprecation warning prints once.
+  const [usesDeprecatedTo] = useState(() => "to" in props && props.to !== undefined);
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      if (usesDeprecatedTo) {
         console.warn(
           "[kumo] Link: The `to` prop is deprecated. Use `href` instead.\n\n" +
             "If your app uses a client-side router, configure a LinkProvider that\n" +
@@ -193,8 +195,8 @@ const LinkBase = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
             '  After:  <Link href="/page">…</Link>'
         );
       }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- one-time warning
-  }
+    }
+  }, [usesDeprecatedTo]);
 
   const defaultProps = {
     "data-kumo-component": "Link",
@@ -205,7 +207,7 @@ const LinkBase = forwardRef<HTMLAnchorElement, LinkProps>(function Link(
   } as useRender.ElementProps<"a">;
 
   const element = useRender({
-    render: render ?? <LinkComponent />,
+    render: render ?? <RenderLink component={LinkComponent} />,
     ref,
     props: mergeProps<"a">(defaultProps, props, { className }),
   });

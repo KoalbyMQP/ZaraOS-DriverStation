@@ -28,7 +28,7 @@ export { safeRandomId } from "./random-id";
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-export { LinkProvider, useLinkComponent, type LinkComponentProps } from "./link-provider";
+export { LinkProvider, RenderLink, useLinkComponent, type LinkComponentProps } from "./link-provider";
 export { KumoPortalProvider, type PortalContainer } from "./portal-provider";
 export {
   KumoLocaleProvider,

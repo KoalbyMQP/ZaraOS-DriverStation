@@ -4,6 +4,7 @@ import { inputVariants } from "./input";
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: auto-resize option refs sync in a layout effect instead of during render, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -51,11 +52,17 @@ function parsePx(value: string): number {
 function useTextareaAutoResize({ enabled, minRows, maxRows }: { enabled: boolean; minRows: number; maxRows?: number }) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
   const minRowsRef = useRef(minRows);
-  minRowsRef.current = minRows;
   const maxRowsRef = useRef(maxRows);
-  maxRowsRef.current = maxRows;
+
+  // Keep the latest options for `resize`, which stays stable so the observer
+  // below isn't recreated. Declared before the effects that call `resize`, so
+  // they see this commit's values.
+  useIsomorphicLayoutEffect(() => {
+    enabledRef.current = enabled;
+    minRowsRef.current = minRows;
+    maxRowsRef.current = maxRows;
+  });
 
   const resize = useCallback(() => {
     const textarea = textareaRef.current;

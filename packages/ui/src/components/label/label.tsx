@@ -4,6 +4,7 @@ import { Info } from "@repo/ui/lib/kumo/icons";
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: KumoLabelVariantsProps is Record<never, never> instead of an empty interface.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -42,7 +43,7 @@ export const KUMO_LABEL_VARIANTS = {
 export const KUMO_LABEL_DEFAULT_VARIANTS = {} as const;
 
 // Derived types from KUMO_LABEL_VARIANTS
-export interface KumoLabelVariantsProps {}
+export type KumoLabelVariantsProps = Record<never, never>;
 
 export function labelVariants(_props: KumoLabelVariantsProps = {}) {
   return cn(

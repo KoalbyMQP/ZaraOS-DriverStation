@@ -11,6 +11,7 @@ import {
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: the inner render function is named TextImpl instead of _Text, to pass the React Hooks lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -347,7 +348,7 @@ export interface TextProps {
  * <Text>Default body text</Text>
  * ```
  */
-function _Text<Variant extends TextVariant = "body">(
+function TextImpl<Variant extends TextVariant = "body">(
   {
     variant = "body" as Variant,
     bold = false,
@@ -396,7 +397,7 @@ function _Text<Variant extends TextVariant = "body">(
   );
 }
 
-export const Text = forwardRef(_Text) as <Variant extends TextVariant = "body">(
+export const Text = forwardRef(TextImpl) as <Variant extends TextVariant = "body">(
   props: TextPropsInternal<Variant> & {
     ref?: ForwardedRef<ElementRef<"span">>;
   }

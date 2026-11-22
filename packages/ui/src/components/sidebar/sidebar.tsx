@@ -9,6 +9,7 @@ import React, {
   useEffect,
   useMemo,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -19,6 +20,7 @@ import React, {
 // Changes from Kumo's file: import paths.
 // Also changed: the sidebar's default colors read --kumo-sidebar-bg and --kumo-sidebar-active-bg (then --kumo-highlight) first.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: links render through RenderLink and latest-value refs sync in a layout effect, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -47,7 +49,7 @@ import { ScrollArea as ScrollAreaBase } from "@base-ui/react/scroll-area";
 
 import { CaretRightIcon, XIcon } from "@repo/ui/lib/kumo/icons";
 import { cn } from "@repo/ui/lib/utils";
-import { useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
+import { RenderLink, useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
 import { unwrapLazyElement } from "@repo/ui/lib/kumo/unwrap-lazy-element";
 import { SkeletonLine } from "@repo/ui/components/loader/skeleton-line";
 import { Tooltip, TooltipProvider } from "@repo/ui/components/tooltip/tooltip";
@@ -140,8 +142,13 @@ function useOpenChangeComplete(open: boolean, duration: number, onComplete?: (op
   const previousActiveRef = useRef(active);
   const pendingOpenRef = useRef<boolean | undefined>(undefined);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  callbackRef.current = onComplete;
-  durationRef.current = duration;
+
+  // Keep the latest callback and duration for `complete` and the effect below.
+  // Declared first, so the effect sees this commit's values.
+  useLayoutEffect(() => {
+    callbackRef.current = onComplete;
+    durationRef.current = duration;
+  });
 
   const complete = useCallback(() => {
     const pendingOpen = pendingOpenRef.current;
@@ -529,7 +536,7 @@ function SidebarProvider({
     [scrollToItem]
   );
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- all values are
+  // The dependency list is deliberately short: all other values are
   // either stable (props, setters) or derived from state that triggers re-render
   const contextValue = useMemo<SidebarContextValue>(
     () => ({
@@ -1456,7 +1463,8 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
 
     if (href) {
       button = (
-        <LinkComponent
+        <RenderLink
+          component={LinkComponent}
           ref={registerInteractive}
           {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
           className={cn(buttonClasses, "no-underline!")}
@@ -1471,7 +1479,7 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
           data-size={size}
         >
           {content}
-        </LinkComponent>
+        </RenderLink>
       );
     } else {
       button = (
@@ -1670,7 +1678,8 @@ const SidebarMenuSubButton = forwardRef<HTMLButtonElement, SidebarMenuSubButtonP
 
     if (href) {
       button = (
-        <LinkComponent
+        <RenderLink
+          component={LinkComponent}
           ref={ref as React.Ref<HTMLAnchorElement>}
           {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
           className={cn(buttonClasses, "no-underline!")}
@@ -1683,7 +1692,7 @@ const SidebarMenuSubButton = forwardRef<HTMLButtonElement, SidebarMenuSubButtonP
           data-kumo-part="menu-sub-button-link"
         >
           {content}
-        </LinkComponent>
+        </RenderLink>
       );
     } else {
       button = (

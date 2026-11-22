@@ -1,5 +1,10 @@
 /* Kumo theme and helpers from the kumo-shadcn registry (https://kumo-shadcn.thomasricci.dev).
-   Written by the shadcn CLI: components.json points tailwind.css here. */
+   Written by the shadcn CLI: components.json points tailwind.css here. Theme: kumo-cloudflare
+   (kumo-theme plus --kumo-highlight and --kumo-sidebar-bg in the light and dark blocks).
+   Changed to pass the repo's CSS lint: removed the styles for Kumo components this app doesn't install
+   (code highlighting's .kumo-shiki, and the tabs scroll fade: [data-overflowing], .kumo-tabs-list, their
+   @property and @keyframes rules; add them back with those components), .no-scrollbar's scrollbar-width
+   sits behind @supports, and .skeleton-line's width falls back to auto. */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -99,6 +104,8 @@
     --kumo-contrast: var(--color-kumo-neutral-975, oklch(8.5% 0 0));
     --kumo-overlay: var(--color-kumo-neutral-50, oklch(97.5% 0 0));
     --kumo-control: var(--color-white, #fff);
+    --kumo-highlight: var(--color-kumo-neutral-125, oklch(96.5% 0 0));
+    --kumo-sidebar-bg: var(--color-kumo-canvas);
     --kumo-interact: var(--color-neutral-300, oklch(87% 0 0));
     --kumo-fill: var(--color-neutral-200, oklch(92.2% 0 0));
     --kumo-fill-hover: var(--color-kumo-neutral-125, oklch(96.5% 0 0));
@@ -140,6 +147,8 @@
   .dark [data-theme="kumo"],
   [data-theme="kumo"].dark,
   [data-theme="kumo"] .dark {
+    --kumo-highlight: var(--color-neutral-900, oklch(20.5% 0 0));
+    --kumo-sidebar-bg: var(--color-kumo-canvas);
     --kumo-text-default: var(--color-neutral-100, oklch(97% 0 0));
     --kumo-text-inverse: var(--color-neutral-900, oklch(20.5% 0 0));
     --kumo-text-strong: var(--color-neutral-50, oklch(98.5% 0 0));
@@ -318,7 +327,7 @@
     overflow: hidden;
     border-radius: 2px;
     height: 0.5rem;
-    width: var(--skeleton-width);
+    width: var(--skeleton-width, auto);
     background-color: #f3f4f6;
   }
   .skeleton-line::after {
@@ -343,24 +352,6 @@
       rgba(255, 255, 255, 0.05) 50%,
       rgba(255, 255, 255, 0) 100%
     );
-  }
-
-  @keyframes scroll-fade-x-left {
-    from {
-      --fade-left-n: 0;
-    }
-    to {
-      --fade-left-n: 1;
-    }
-  }
-
-  @keyframes scroll-fade-x-right {
-    from {
-      --fade-right-n: 1;
-    }
-    to {
-      --fade-right-n: 0;
-    }
   }
 
   @keyframes rdp-slide_in_left {
@@ -492,7 +483,11 @@
   }
   .no-scrollbar {
     -ms-overflow-style: none;
-    scrollbar-width: none;
+  }
+  @supports (scrollbar-width: none) {
+    .no-scrollbar {
+      scrollbar-width: none;
+    }
   }
   .no-input-spinner {
     appearance: textfield;
@@ -557,45 +552,6 @@
 .animate-clipboard-toast-bump {
   animation: clipboard-toast-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: center;
-}
-@property --fade-left-n {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-@property --fade-right-n {
-  syntax: "<number>";
-  inherits: false;
-  initial-value: 0;
-}
-
-@supports (animation-timeline: scroll()) {
-  [data-overflowing] {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      white calc(var(--fade-left-n) * var(--scroll-fade-width, 3rem)),
-      white calc(100% - var(--fade-right-n) * var(--scroll-fade-width, 3rem)),
-      transparent
-    );
-    animation-name: scroll-fade-x-left, scroll-fade-x-right;
-    animation-timing-function: linear, linear;
-    animation-timeline: scroll(self x);
-    animation-range:
-      0 var(--scroll-fade-range, 3rem),
-      calc(100% - var(--scroll-fade-range, 3rem)) 100%;
-    animation-fill-mode: both;
-  }
-  .kumo-tabs-list {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .kumo-tabs-list::-webkit-scrollbar {
-    display: none;
-  }
-}
-.kumo-tabs-list {
-  overscroll-behavior-x: contain;
 }
 [data-mode="dark"] .kumo-tooltip-popup,
 [data-mode="dark"] .kumo-popover-popup,
@@ -683,38 +639,6 @@
 }
 .animate-refresh {
   animation: refresh 1s linear infinite;
-}
-.kumo-shiki pre {
-  background-color: transparent !important;
-}
-[data-mode="dark"] .kumo-shiki span:not(.line-highlighted),
-.dark .kumo-shiki span:not(.line-highlighted) {
-  color: var(--shiki-dark) !important;
-  background-color: transparent !important;
-}
-[data-mode="dark"] .kumo-shiki .line-highlighted,
-.dark .kumo-shiki .line-highlighted {
-  color: var(--shiki-dark) !important;
-}
-.kumo-shiki code {
-  display: block;
-  width: fit-content;
-  min-width: 100%;
-  padding-right: 1rem;
-}
-.kumo-shiki {
-  --kumo-code-highlight-bg: rgba(0, 0, 0, 0.05);
-}
-[data-mode="dark"] .kumo-shiki,
-.dark .kumo-shiki {
-  --kumo-code-highlight-bg: rgba(255, 255, 255, 0.08);
-}
-.kumo-shiki .line.line-highlighted {
-  display: inline-block;
-  width: calc(100% + 2rem);
-  margin: 0 -1rem;
-  padding: 0 1rem;
-  background-color: var(--kumo-code-highlight-bg);
 }
 .kumo-line-numbers {
   padding-left: 0.75rem;

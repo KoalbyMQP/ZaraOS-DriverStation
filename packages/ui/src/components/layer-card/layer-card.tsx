@@ -12,6 +12,7 @@ import {
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: KumoLayerCardVariantsProps is Record<never, never> instead of an empty interface.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -59,7 +60,7 @@ export const KUMO_LAYER_CARD_VARIANTS = {
 export const KUMO_LAYER_CARD_DEFAULT_VARIANTS = {} as const;
 
 // Derived types from KUMO_LAYER_CARD_VARIANTS
-export interface KumoLayerCardVariantsProps {}
+export type KumoLayerCardVariantsProps = Record<never, never>;
 
 export function layerCardVariants(_props: KumoLayerCardVariantsProps = {}) {
   return cn(LAYER_CARD_SURFACE_CLASSES);

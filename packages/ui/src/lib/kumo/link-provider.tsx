@@ -11,6 +11,7 @@ import {
 // Kumo, packages/kumo/src/utils/link-provider.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: adds RenderLink, which renders a link component passed as a prop, and drops an oxlint suppression.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -61,7 +62,6 @@ const DefaultLinkComponent = forwardRef<HTMLAnchorElement, LinkComponentProps>(f
   ref
 ) {
   // Children and other content props are passed via ...rest spread
-  // oxlint-disable-next-line anchor-has-content
   return <a ref={ref} href={href ?? to ?? undefined} {...rest} />;
 });
 
@@ -71,6 +71,23 @@ const LinkComponentContext = createContext<ForwardLinkComponent>(DefaultLinkComp
 
 export function useLinkComponent() {
   return useContext(LinkComponentContext);
+}
+
+type RenderLinkProps = LinkComponentProps &
+  RefAttributes<HTMLAnchorElement> & {
+    /** The link component to render, usually the one from `useLinkComponent()`. */
+    component: ForwardLinkComponent;
+  };
+
+/**
+ * Renders `component` with the rest of the props, `ref` included.
+ *
+ * The link component comes from context, so writing `<LinkComponent />` in a
+ * component looks to the React Compiler like a component created during render.
+ * Passing it here as a prop keeps the element type static at the call site.
+ */
+export function RenderLink({ component: Component, ...props }: RenderLinkProps) {
+  return <Component {...props} />;
 }
 
 /**

@@ -4,6 +4,7 @@ import { forwardRef, useId, useMemo, type ComponentPropsWithoutRef, type PropsWi
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: dropped two unused lint-suppression comments.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -237,7 +238,6 @@ const Root = forwardRef<HTMLElement, PropsWithChildren<InputGroupRootPropsIntern
               {/* When label exists, an invisible <label> overlay enables click-to-focus inside the container zone without nesting visible <label> elements */}
               {label && (
                 // Invisible overlay for click-to-focus; the visible Field label handles a11y
-                // eslint-disable-next-line jsx-a11y/label-has-associated-control
                 <label
                   htmlFor={inputId}
                   // Positioned behind children (z-0) so it catches clicks on empty space
@@ -281,7 +281,7 @@ const Root = forwardRef<HTMLElement, PropsWithChildren<InputGroupRootPropsIntern
         {/* When label is set, use <div> to avoid nested <label> (Field provides one). An invisible <label> overlay handles click-to-focus on empty space. */}
         {label ? (
           <div ref={forwardedRef as React.Ref<HTMLDivElement>} {...dataProps} className={containerClassName} {...rest}>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control -- invisible overlay for click-to-focus; the visible Field label handles a11y */}
+            {/* Invisible overlay for click-to-focus; the visible Field label handles a11y */}
             <label
               htmlFor={inputId}
               // Positioned behind children (z-0) so it catches clicks on empty space

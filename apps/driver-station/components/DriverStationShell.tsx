@@ -13,12 +13,8 @@ const RouterLink = forwardRef<HTMLAnchorElement, LinkComponentProps>(function Ro
   return <Link ref={ref} href={href ?? to ?? ""} {...props} />;
 });
 
-// The sidebar and topbar share the canvas colour, as on the Cloudflare dashboard.
-const shell = {
-  "--sidebar-width": "257px",
-  "--sidebar-bg": "var(--color-shell)",
-  "--sidebar-active-bg": "var(--color-shell-active)",
-} as CSSProperties;
+// kumo-cloudflare puts the sidebar on the canvas colour, as on the Cloudflare dashboard.
+const shell = { "--sidebar-width": "257px" } as CSSProperties;
 
 export function DriverStationShell({ children }: { children: ReactNode }) {
   return (

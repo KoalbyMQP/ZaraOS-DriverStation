@@ -13,11 +13,6 @@
 }
 
 @theme {
-  /* Shell chrome, measured on dash.cloudflare.com. Kumo's Sidebar defaults to a
-     white panel (kumo-base) with kumo-tint rows; the dashboard uses these. */
-  --color-shell: oklch(0.9875 0 0); /* sidebar and topbar sit on the canvas */
-  --color-shell-active: oklch(0.965 0 0); /* nav hover and active row */
-
   --animate-caret-blink: caret-blink 1.25s ease-out infinite;
   @keyframes caret-blink {
     0%,

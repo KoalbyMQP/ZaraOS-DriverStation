@@ -5,6 +5,7 @@ import React from "react";
 // Changes from Kumo's file: import paths.
 // Also changed: hover/selected backgrounds that use Kumo's tint read --kumo-highlight first.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: LinkButton renders its link through RenderLink, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
 // MIT License Copyright (c) 2026 Cloudflare, Inc.
@@ -34,7 +35,7 @@ import { Loader } from "@repo/ui/components/loader/loader";
 import { Tooltip } from "@repo/ui/components/tooltip/tooltip";
 import { cn } from "@repo/ui/lib/utils";
 import { resolveVariant } from "@repo/ui/lib/kumo/resolve-variant";
-import { useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
+import { RenderLink, useLinkComponent } from "@repo/ui/lib/kumo/link-provider";
 import { unwrapLazyElement } from "@repo/ui/lib/kumo/unwrap-lazy-element";
 
 /** Button variant definitions mapping shape, size, and variant names to their Tailwind classes. */
@@ -518,7 +519,8 @@ export const LinkButton = React.forwardRef<HTMLAnchorElement, LinkButtonProps>(
 
     const iconNode = renderIconNode(IconComponent);
     const link = (
-      <LinkComponent
+      <RenderLink
+        component={LinkComponent}
         ref={ref}
         data-kumo-component="LinkButton"
         className={cn(
@@ -534,7 +536,7 @@ export const LinkButton = React.forwardRef<HTMLAnchorElement, LinkButtonProps>(
         {...props}
       >
         {renderButtonContent(variant, iconNode, children)}
-      </LinkComponent>
+      </RenderLink>
     );
 
     if (title) {

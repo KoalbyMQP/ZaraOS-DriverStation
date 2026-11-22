@@ -18,7 +18,7 @@ function TerminalTabs({ className, ...props }: Tabs.Root.Props) {
 
 /** The strip itself. Holds the list and any actions that follow it. */
 function TerminalTabsBar({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("flex h-[41px] shrink-0 overflow-x-auto bg-shell", className)} {...props} />;
+  return <div className={cn("flex h-[41px] shrink-0 overflow-x-auto bg-kumo-canvas", className)} {...props} />;
 }
 
 function TerminalTabsList({ className, ...props }: Tabs.List.Props) {
@@ -30,7 +30,7 @@ function TerminalTab({ className, ...props }: Tabs.Tab.Props) {
     <Tabs.Tab
       className={cn(
         cell,
-        "relative cursor-pointer border-r font-mono hover:bg-shell-active",
+        "relative cursor-pointer border-r font-mono hover:bg-(--kumo-highlight)",
         "after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-kumo-success after:opacity-0",
         "data-active:border-b-transparent data-active:bg-kumo-canvas data-active:after:opacity-100",
         className
@@ -47,7 +47,7 @@ function TerminalTabsAction({ className, type = "button", ...props }: ComponentP
       type={type}
       className={cn(
         cell,
-        "flex-1 gap-1 hover:bg-shell-active disabled:cursor-not-allowed disabled:text-kumo-subtle disabled:hover:bg-transparent [&_svg]:size-3",
+        "flex-1 gap-1 hover:bg-(--kumo-highlight) disabled:cursor-not-allowed disabled:text-kumo-subtle disabled:hover:bg-transparent [&_svg]:size-3",
         className
       )}
       {...props}
