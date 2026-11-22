@@ -4,6 +4,7 @@ import React from "react";
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: hover/selected backgrounds that use Kumo's tint read --kumo-highlight first.
+// Also changed: the emphasis gradient, inset line and hover read --kumo-button-bevel (unset: Kumo's bevel; 0: flat).
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: LinkButton renders its link through RenderLink, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -223,6 +224,14 @@ const getEmphasisStyle = (variant: KumoButtonVariant) => {
     "--kumo-button-emphasis-bg": `color-mix(in oklch, ${token}, white 30%)`,
     "--kumo-button-emphasis-gradient-start": `color-mix(in oklch, ${token}, white 15%)`,
     "--kumo-button-emphasis-gradient-end": token,
+    "--kumo-button-emphasis-from":
+      "color-mix(in oklch, var(--kumo-button-emphasis-gradient-end), var(--kumo-button-emphasis-gradient-start) calc(100% * clamp(0, var(--kumo-button-bevel, 1), 1)))",
+    "--kumo-button-emphasis-hover-from":
+      "color-mix(in oklch, var(--kumo-button-emphasis-gradient-start), var(--kumo-button-emphasis-bg) calc(100% * clamp(0, var(--kumo-button-bevel, 1), 1)))",
+    "--kumo-button-emphasis-hover-to":
+      "color-mix(in oklch, var(--kumo-button-emphasis-gradient-end), var(--kumo-button-emphasis-gradient-start) calc(100% - 100% * clamp(0, var(--kumo-button-bevel, 1), 1)))",
+    "--kumo-button-emphasis-inset":
+      "color-mix(in oklch, var(--kumo-button-emphasis-bg) calc(100% * clamp(0, var(--kumo-button-bevel, 1), 1)), transparent)",
   } satisfies React.CSSProperties & Record<`--${string}`, string>;
 };
 
@@ -269,7 +278,7 @@ const renderButtonContent = (variant: KumoButtonVariant, iconNode: React.ReactNo
     <>
       <span
         aria-hidden="true"
-        className="absolute inset-0 rounded-[inherit] bg-linear-to-b from-(--kumo-button-emphasis-gradient-start) to-(--kumo-button-emphasis-gradient-end) shadow-[inset_0_1px_0_0_var(--kumo-button-emphasis-bg)] group-hover:from-(--kumo-button-emphasis-bg)"
+        className="absolute inset-0 rounded-[inherit] bg-linear-to-b from-(--kumo-button-emphasis-from) to-(--kumo-button-emphasis-gradient-end) shadow-[inset_0_1px_0_0_var(--kumo-button-emphasis-inset)] group-hover:from-(--kumo-button-emphasis-hover-from) group-hover:to-(--kumo-button-emphasis-hover-to)"
       />
       <span className="relative flex items-center gap-1.5">
         {iconNode}

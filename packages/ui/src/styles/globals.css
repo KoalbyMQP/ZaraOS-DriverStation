@@ -27,6 +27,11 @@
   }
 }
 
+/* Flat primary and destructive buttons (kumo-shadcn's --kumo-button-bevel: 1 is Kumo's bevel, 0 is flat). */
+:root {
+  --kumo-button-bevel: 0;
+}
+
 /* Driver Station palette, mapped onto the tokens Kumo's components read.
    These are unlayered, so they win over the theme in kumo.css,
    which sets them in @layer base. Dark mode is left to Kumo:
