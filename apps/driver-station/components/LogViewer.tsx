@@ -178,9 +178,9 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
     <LayerCard className="flex min-h-64 flex-1 flex-col">
       <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-(length:--kumo-font-size-lg)/[var(--tw-leading,var(--kumo-line-height-lg))] font-semibold">
             Logs{" "}
-            <span className="text-sm font-normal text-kumo-subtle tabular-nums">
+            <span className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-normal text-kumo-subtle tabular-nums">
               {logs.length} entries{filterActive ? ` · showing ${filteredLogs.length}` : ""}
             </span>
           </h2>
@@ -263,7 +263,7 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
             description={logs.length ? "Try another search or severity filter." : "New output will appear here."}
           />
         ) : (
-          <div className="font-mono text-xs leading-relaxed">
+          <div className="font-mono text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] leading-relaxed">
             {filteredLogs.map((log, index) => {
               const severity = inferLogSeverity(log);
               return (
@@ -286,7 +286,7 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
           </div>
         )}
       </div>
-      <p className="border-t border-kumo-hairline px-4 py-2.5 text-xs text-kumo-subtle tabular-nums">
+      <p className="border-t border-kumo-hairline px-4 py-2.5 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle tabular-nums">
         {isPaused
           ? pendingWhilePaused
             ? `${pendingWhilePaused} new entries while paused`

@@ -28,8 +28,8 @@ function ToggleGroupItem({ className, ...props }: Toggle.Props) {
   return (
     <Toggle
       className={cn(
-        "group/toggle flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-base font-medium whitespace-nowrap text-kumo-subtle select-none hover:text-kumo-default",
-        "group-data-[size=sm]/toggle-group:h-5.5 group-data-[size=sm]/toggle-group:rounded group-data-[size=sm]/toggle-group:px-2 group-data-[size=sm]/toggle-group:text-xs",
+        "group/toggle flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium whitespace-nowrap text-kumo-subtle select-none hover:text-kumo-default",
+        "group-data-[size=sm]/toggle-group:h-5.5 group-data-[size=sm]/toggle-group:rounded group-data-[size=sm]/toggle-group:px-2 group-data-[size=sm]/toggle-group:text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
         "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-kumo-brand focus-visible:ring-inset",
         "data-pressed:bg-kumo-base data-pressed:text-kumo-default data-pressed:shadow-sm data-pressed:ring data-pressed:ring-kumo-line",
         "disabled:cursor-not-allowed disabled:opacity-50",

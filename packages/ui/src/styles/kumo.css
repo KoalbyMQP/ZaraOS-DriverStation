@@ -2,25 +2,16 @@
    Written by the shadcn CLI: components.json points tailwind.css here. Theme: kumo-cloudflare
    (kumo-theme plus --kumo-highlight and --kumo-sidebar-bg in the light and dark blocks).
    Changed to pass the repo's CSS lint: removed the styles for Kumo components this app doesn't install
-   (code highlighting's .kumo-shiki, and the tabs scroll fade: [data-overflowing], .kumo-tabs-list, their
-   @property and @keyframes rules; add them back with those components), .no-scrollbar's scrollbar-width
-   sits behind @supports, and .skeleton-line's width falls back to auto. */
+   (code highlighting's .kumo-shiki, and the tabs scroll fade: [data-kumo-overflowing], .kumo-tabs-list,
+   their @property and @keyframes rules; add them back with those components), .kumo-no-scrollbar's
+   scrollbar-width sits behind @supports, and .kumo-skeleton-line's width falls back to auto. */
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --text-xs: 12px;
-  --text-xs--line-height: calc(1 / 0.75);
-  --text-sm: 13px;
-  --text-sm--line-height: calc(1 / 0.85);
-  --text-base: 14px;
-  --text-base--line-height: 1.5;
-  --text-lg: 16px;
-  --text-lg--line-height: 1.5;
-  --ease-bounce: cubic-bezier(0.2, 0, 0, 1.5);
-  --default-transition-duration: 100ms;
-  --animate-refresh: refresh 0.5s ease-in-out infinite;
-  --animate-right: right 15s linear infinite;
+  --ease-kumo-bounce: cubic-bezier(0.2, 0, 0, 1.5);
+  --animate-kumo-refresh: kumo-refresh 0.5s ease-in-out infinite;
+  --animate-kumo-right: kumo-right 15s linear infinite;
   --color-kumo-arrow-edge: var(--kumo-arrow-edge);
   --color-kumo-arrow-stroke: var(--kumo-arrow-stroke);
   --color-kumo-badge-blue: var(--kumo-badge-blue);
@@ -104,8 +95,6 @@
     --kumo-contrast: var(--color-kumo-neutral-975, oklch(8.5% 0 0));
     --kumo-overlay: var(--color-kumo-neutral-50, oklch(97.5% 0 0));
     --kumo-control: var(--color-white, #fff);
-    --kumo-highlight: var(--color-kumo-neutral-125, oklch(96.5% 0 0));
-    --kumo-sidebar-bg: var(--color-kumo-canvas);
     --kumo-interact: var(--color-neutral-300, oklch(87% 0 0));
     --kumo-fill: var(--color-neutral-200, oklch(92.2% 0 0));
     --kumo-fill-hover: var(--color-kumo-neutral-125, oklch(96.5% 0 0));
@@ -130,12 +119,22 @@
     --kumo-banner-warning: var(--color-yellow-100, oklch(97.3% 0.071 103.193));
     --kumo-badge-red: var(--color-red-600, oklch(57.7% 0.245 27.325));
     --kumo-badge-green: var(--color-emerald-600, oklch(59.6% 0.145 163.225));
-    --kumo-badge-orange: var(--color-orange-650, oklch(81.5% 0.197 76));
+    --kumo-badge-orange: var(--color-kumo-orange-650, oklch(81.5% 0.197 76));
     --kumo-badge-purple: var(--color-purple-600, oklch(55.8% 0.288 302.321));
-    --kumo-badge-teal: var(--color-teal-650, oklch(54.9% 0.096 184.565));
+    --kumo-badge-teal: var(--color-kumo-teal-650, oklch(54.9% 0.096 184.565));
     --kumo-badge-blue: var(--color-blue-600, oklch(54.6% 0.245 262.881));
     --kumo-badge-neutral: var(--color-neutral-500, oklch(55.6% 0 0));
     --kumo-badge-inverted: var(--color-neutral-950, oklch(14.5% 0 0));
+    --kumo-font-size-xs: 12px;
+    --kumo-line-height-xs: calc(1 / 0.75);
+    --kumo-font-size-sm: 13px;
+    --kumo-line-height-sm: calc(1 / 0.85);
+    --kumo-font-size-base: 14px;
+    --kumo-line-height-base: 1.5;
+    --kumo-font-size-lg: 16px;
+    --kumo-line-height-lg: 1.5;
+    --kumo-highlight: var(--color-kumo-neutral-125, oklch(96.5% 0 0));
+    --kumo-sidebar-bg: var(--color-kumo-canvas);
   }
   :root[data-mode="dark"],
   [data-mode="dark"]:not([data-theme]),
@@ -147,8 +146,6 @@
   .dark [data-theme="kumo"],
   [data-theme="kumo"].dark,
   [data-theme="kumo"] .dark {
-    --kumo-highlight: var(--color-neutral-900, oklch(20.5% 0 0));
-    --kumo-sidebar-bg: var(--color-kumo-canvas);
     --kumo-text-default: var(--color-neutral-100, oklch(97% 0 0));
     --kumo-text-inverse: var(--color-neutral-900, oklch(20.5% 0 0));
     --kumo-text-strong: var(--color-neutral-50, oklch(98.5% 0 0));
@@ -197,12 +194,14 @@
     --kumo-banner-warning: oklch(55.4% 0.135 66.442 / 0.5);
     --kumo-badge-red: var(--color-red-700, oklch(50.5% 0.213 27.518));
     --kumo-badge-green: var(--color-emerald-700, oklch(50.8% 0.118 165.612));
-    --kumo-badge-orange: var(--color-orange-650, oklch(81.5% 0.197 76));
+    --kumo-badge-orange: var(--color-kumo-orange-650, oklch(81.5% 0.197 76));
     --kumo-badge-purple: var(--color-purple-700, oklch(49.6% 0.265 301.924));
     --kumo-badge-teal: var(--color-teal-700, oklch(51.1% 0.096 186.391));
     --kumo-badge-blue: var(--color-blue-700, oklch(48.8% 0.243 264.376));
     --kumo-badge-neutral: var(--color-neutral-600, oklch(43.9% 0 0));
     --kumo-badge-inverted: var(--color-white, #fff);
+    --kumo-highlight: var(--color-neutral-900, oklch(20.5% 0 0));
+    --kumo-sidebar-bg: var(--color-kumo-canvas);
   }
   [data-theme="fedramp"] {
     --kumo-canvas: #5b697c;
@@ -221,12 +220,10 @@
   }
   :root {
     color-scheme: light;
-    --color-red-650: oklch(55% 0.238 27.4);
-    --color-red-750: oklch(46% 0.195 27.2);
-    --color-blue-400: oklch(70.7% 0.165 254.624);
-    --color-blue-800: oklch(42.4% 0.199 265.638);
-    --color-orange-650: oklch(81.5% 0.197 76);
-    --color-teal-650: oklch(54.9% 0.096 184.565);
+    --color-kumo-red-650: oklch(55% 0.238 27.4);
+    --color-kumo-red-750: oklch(46% 0.195 27.2);
+    --color-kumo-orange-650: oklch(81.5% 0.197 76);
+    --color-kumo-teal-650: oklch(54.9% 0.096 184.565);
     --color-kumo-neutral-50: oklch(98.75% 0 0);
     --color-kumo-neutral-75: oklch(98% 0 0);
     --color-kumo-neutral-125: oklch(96.5% 0 0);
@@ -237,25 +234,26 @@
     --color-kumo-neutral-950: oklch(15% 0 0);
     --color-kumo-neutral-975: oklch(12% 0 0);
     --color-kumo-neutral-1000: oklch(10% 0 0);
+    --kumo-transition-duration: 100ms;
   }
   [data-mode="dark"],
   .dark {
     color-scheme: dark;
   }
 
-  @keyframes right {
+  @keyframes kumo-right {
     to {
       transform: translateX(100%);
     }
   }
 
-  @keyframes float {
+  @keyframes kumo-float {
     to {
       transform: translate(5px, 15px);
     }
   }
 
-  @keyframes refresh {
+  @keyframes kumo-refresh {
     from {
       transform: rotate(0deg);
     }
@@ -264,7 +262,7 @@
     }
   }
 
-  @keyframes bounce-in {
+  @keyframes kumo-bounce-in {
     0% {
       transform: scale(0.6);
       opacity: 0;
@@ -278,7 +276,7 @@
     }
   }
 
-  @keyframes shimmer {
+  @keyframes kumo-shimmer {
     0% {
       transform: translateX(-100%);
     }
@@ -287,7 +285,7 @@
     }
   }
 
-  @keyframes toast-bump {
+  @keyframes kumo-toast-bump {
     0% {
       transform: scale(1);
     }
@@ -299,7 +297,7 @@
     }
   }
 
-  @keyframes toast-bump-alternate {
+  @keyframes kumo-toast-bump-alternate {
     0% {
       transform: scale(1);
     }
@@ -311,7 +309,7 @@
     }
   }
 
-  @keyframes clipboard-toast-bump {
+  @keyframes kumo-clipboard-toast-bump {
     0% {
       transform: scale(1);
     }
@@ -322,7 +320,7 @@
       transform: scale(1);
     }
   }
-  .skeleton-line {
+  .kumo-skeleton-line {
     position: relative;
     overflow: hidden;
     border-radius: 2px;
@@ -330,22 +328,22 @@
     width: var(--skeleton-width, auto);
     background-color: #f3f4f6;
   }
-  .skeleton-line::after {
+  .kumo-skeleton-line::after {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
     left: 0;
-    animation: shimmer var(--shimmer-duration, 1.5s) var(--shimmer-delay, 0s) infinite ease-in-out;
+    animation: kumo-shimmer var(--shimmer-duration, 1.5s) var(--shimmer-delay, 0s) infinite ease-in-out;
     content: "";
     background: linear-gradient(90deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.08) 50%, rgba(0, 0, 0, 0) 100%);
   }
-  [data-mode="dark"] .skeleton-line,
-  .dark .skeleton-line {
+  [data-mode="dark"] .kumo-skeleton-line,
+  .dark .kumo-skeleton-line {
     background-color: rgba(255, 255, 255, 0.06);
   }
-  [data-mode="dark"] .skeleton-line::after,
-  .dark .skeleton-line::after {
+  [data-mode="dark"] .kumo-skeleton-line::after,
+  .dark .kumo-skeleton-line::after {
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0) 0%,
@@ -354,7 +352,7 @@
     );
   }
 
-  @keyframes rdp-slide_in_left {
+  @keyframes kumo-rdp-slide_in_left {
     from {
       transform: translateX(-100%);
     }
@@ -363,7 +361,7 @@
     }
   }
 
-  @keyframes rdp-slide_in_right {
+  @keyframes kumo-rdp-slide_in_right {
     from {
       transform: translateX(100%);
     }
@@ -372,7 +370,7 @@
     }
   }
 
-  @keyframes rdp-slide_out_left {
+  @keyframes kumo-rdp-slide_out_left {
     from {
       transform: translateX(0);
     }
@@ -381,7 +379,7 @@
     }
   }
 
-  @keyframes rdp-slide_out_right {
+  @keyframes kumo-rdp-slide_out_right {
     from {
       transform: translateX(0);
     }
@@ -390,7 +388,7 @@
     }
   }
 
-  @keyframes rdp-fade_in {
+  @keyframes kumo-rdp-fade_in {
     from {
       opacity: 0;
     }
@@ -399,7 +397,7 @@
     }
   }
 
-  @keyframes rdp-fade_out {
+  @keyframes kumo-rdp-fade_out {
     from {
       opacity: 1;
     }
@@ -408,7 +406,7 @@
     }
   }
 
-  @keyframes skeleton {
+  @keyframes kumo-skeleton {
     0% {
       background-position: 200% 0;
     }
@@ -478,50 +476,50 @@
 }
 
 @layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
+  .kumo-no-scrollbar::-webkit-scrollbar {
     display: none;
   }
-  .no-scrollbar {
+  .kumo-no-scrollbar {
     -ms-overflow-style: none;
   }
   @supports (scrollbar-width: none) {
-    .no-scrollbar {
+    .kumo-no-scrollbar {
       scrollbar-width: none;
     }
   }
-  .no-input-spinner {
+  .kumo-no-input-spinner {
     appearance: textfield;
   }
-  .no-input-spinner ::-webkit-outer-spin-button,
-  .no-input-spinner ::-webkit-inner-spin-button {
+  .kumo-no-input-spinner ::-webkit-outer-spin-button,
+  .kumo-no-input-spinner ::-webkit-inner-spin-button {
     appearance: none;
   }
-  .link-current {
+  .kumo-link-current {
     text-decoration-color: color-mix(in oklch, currentColor 35%, transparent);
   }
-  [data-mode="dark"] .link-current,
-  .dark .link-current {
+  [data-mode="dark"] .kumo-link-current,
+  .dark .kumo-link-current {
     text-decoration-color: color-mix(in oklch, currentColor 65%, transparent);
   }
-  .link-current:hover {
+  .kumo-link-current:hover {
     text-decoration-color: currentColor;
   }
-  .link-external-icon {
+  .kumo-link-external-icon {
     stroke-width: 1.75;
   }
-  [data-mode="dark"] .link-external-icon,
-  .dark .link-external-icon {
+  [data-mode="dark"] .kumo-link-external-icon,
+  .dark .kumo-link-external-icon {
     stroke-width: 2;
   }
 }
-.float {
-  animation: float 5s linear infinite alternate;
+.kumo-float {
+  animation: kumo-float 5s linear infinite alternate;
 }
-.animate-bounce-in {
-  animation: bounce-in 0.4s ease-out;
+.animate-kumo-bounce-in {
+  animation: kumo-bounce-in 0.4s ease-out;
 }
 .kumo-chart-shimmer {
-  animation: shimmer 1.8s ease-in-out infinite;
+  animation: kumo-shimmer 1.8s ease-in-out infinite;
   transform-box: fill-box;
 }
 
@@ -530,27 +528,27 @@
     animation: none;
     transform: none;
   }
-  .animate-toast-bump,
-  .animate-toast-bump-alternate {
+  .animate-kumo-toast-bump,
+  .animate-kumo-toast-bump-alternate {
     animation: none;
   }
-  .animate-clipboard-toast-bump {
+  .animate-kumo-clipboard-toast-bump {
     animation: none;
   }
-  .rdp-root {
-    --rdp-animation_duration: 0.01ms;
+  .kumo-rdp-root {
+    --kumo-rdp-animation_duration: 0.01ms;
   }
 }
-.animate-toast-bump {
-  animation: toast-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+.animate-kumo-toast-bump {
+  animation: kumo-toast-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: center;
 }
-.animate-toast-bump-alternate {
-  animation: toast-bump-alternate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+.animate-kumo-toast-bump-alternate {
+  animation: kumo-toast-bump-alternate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: center;
 }
-.animate-clipboard-toast-bump {
-  animation: clipboard-toast-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+.animate-kumo-clipboard-toast-bump {
+  animation: kumo-clipboard-toast-bump 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform-origin: center;
 }
 [data-mode="dark"] .kumo-tooltip-popup,
@@ -562,45 +560,45 @@
 .kumo-input-placeholder::placeholder {
   color: var(--text-color-kumo-placeholder);
 }
-.rdp-root {
-  --rdp-animation_duration: 0.2s;
-  --rdp-animation_timing: ease-out;
+.kumo-rdp-root {
+  --kumo-rdp-animation_duration: 0.2s;
+  --kumo-rdp-animation_timing: ease-out;
 }
-.rdp-weeks_before_enter {
-  animation: rdp-slide_in_left var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-weeks_before_enter {
+  animation: kumo-rdp-slide_in_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-weeks_before_exit {
-  animation: rdp-slide_out_left var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-weeks_before_exit {
+  animation: kumo-rdp-slide_out_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-weeks_after_enter {
-  animation: rdp-slide_in_right var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-weeks_after_enter {
+  animation: kumo-rdp-slide_in_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-weeks_after_exit {
-  animation: rdp-slide_out_right var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-weeks_after_exit {
+  animation: kumo-rdp-slide_out_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-root[dir="rtl"] .rdp-weeks_after_enter {
-  animation: rdp-slide_in_left var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_after_enter {
+  animation: kumo-rdp-slide_in_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-root[dir="rtl"] .rdp-weeks_before_exit {
-  animation: rdp-slide_out_right var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_before_exit {
+  animation: kumo-rdp-slide_out_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-root[dir="rtl"] .rdp-weeks_before_enter {
-  animation: rdp-slide_in_right var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_before_enter {
+  animation: kumo-rdp-slide_in_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-root[dir="rtl"] .rdp-weeks_after_exit {
-  animation: rdp-slide_out_left var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_after_exit {
+  animation: kumo-rdp-slide_out_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-caption_after_enter {
-  animation: rdp-fade_in var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-caption_after_enter {
+  animation: kumo-rdp-fade_in var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-caption_after_exit {
-  animation: rdp-fade_out var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-caption_after_exit {
+  animation: kumo-rdp-fade_out var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-caption_before_enter {
-  animation: rdp-fade_in var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-caption_before_enter {
+  animation: kumo-rdp-fade_in var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
-.rdp-caption_before_exit {
-  animation: rdp-fade_out var(--rdp-animation_duration) var(--rdp-animation_timing) forwards;
+.kumo-rdp-caption_before_exit {
+  animation: kumo-rdp-fade_out var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
 :where(
     a[href],
@@ -628,17 +626,17 @@
   ):where(:not([data-disabled])) {
   cursor: pointer;
 }
-.skeleton {
+.kumo-skeleton {
   background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.05) 50%, transparent 100%);
   background-size: 200% 100%;
-  animation: skeleton 1.5s ease-in-out infinite;
+  animation: kumo-skeleton 1.5s ease-in-out infinite;
 }
-[data-mode="dark"] .skeleton,
-.dark .skeleton {
+[data-mode="dark"] .kumo-skeleton,
+.dark .kumo-skeleton {
   background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
 }
-.animate-refresh {
-  animation: refresh 1s linear infinite;
+.animate-kumo-refresh {
+  animation: kumo-refresh 1s linear infinite;
 }
 .kumo-line-numbers {
   padding-left: 0.75rem;

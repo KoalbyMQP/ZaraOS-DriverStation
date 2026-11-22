@@ -144,11 +144,13 @@ function AppRow({ app }: { app: CatalogApp }) {
             </span>
           </Badge>
         )}
-        <span className="text-xs whitespace-nowrap text-kumo-subtle tabular-nums">
+        <span className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] whitespace-nowrap text-kumo-subtle tabular-nums">
           {app.versions.length} {app.versions.length === 1 ? "version" : "versions"}
         </span>
         {app.installationKnown && (
-          <span className="text-xs text-kumo-subtle">{app.installed ? "Installed" : "Not installed"}</span>
+          <span className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle">
+            {app.installed ? "Installed" : "Not installed"}
+          </span>
         )}
       </div>
       <DropdownMenu>
@@ -227,7 +229,9 @@ function CatalogCard({ title, description, children }: { title: string; descript
         <h2 id={id} className="text-kumo-default">
           {title}
         </h2>
-        <p className="text-sm font-normal">{description}</p>
+        <p className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-normal">
+          {description}
+        </p>
       </LayerCard.Secondary>
       <LayerCard.Primary className="gap-3 pr-4">{children}</LayerCard.Primary>
     </LayerCard>

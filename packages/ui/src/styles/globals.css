@@ -60,7 +60,10 @@
 
 @layer base {
   body {
-    @apply bg-kumo-canvas text-base text-kumo-default;
+    @apply bg-kumo-canvas text-kumo-default;
+    /* Kumo's base size, not Tailwind's text-base (16px). The fallbacks are Kumo's values. */
+    font-size: var(--kumo-font-size-base, 14px);
+    line-height: var(--kumo-line-height-base, 1.5);
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {

@@ -11,6 +11,7 @@ import {
 // Kumo, packages/kumo/src/components/layer-card/layer-card.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: KumoLayerCardVariantsProps is Record<never, never> instead of an empty interface.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -43,12 +44,12 @@ import { cn } from "@repo/ui/lib/utils";
 
 const LAYER_CARD_SURFACE_CLASSES = "overflow-hidden rounded-lg bg-kumo-base shadow-xs ring ring-kumo-line";
 const LAYER_CARD_LAYERED_ROOT_CLASSES =
-  "flex w-full flex-col overflow-hidden rounded-lg bg-kumo-elevated text-base ring ring-kumo-hairline";
+  "flex w-full flex-col overflow-hidden rounded-lg bg-kumo-elevated text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] ring ring-kumo-hairline";
 // Sections are flex items of the layered root. Keep their natural height when
 // the root is height-capped (e.g. inside Dialog); `overflow-hidden` would
 // otherwise let them shrink and clip. Override per section with `flex-1 min-h-0`.
 const LAYER_CARD_SECONDARY_CLASSES =
-  "-my-2 flex shrink-0 items-center gap-2 bg-kumo-elevated p-4 text-base font-medium text-kumo-subtle";
+  "-my-2 flex shrink-0 items-center gap-2 bg-kumo-elevated p-4 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium text-kumo-subtle";
 const LAYER_CARD_PRIMARY_CLASSES =
   "relative flex shrink-0 flex-col gap-2 overflow-hidden rounded-lg bg-kumo-base p-4 pr-3 text-inherit no-underline ring ring-kumo-fill";
 

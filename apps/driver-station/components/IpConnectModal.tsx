@@ -100,7 +100,7 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
     <Dialog className="flex flex-col gap-5 p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <Dialog.Title className="text-lg font-semibold">
+          <Dialog.Title className="text-(length:--kumo-font-size-lg)/[var(--tw-leading,var(--kumo-line-height-lg))] font-semibold">
             {pending ? "Enter pairing code" : "Connect to robot"}
           </Dialog.Title>
           <Dialog.Description className="text-kumo-subtle">
@@ -143,7 +143,7 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
                 ))}
               </InputOTPGroup>
             </InputOTP>
-            <p className="text-sm leading-snug text-kumo-subtle">
+            <p className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-subtle">
               Codes are valid for {pending.expiresIn} seconds. Go back to request a new one.
             </p>
           </div>
@@ -153,7 +153,9 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
               <div className="flex items-center gap-3 rounded-lg bg-kumo-recessed px-3 py-2.5">
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">Connected to {connection.name}</p>
-                  <p className="truncate text-sm text-kumo-subtle">{connection.ip}</p>
+                  <p className="truncate text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] text-kumo-subtle">
+                    {connection.ip}
+                  </p>
                 </div>
                 <Button
                   size="sm"
@@ -196,7 +198,7 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
             >
               Connect
             </Button>
-            <div className="flex items-center gap-3 text-sm text-kumo-subtle">
+            <div className="flex items-center gap-3 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] text-kumo-subtle">
               <span className="h-px flex-1 bg-kumo-line" />
               Local development
               <span className="h-px flex-1 bg-kumo-line" />
@@ -211,7 +213,7 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
               >
                 Dev Mode
               </Button>
-              <p className="text-sm leading-snug text-kumo-subtle">
+              <p className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-subtle">
                 Connect to Cortex on this computer without pairing.
               </p>
             </div>

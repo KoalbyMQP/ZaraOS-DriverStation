@@ -5,7 +5,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { cn } from "cn";
 
 const cell =
-  "flex h-full shrink-0 items-center border-b border-kumo-line px-3 text-sm leading-5 whitespace-nowrap text-kumo-default focus:outline-hidden focus-visible:ring-2 focus-visible:ring-kumo-brand focus-visible:ring-inset";
+  "flex h-full shrink-0 items-center border-b border-kumo-line px-3 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-5 whitespace-nowrap text-kumo-default focus:outline-hidden focus-visible:ring-2 focus-visible:ring-kumo-brand focus-visible:ring-inset";
 
 /**
  * Editor-style tab strip for terminal sessions: square cells on the shell

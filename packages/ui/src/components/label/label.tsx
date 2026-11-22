@@ -3,6 +3,7 @@ import { Info } from "@repo/ui/lib/kumo/icons";
 // Kumo, packages/kumo/src/components/label/label.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: KumoLabelVariantsProps is Record<never, never> instead of an empty interface.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -49,7 +50,7 @@ export function labelVariants(_props: KumoLabelVariantsProps = {}) {
   return cn(
     // Base styles - when used standalone, apply text styling
     // When used inside Field, the parent FieldBase.Label provides these styles
-    "m-0 text-base font-medium text-kumo-default"
+    "m-0 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium text-kumo-default"
   );
 }
 

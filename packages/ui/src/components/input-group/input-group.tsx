@@ -3,6 +3,7 @@ import { forwardRef, useId, useMemo, type ComponentPropsWithoutRef, type PropsWi
 // Kumo, packages/kumo/src/components/input-group/input-group.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: dropped two unused lint-suppression comments.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -53,19 +54,19 @@ export { type InputGroupSuffixProps } from "./input-group-suffix";
 export const KUMO_INPUT_GROUP_VARIANTS = {
   size: {
     xs: {
-      classes: "h-6 text-xs",
+      classes: "h-6 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Extra small size.",
     },
     sm: {
-      classes: "h-7 text-xs",
+      classes: "h-7 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Small size.",
     },
     base: {
-      classes: "h-9 text-base",
+      classes: "h-9 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))]",
       description: "Default size.",
     },
     lg: {
-      classes: "h-11 text-base",
+      classes: "h-11 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))]",
       description: "Large size.",
     },
   },

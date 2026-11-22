@@ -60,7 +60,9 @@ function AnglePreview({ angle }: { angle: number | null }) {
       </svg>
       <figcaption className="flex flex-col items-center gap-1">
         <span className="text-3xl font-medium tracking-tight tabular-nums">{angle === null ? "—" : `${angle}°`}</span>
-        <span className="text-xs text-kumo-subtle">Target angle · preview only</span>
+        <span className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle">
+          Target angle · preview only
+        </span>
       </figcaption>
     </figure>
   );
@@ -81,7 +83,9 @@ function Section({
     <LayerCard>
       <LayerCard.Secondary className="flex-col items-start gap-0.5">
         <h2 className="text-kumo-default">{title}</h2>
-        <p className="text-sm font-normal text-pretty">{description}</p>
+        <p className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-normal text-pretty">
+          {description}
+        </p>
       </LayerCard.Secondary>
       <LayerCard.Primary className="gap-5 pr-4">
         {children}
@@ -240,9 +244,11 @@ export default function MotorControlPage() {
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-              <p className="text-sm leading-snug text-kumo-subtle">LED color to use during the movement.</p>
+              <p className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-subtle">
+                LED color to use during the movement.
+              </p>
             </div>
-            <p className="text-xs leading-relaxed text-kumo-subtle">
+            <p className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] leading-relaxed text-kumo-subtle">
               Joint limits and supported movement times will be checked once the motor API is connected.
             </p>
           </form>
@@ -264,7 +270,10 @@ export default function MotorControlPage() {
                 >
                   Send to motor
                 </Button>
-                <p id={`${id}-send-help`} className="text-center text-xs text-kumo-subtle">
+                <p
+                  id={`${id}-send-help`}
+                  className="text-center text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle"
+                >
                   Available when the motor API is connected.
                 </p>
               </div>
@@ -292,11 +301,15 @@ export default function MotorControlPage() {
           >
             <dl className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
-                <dt className="text-xs text-kumo-subtle">Current angle</dt>
+                <dt className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle">
+                  Current angle
+                </dt>
                 <dd className="font-medium">Unknown</dd>
               </div>
               <div className="flex flex-col gap-1">
-                <dt className="text-xs text-kumo-subtle">Torque</dt>
+                <dt className="text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle">
+                  Torque
+                </dt>
                 <dd className="font-medium">Unknown</dd>
               </div>
             </dl>

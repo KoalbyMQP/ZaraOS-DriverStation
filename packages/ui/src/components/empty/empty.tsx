@@ -3,6 +3,8 @@ import { CheckIcon, CopyIcon } from "@repo/ui/lib/kumo/icons";
 // Kumo, packages/kumo/src/components/empty/empty.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
+// Also changed: Kumo's helper classes, animations and data attributes carry a kumo- prefix.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -154,7 +156,9 @@ export function Empty({ icon, title, description, commandLine, contents, size = 
         >
           <span className="inline-flex min-w-0 items-baseline gap-2">
             <span className="text-kumo-subtle select-none">$</span>
-            <span className="no-scrollbar overflow-scroll text-base whitespace-nowrap">{commandLine}</span>
+            <span className="kumo-no-scrollbar overflow-scroll text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] whitespace-nowrap">
+              {commandLine}
+            </span>
           </span>
           <Button
             className="text-kumo-subtle"
@@ -165,7 +169,7 @@ export function Empty({ icon, title, description, commandLine, contents, size = 
             onClick={handleCopy}
           >
             {emptyStateCopied ? (
-              <CheckIcon size={16} className="animate-bounce-in text-kumo-success" />
+              <CheckIcon size={16} className="animate-kumo-bounce-in text-kumo-success" />
             ) : (
               <CopyIcon size={16} />
             )}

@@ -3,6 +3,7 @@ import { type HTMLAttributes, type ReactNode, forwardRef, isValidElement } from 
 // Kumo, packages/kumo/src/components/banner/banner.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -62,11 +63,13 @@ export const KUMO_BANNER_VARIANTS = {
   },
   size: {
     base: {
-      classes: "items-start gap-3 rounded-lg px-4 py-3 text-base",
+      classes:
+        "items-start gap-3 rounded-lg px-4 py-3 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))]",
       description: "Default banner size",
     },
     sm: {
-      classes: "items-center gap-2 rounded-md px-3 py-2 text-sm",
+      classes:
+        "items-center gap-2 rounded-md px-3 py-2 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))]",
       description: "Compact banner for dialogs and tight spaces",
     },
   },
@@ -94,13 +97,13 @@ const BANNER_SIZE_PARTS: Record<
   base: {
     row: "gap-3",
     icon: "h-[1.375em]",
-    description: "text-sm",
+    description: "text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))]",
     action: "sm",
   },
   sm: {
     row: "gap-2",
     icon: "h-[1.25em]",
-    description: "text-sm",
+    description: "text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))]",
     action: "xs",
   },
 };

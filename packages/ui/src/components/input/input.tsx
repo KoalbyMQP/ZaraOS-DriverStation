@@ -3,6 +3,7 @@ import { cn } from "@repo/ui/lib/utils";
 // Kumo, packages/kumo/src/components/input/input.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -37,19 +38,23 @@ import { Field, normalizeFieldError, type FieldErrorMatch } from "@repo/ui/compo
 export const KUMO_INPUT_VARIANTS = {
   size: {
     xs: {
-      classes: "h-5 gap-1 rounded-sm px-1.5 text-xs",
+      classes:
+        "h-5 gap-1 rounded-sm px-1.5 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Extra small input for compact UIs",
     },
     sm: {
-      classes: "h-6.5 gap-1 rounded-md px-2 text-xs",
+      classes:
+        "h-6.5 gap-1 rounded-md px-2 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Small input for secondary fields",
     },
     base: {
-      classes: "h-9 gap-1.5 rounded-lg px-3 text-base",
+      classes:
+        "h-9 gap-1.5 rounded-lg px-3 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))]",
       description: "Default input size",
     },
     lg: {
-      classes: "h-10 gap-2 rounded-lg px-4 text-base",
+      classes:
+        "h-10 gap-2 rounded-lg px-4 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))]",
       description: "Large input for prominent fields",
     },
   },

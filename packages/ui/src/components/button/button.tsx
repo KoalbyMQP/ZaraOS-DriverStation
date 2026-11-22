@@ -5,6 +5,9 @@ import React from "react";
 // Changes from Kumo's file: import paths.
 // Also changed: hover/selected backgrounds that use Kumo's tint read --kumo-highlight first.
 // Also changed: the emphasis gradient, inset line and hover read --kumo-button-bevel (unset: Kumo's bevel; 0: flat).
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
+// Also changed: transitions without a duration-* class use --kumo-transition-duration (Kumo's 100ms), not your theme's default duration.
+// Also changed: Kumo's helper classes, animations and data attributes carry a kumo- prefix.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: LinkButton renders its link through RenderLink, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -61,19 +64,23 @@ export const KUMO_BUTTON_VARIANTS = {
   // on the page, so base and lg use a 20px line box instead.
   size: {
     xs: {
-      classes: "h-5 gap-1 rounded-sm px-1.5 text-xs",
+      classes:
+        "h-5 gap-1 rounded-sm px-1.5 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Extra small button for compact UIs",
     },
     sm: {
-      classes: "h-6.5 gap-1 rounded-md px-2 text-xs",
+      classes:
+        "h-6.5 gap-1 rounded-md px-2 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))]",
       description: "Small button for secondary actions",
     },
     base: {
-      classes: "h-9 gap-1.5 rounded-lg px-3 text-base leading-5",
+      classes:
+        "h-9 gap-1.5 rounded-lg px-3 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] leading-5",
       description: "Default button size",
     },
     lg: {
-      classes: "h-10 gap-2 rounded-lg px-4 text-base leading-5",
+      classes:
+        "h-10 gap-2 rounded-lg px-4 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] leading-5",
       description: "Large button for primary CTAs",
     },
   },
@@ -110,7 +117,7 @@ export const KUMO_BUTTON_VARIANTS = {
     },
     outline: {
       classes:
-        "bg-transparent text-kumo-default ring ring-kumo-line transition-colors not-disabled:hover:text-kumo-strong not-disabled:hover:ring-kumo-focus/25",
+        "bg-transparent text-kumo-default ring ring-kumo-line transition-colors duration-(--kumo-transition-duration) not-disabled:hover:text-kumo-strong not-disabled:hover:ring-kumo-focus/25",
       description: "Bordered button with transparent background",
     },
   },
@@ -466,7 +473,7 @@ export const RefreshButton = ({ "aria-label": ariaLabel = "Refresh", loading, ..
   <Button shape="square" aria-label={ariaLabel} {...props}>
     <ArrowsClockwise
       className={cn({
-        "animate-refresh": loading,
+        "animate-kumo-refresh": loading,
         "size-4.5": props.size === "base" || !props.size,
         "size-4": props.size === "sm",
         "size-5": props.size === "lg",

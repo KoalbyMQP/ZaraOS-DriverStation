@@ -32,7 +32,7 @@ const robotLinks = [
 ];
 
 // Kumo sets navigation rows in 13px medium; the shell design uses 14px regular.
-const navText = "text-base font-normal";
+const navText = "text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-normal";
 
 function AppStatus({ state }: { state: string }) {
   if (state === "running")
@@ -226,13 +226,16 @@ export function AppSidebar() {
               </Sidebar.Menu>
             )}
             {imagesError ? (
-              <p role="status" className="px-3 py-1 text-xs text-kumo-subtle">
+              <p
+                role="status"
+                className="px-3 py-1 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle"
+              >
                 Could not load installed apps.
               </p>
             ) : (
               !imagesLoading &&
               apps.length === 0 && (
-                <p className="px-3 py-1 text-xs text-kumo-subtle">
+                <p className="px-3 py-1 text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] text-kumo-subtle">
                   {connection ? "No installed apps." : "Connect to view installed apps."}
                 </p>
               )

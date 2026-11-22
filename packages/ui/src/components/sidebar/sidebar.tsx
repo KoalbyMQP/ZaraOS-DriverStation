@@ -19,6 +19,9 @@ import React, {
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: the sidebar's default colors read --kumo-sidebar-bg and --kumo-sidebar-active-bg (then --kumo-highlight) first.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
+// Also changed: transitions without a duration-* class use --kumo-transition-duration (Kumo's 100ms), not your theme's default duration.
+// Also changed: Kumo's helper classes, animations and data attributes carry a kumo- prefix.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Also changed: links render through RenderLink and latest-value refs sync in a layout effect, to pass the React Compiler lint.
 // Unofficial; not affiliated with or endorsed by Cloudflare.
@@ -1016,7 +1019,7 @@ const SidebarContent = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<"div"
             // Hide the native scrollbar with Kumo's CSS rather than relying on
             // the <style> Base UI adds to <head>, which head-swapping client
             // routers and strict CSPs can drop.
-            "no-scrollbar",
+            "kumo-no-scrollbar",
             // Scroll fade via CSS mask driven by Base UI overflow CSS variables
             "[mask-image:linear-gradient(to_bottom,transparent_0,black_min(24px,var(--scroll-area-overflow-y-start,24px)),black_calc(100%-min(24px,var(--scroll-area-overflow-y-end,24px))),transparent_100%)]"
           )}
@@ -1204,7 +1207,7 @@ const SidebarGroupLabel = forwardRef<HTMLDivElement, ComponentPropsWithoutRef<"d
       <div className="min-h-0 min-w-0">
         <div
           className={cn(
-            "mt-4 mb-2 truncate px-3 text-sm font-medium text-kumo-subtle",
+            "mt-4 mb-2 truncate px-3 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-medium text-kumo-subtle",
             // First group: less top margin
             "[[data-sidebar=group]:first-child_&]:mt-2"
           )}
@@ -1440,8 +1443,10 @@ const SidebarMenuButton = forwardRef<HTMLButtonElement, SidebarMenuButtonProps>(
       "group/menu-button relative flex w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg outline-none",
       "before:absolute before:inset-x-0 before:-inset-y-px",
       // Sizing
-      size === "base" && "min-h-8.5 px-3 py-0 text-sm font-medium",
-      size === "sm" && "min-h-7 px-2 py-0 text-sm",
+      size === "base" &&
+        "min-h-8.5 px-3 py-0 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-medium",
+      size === "sm" &&
+        "min-h-7 px-2 py-0 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))]",
       "text-kumo-default",
       "transition-[color,box-shadow,outline] duration-(--sidebar-animation-duration)",
       !active && "hover:bg-(--sidebar-active-bg)",
@@ -1657,7 +1662,7 @@ const SidebarMenuSubButton = forwardRef<HTMLButtonElement, SidebarMenuSubButtonP
     const isInsideMenuSubItem = useContext(MenuSubItemContext);
 
     const buttonClasses = cn(
-      "group/menu-button relative flex min-h-8.5 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg px-3 py-0 text-sm font-medium outline-none",
+      "group/menu-button relative flex min-h-8.5 w-full min-w-0 cursor-pointer items-center gap-2 rounded-lg px-3 py-0 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-medium outline-none",
       "before:absolute before:inset-x-0 before:-inset-y-px",
       "text-kumo-default transition-[color] duration-150",
       !active && "hover:bg-(--sidebar-active-bg)",
@@ -1896,7 +1901,7 @@ const SidebarRail = forwardRef<HTMLButtonElement, ComponentPropsWithoutRef<"butt
         aria-label="Toggle sidebar"
         tabIndex={-1}
         className={cn(
-          "absolute inset-y-0 z-1 hidden w-4 -translate-x-1/2 cursor-pointer transition-all",
+          "absolute inset-y-0 z-1 hidden w-4 -translate-x-1/2 cursor-pointer transition-all duration-(--kumo-transition-duration)",
           "after:absolute after:inset-y-0 after:left-1/2 after:w-0.5",
           "hover:after:bg-kumo-brand/20",
           "group-data-[side=left]/sidebar-wrapper:right-0",
@@ -2035,7 +2040,7 @@ const SidebarResizeHandle = forwardRef<HTMLButtonElement, ComponentPropsWithoutR
           // Hit area inside the sidebar edge; thin visual line pinned to the edge via ::after
           "absolute inset-y-0 z-2 hidden w-3 cursor-col-resize sm:block",
           "after:absolute after:inset-y-0 after:w-0.5",
-          "after:bg-transparent after:transition-colors",
+          "after:bg-transparent after:transition-colors after:duration-(--kumo-transition-duration)",
           "hover:after:bg-kumo-hairline focus-visible:after:bg-kumo-hairline active:after:bg-kumo-hairline",
           "focus:outline-hidden",
           side === "left" && "right-0 after:right-0",

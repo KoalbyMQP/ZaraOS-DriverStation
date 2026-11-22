@@ -3,6 +3,7 @@
 // Kumo, packages/kumo/src/components/loader/skeleton-line.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's helper classes, animations and data attributes carry a kumo- prefix.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -36,7 +37,7 @@ import { resolveVariant } from "@repo/ui/lib/kumo/resolve-variant";
 export const KUMO_SKELETON_LINE_VARIANTS = {
   variant: {
     default: {
-      classes: "skeleton-line",
+      classes: "kumo-skeleton-line",
       description: "Flat grey bar with a sliding shimmer",
     },
     sketch: {
@@ -115,7 +116,7 @@ export const SkeletonLine = ({
         {/* Fill with the same sliding highlight as the default variant. The
             8px radius clamps to a pill on short lines. */}
         <div className="absolute inset-0 overflow-hidden rounded-lg bg-kumo-recessed">
-          <div className="absolute inset-0 animate-[shimmer_var(--shimmer-duration,1.5s)_var(--shimmer-delay,0s)_infinite_ease-in-out] bg-linear-to-r from-transparent via-kumo-contrast/8 to-transparent motion-reduce:animate-none" />
+          <div className="absolute inset-0 animate-[kumo-shimmer_var(--shimmer-duration,1.5s)_var(--shimmer-delay,0s)_infinite_ease-in-out] bg-linear-to-r from-transparent via-kumo-contrast/8 to-transparent motion-reduce:animate-none" />
         </div>
         {/* Construction strokes along each edge, 4px past every corner. */}
         <div className={cn(SKETCH_STROKE, "-inset-x-1 top-0 h-px")} />

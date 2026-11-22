@@ -32,7 +32,7 @@ The driver station is a Next.js app using the App router on Next.js 16 and React
 
 We use [Kumo](https://github.com/cloudflare/kumo), Cloudflare's component library, as shadcn components from the [kumo-shadcn](https://kumo-shadcn.thomasricci.dev) registry: the source lives in `packages/ui/src/components/<name>/`. Add one with `pnpm dlx shadcn@latest add @kumo-shadcn/<name>` in `packages/ui`, and import it from `@repo/ui/components/<name>/<name>`. Icons come from `@repo/ui/icons`. The few components Kumo does not have (terminal tabs, toggle group, one-time-code input) live next to them in `packages/ui/src/components`.
 
-Colours are set in `packages/ui/src/styles/globals.css`, which maps our palette onto Kumo's tokens. Style with those tokens (`bg-kumo-base`, `text-kumo-subtle`), not raw Tailwind colours. Kumo also sets the type scale: `text-base` is 14px and `text-sm` is 13px.
+Colours are set in `packages/ui/src/styles/globals.css`, which maps our palette onto Kumo's tokens. Style with those tokens (`bg-kumo-base`, `text-kumo-subtle`), not raw Tailwind colours. Text uses Kumo's type scale (12, 13, 14 and 16px), which Kumo keeps in its own variables and leaves Tailwind's `text-sm` and friends alone: write `text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))]` (or `xs`, `base`, `lg`) instead of `text-sm`, or use `var(--kumo-font-size-sm)` in CSS. The body is already Kumo's base size, 14px.
 
 ## Linting & Formatting
 

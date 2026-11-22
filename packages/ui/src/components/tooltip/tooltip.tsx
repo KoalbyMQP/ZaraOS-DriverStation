@@ -3,6 +3,7 @@ import { Tooltip as TooltipBase } from "@base-ui/react/tooltip";
 // Kumo, packages/kumo/src/components/tooltip/tooltip.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -77,7 +78,7 @@ export interface KumoTooltipVariantsProps {
 export function tooltipVariants({ side = KUMO_TOOLTIP_DEFAULT_VARIANTS.side }: KumoTooltipVariantsProps = {}) {
   return cn(
     // Base styles
-    "flex origin-[var(--transform-origin)] flex-col rounded-md bg-kumo-base px-2.5 py-1.5 text-sm text-kumo-default",
+    "flex origin-[var(--transform-origin)] flex-col rounded-md bg-kumo-base px-2.5 py-1.5 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] text-kumo-default",
     "shadow-md outline-1 outline-kumo-line",
     "transition-[transform,scale,opacity] duration-150",
     "data-[starting-style]:scale-90 data-[starting-style]:opacity-0",
@@ -209,7 +210,7 @@ export function Tooltip({
         <TooltipBase.Positioner align={align} side={side} sideOffset={10} className="max-w-[var(--available-width)]">
           <TooltipBase.Popup
             className={cn(
-              "flex origin-[var(--transform-origin)] flex-col rounded-md bg-kumo-base px-2.5 py-1.5 text-sm text-kumo-default",
+              "flex origin-[var(--transform-origin)] flex-col rounded-md bg-kumo-base px-2.5 py-1.5 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] text-kumo-default",
               "shadow-md outline outline-kumo-line",
               "transition-[transform,scale,opacity] duration-150",
               "data-[starting-style]:scale-90 data-[starting-style]:opacity-0",

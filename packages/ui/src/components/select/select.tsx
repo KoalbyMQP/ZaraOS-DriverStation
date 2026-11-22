@@ -4,6 +4,7 @@ import { Select as SelectBase } from "@base-ui/react/select";
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
 // Also changed: hover/selected backgrounds that use Kumo's tint read --kumo-highlight first.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -483,7 +484,7 @@ export function Select<T, Multiple extends boolean | undefined = false>({
   // hover/focus coupling that a native <label> (from Field) would cause.
   const showOptional = required === false;
   const selectLabelNode = label ? (
-    <SelectBase.Label className="m-0 text-base font-medium text-kumo-default select-none">
+    <SelectBase.Label className="m-0 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium text-kumo-default select-none">
       <Label showOptional={showOptional} tooltip={hideLabel ? undefined : labelTooltip} asContent>
         {label}
       </Label>
@@ -598,9 +599,15 @@ export function Select<T, Multiple extends boolean | undefined = false>({
       )}
       {selectControl}
       {normalizedError ? (
-        <span className="text-sm text-kumo-danger">{normalizedError.message}</span>
+        <span className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] text-kumo-danger">
+          {normalizedError.message}
+        </span>
       ) : (
-        description && <span className="text-sm leading-snug text-kumo-subtle">{description}</span>
+        description && (
+          <span className="text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-subtle">
+            {description}
+          </span>
+        )
       )}
     </div>
   );
@@ -623,7 +630,7 @@ function Option<T>({ children, value, disabled, className }: OptionProps<T>) {
       value={value}
       disabled={disabled}
       className={cn(
-        "group mx-1.5 flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 text-base outline-none focus-visible:outline-hidden",
+        "group mx-1.5 flex cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] outline-none focus-visible:outline-hidden",
         "focus-visible:z-50 focus-visible:ring-2 focus-visible:ring-kumo-brand focus-visible:ring-inset",
         "data-highlighted:bg-(--kumo-highlight,var(--color-kumo-tint))",
         "data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
@@ -686,7 +693,13 @@ type GroupLabelProps = {
  * ```
  */
 const GroupLabel = forwardRef<HTMLDivElement, GroupLabelProps>(({ children, className }, ref) => (
-  <SelectBase.GroupLabel ref={ref} className={cn("px-3.5 py-1.5 text-sm font-semibold text-kumo-subtle", className)}>
+  <SelectBase.GroupLabel
+    ref={ref}
+    className={cn(
+      "px-3.5 py-1.5 text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] font-semibold text-kumo-subtle",
+      className
+    )}
+  >
     {children}
   </SelectBase.GroupLabel>
 ));

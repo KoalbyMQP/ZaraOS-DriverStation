@@ -3,6 +3,7 @@ import { Field as FieldBase } from "@base-ui/react/field";
 // Kumo, packages/kumo/src/components/field/field.tsx from https://github.com/cloudflare/kumo
 // (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
 // Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
 // Also changed: cn comes from your shadcn utils (@/lib/utils).
 // Unofficial; not affiliated with or endorsed by Cloudflare.
 //
@@ -182,7 +183,7 @@ export function Field({
   return (
     <FieldBase.Root className={fieldVariants({ controlFirst })}>
       {!hideLabel && hasLabelContent && (
-        <FieldBase.Label className="m-0 text-base font-medium text-kumo-default select-none">
+        <FieldBase.Label className="m-0 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium text-kumo-default select-none">
           <Label showOptional={showOptional} tooltip={labelTooltip} asContent>
             {label}
           </Label>
@@ -192,7 +193,7 @@ export function Field({
       {error ? (
         <FieldBase.Error
           className={cn(
-            "text-sm leading-snug text-kumo-danger",
+            "text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-danger",
             // Span full width in horizontal layout
             "col-span-full"
           )}
@@ -204,7 +205,7 @@ export function Field({
         description && (
           <FieldBase.Description
             className={cn(
-              "text-sm leading-snug text-kumo-subtle",
+              "text-(length:--kumo-font-size-sm)/[var(--tw-leading,var(--kumo-line-height-sm))] leading-snug text-kumo-subtle",
               // Span full width in horizontal layout
               "col-span-full"
             )}

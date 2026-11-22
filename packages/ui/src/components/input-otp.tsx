@@ -30,7 +30,7 @@ function InputOTPSlot({ index, className, ...props }: ComponentProps<"div"> & { 
     <div
       data-active={isActive}
       className={cn(
-        "relative flex size-9 items-center justify-center rounded-lg bg-kumo-control text-base text-kumo-default ring ring-kumo-line",
+        "relative flex size-9 items-center justify-center rounded-lg bg-kumo-control text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] text-kumo-default ring ring-kumo-line",
         "group-has-aria-invalid/otp:ring-kumo-danger data-[active=true]:z-10 data-[active=true]:ring-[1.5px] data-[active=true]:ring-kumo-focus/50",
         className
       )}
