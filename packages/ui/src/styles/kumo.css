@@ -2,8 +2,9 @@
    Written by the shadcn CLI: components.json points tailwind.css here. Theme: kumo-cloudflare
    (kumo-theme plus --kumo-highlight and --kumo-sidebar-bg in the light and dark blocks).
    Changed to pass the repo's CSS lint: removed the styles for Kumo components this app doesn't install
-   (code highlighting's .kumo-shiki, and the tabs scroll fade: [data-kumo-overflowing], .kumo-tabs-list,
-   their @property and @keyframes rules; add them back with those components), .kumo-no-scrollbar's
+   (code highlighting's .kumo-shiki; the tabs scroll fade: [data-kumo-overflowing], .kumo-tabs-list,
+   their @property and @keyframes rules; the date picker's .kumo-rdp-* rules and keyframes; add them
+   back with those components), .kumo-no-scrollbar's
    scrollbar-width sits behind @supports, and .kumo-skeleton-line's width falls back to auto. */
 
 @custom-variant dark (&:is(.dark *));
@@ -352,60 +353,6 @@
     );
   }
 
-  @keyframes kumo-rdp-slide_in_left {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes kumo-rdp-slide_in_right {
-    from {
-      transform: translateX(100%);
-    }
-    to {
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes kumo-rdp-slide_out_left {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-100%);
-    }
-  }
-
-  @keyframes kumo-rdp-slide_out_right {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(100%);
-    }
-  }
-
-  @keyframes kumo-rdp-fade_in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes kumo-rdp-fade_out {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
-  }
-
   @keyframes kumo-skeleton {
     0% {
       background-position: 200% 0;
@@ -535,9 +482,6 @@
   .animate-kumo-clipboard-toast-bump {
     animation: none;
   }
-  .kumo-rdp-root {
-    --kumo-rdp-animation_duration: 0.01ms;
-  }
 }
 .animate-kumo-toast-bump {
   animation: kumo-toast-bump 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -559,46 +503,6 @@
 }
 .kumo-input-placeholder::placeholder {
   color: var(--text-color-kumo-placeholder);
-}
-.kumo-rdp-root {
-  --kumo-rdp-animation_duration: 0.2s;
-  --kumo-rdp-animation_timing: ease-out;
-}
-.kumo-rdp-weeks_before_enter {
-  animation: kumo-rdp-slide_in_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-weeks_before_exit {
-  animation: kumo-rdp-slide_out_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-weeks_after_enter {
-  animation: kumo-rdp-slide_in_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-weeks_after_exit {
-  animation: kumo-rdp-slide_out_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_after_enter {
-  animation: kumo-rdp-slide_in_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_before_exit {
-  animation: kumo-rdp-slide_out_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_before_enter {
-  animation: kumo-rdp-slide_in_right var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-root[dir="rtl"] .kumo-rdp-weeks_after_exit {
-  animation: kumo-rdp-slide_out_left var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-caption_after_enter {
-  animation: kumo-rdp-fade_in var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-caption_after_exit {
-  animation: kumo-rdp-fade_out var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-caption_before_enter {
-  animation: kumo-rdp-fade_in var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
-}
-.kumo-rdp-caption_before_exit {
-  animation: kumo-rdp-fade_out var(--kumo-rdp-animation_duration) var(--kumo-rdp-animation_timing) forwards;
 }
 :where(
     a[href],
