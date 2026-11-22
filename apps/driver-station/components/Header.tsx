@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, LinkButton, useSidebar } from "@repo/ui/kumo";
+import { Button, LinkButton } from "@repo/ui/components/button/button";
+import { useSidebar } from "@repo/ui/components/sidebar/sidebar";
 import {
   BatteryVerticalHighIcon,
   CellSignalFullIcon,

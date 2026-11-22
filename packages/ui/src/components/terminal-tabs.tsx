@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { Tabs } from "@cloudflare/kumo/primitives/tabs";
+import { Tabs } from "@base-ui/react/tabs";
 import { cn } from "cn";
 
 const cell =

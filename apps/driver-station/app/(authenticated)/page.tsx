@@ -1,6 +1,6 @@
 "use client";
 
-import { Empty } from "@repo/ui/kumo";
+import { Empty } from "@repo/ui/components/empty/empty";
 import { useConnection } from "@/contexts/ConnectionContext";
 
 export default function HomePage() {

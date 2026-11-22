@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cloudflare/kumo": "^2.19.0",
+    "@base-ui/react": "^1.9.0",
     "@phosphor-icons/react": "^2.1.10",
     "cn": "^0.4.0",
     "input-otp": "^1.5.0",
@@ -41,10 +41,13 @@
   },
   "exports": {
     "./icons": "./src/icons.ts",
-    "./kumo": "./src/kumo.ts",
     "./globals.css": "./src/styles/globals.css",
     "./postcss.config": "./postcss.config.ts",
     "./lib/*": "./src/lib/*.ts",
+    "./lib/kumo/icons": "./src/lib/kumo/icons.tsx",
+    "./lib/kumo/link-provider": "./src/lib/kumo/link-provider.tsx",
+    "./lib/kumo/locale-provider": "./src/lib/kumo/locale-provider.tsx",
+    "./lib/kumo/portal-provider": "./src/lib/kumo/portal-provider.tsx",
     "./components/*": "./src/components/*.tsx",
     "./hooks/*": "./src/hooks/*.ts"
   }

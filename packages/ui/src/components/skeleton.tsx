@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@cloudflare/kumo/components/loader";
+import { SkeletonLine } from "@repo/ui/components/loader/skeleton-line";
 
 /**
  * A placeholder block sized by `className`. Kumo's SkeletonLine draws a random

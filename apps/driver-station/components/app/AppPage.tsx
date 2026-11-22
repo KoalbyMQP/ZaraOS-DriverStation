@@ -1,7 +1,8 @@
 "use client";
 
 import { Component, useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { Banner, Empty } from "@repo/ui/kumo";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Empty } from "@repo/ui/components/empty/empty";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useAppUi, useInstanceUi } from "@/contexts/AppUiContext";

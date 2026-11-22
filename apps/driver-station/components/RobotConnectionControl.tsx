@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Button, Dialog } from "@repo/ui/kumo";
+import { Button } from "@repo/ui/components/button/button";
+import { Dialog } from "@repo/ui/components/dialog/dialog";
 import { CaretDownIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { IpConnectModal } from "@/components/IpConnectModal";

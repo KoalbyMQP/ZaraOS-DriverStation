@@ -1,4 +1,4 @@
-import { Loader } from "@cloudflare/kumo/components/loader";
+import { Loader } from "@repo/ui/components/loader/loader";
 
 /**
  * Kumo's Loader, hidden from assistive technology. Use it beside text that

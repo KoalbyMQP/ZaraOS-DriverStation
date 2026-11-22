@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { Empty } from "@repo/ui/kumo";
+import { Empty } from "@repo/ui/components/empty/empty";
 import { Spinner } from "@repo/ui/components/spinner";
 import {
   TerminalTab,

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import { Badge, Banner, Button, DropdownMenu, Empty, Field, InputGroup, LayerCard } from "@repo/ui/kumo";
+import { Badge } from "@repo/ui/components/badge/badge";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Button } from "@repo/ui/components/button/button";
+import { DropdownMenu } from "@repo/ui/components/dropdown/dropdown";
+import { Empty } from "@repo/ui/components/empty/empty";
+import { Field } from "@repo/ui/components/field/field";
+import { InputGroup } from "@repo/ui/components/input-group/input-group";
+import { LayerCard } from "@repo/ui/components/layer-card/layer-card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Spinner } from "@repo/ui/components/spinner";
 import {

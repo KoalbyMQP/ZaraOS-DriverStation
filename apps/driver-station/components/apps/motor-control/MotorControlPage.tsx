@@ -1,7 +1,12 @@
 "use client";
 
 import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { Badge, Banner, Button, Input, InputGroup, LayerCard } from "@repo/ui/kumo";
+import { Badge } from "@repo/ui/components/badge/badge";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Button } from "@repo/ui/components/button/button";
+import { InputGroup } from "@repo/ui/components/input-group/input-group";
+import { Input } from "@repo/ui/components/input/input";
+import { LayerCard } from "@repo/ui/components/layer-card/layer-card";
 import { ToggleGroup, ToggleGroupItem } from "@repo/ui/components/toggle-group";
 import {
   ArrowCounterClockwiseIcon,

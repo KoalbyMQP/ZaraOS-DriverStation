@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Banner, Button, Dialog, Input, Label } from "@repo/ui/kumo";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Button } from "@repo/ui/components/button/button";
+import { Dialog } from "@repo/ui/components/dialog/dialog";
+import { Input } from "@repo/ui/components/input/input";
+import { Label } from "@repo/ui/components/label/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@repo/ui/components/input-otp";
 import { CodeIcon, PlugIcon, WarningCircleIcon, XIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";

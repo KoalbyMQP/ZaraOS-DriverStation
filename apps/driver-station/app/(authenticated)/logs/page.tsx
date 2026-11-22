@@ -2,7 +2,9 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Banner, Empty, Select } from "@repo/ui/kumo";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Empty } from "@repo/ui/components/empty/empty";
+import { Select } from "@repo/ui/components/select/select";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { WarningCircleIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";

@@ -30,7 +30,7 @@ The driver station is a Next.js app using the App router on Next.js 16 and React
 
 #### UI
 
-We use [Kumo](https://github.com/cloudflare/kumo), Cloudflare's component library, through `packages/ui`. Import its components from `@repo/ui/kumo` and icons from `@repo/ui/icons`. The few components Kumo does not have (terminal tabs, toggle group, one-time-code input) live in `packages/ui/src/components`.
+We use [Kumo](https://github.com/cloudflare/kumo), Cloudflare's component library, as shadcn components from the [kumo-shadcn](https://kumo-shadcn.thomasricci.dev) registry: the source lives in `packages/ui/src/components/<name>/`. Add one with `pnpm dlx shadcn@latest add @kumo-shadcn/<name>` in `packages/ui`, and import it from `@repo/ui/components/<name>/<name>`. Icons come from `@repo/ui/icons`. The few components Kumo does not have (terminal tabs, toggle group, one-time-code input) live next to them in `packages/ui/src/components`.
 
 Colours are set in `packages/ui/src/styles/globals.css`, which maps our palette onto Kumo's tokens. Style with those tokens (`bg-kumo-base`, `text-kumo-subtle`), not raw Tailwind colours. Kumo also sets the type scale: `text-base` is 14px and `text-sm` is 13px.
 

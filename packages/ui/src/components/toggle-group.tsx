@@ -1,7 +1,7 @@
 "use client";
 
-import { Toggle } from "@cloudflare/kumo/primitives/toggle";
-import { ToggleGroup as ToggleGroupPrimitive } from "@cloudflare/kumo/primitives/toggle-group";
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { cn } from "cn";
 
 type Size = "sm" | "base";

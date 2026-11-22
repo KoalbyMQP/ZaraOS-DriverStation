@@ -1,7 +1,12 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useState, useRef, useCallback } from "react";
-import { Badge, Banner, Button, Empty, InputGroup, LayerCard } from "@repo/ui/kumo";
+import { Badge } from "@repo/ui/components/badge/badge";
+import { Banner } from "@repo/ui/components/banner/banner";
+import { Button } from "@repo/ui/components/button/button";
+import { Empty } from "@repo/ui/components/empty/empty";
+import { InputGroup } from "@repo/ui/components/input-group/input-group";
+import { LayerCard } from "@repo/ui/components/layer-card/layer-card";
 import { ToggleGroup, ToggleGroupItem } from "@repo/ui/components/toggle-group";
 import {
   CopyIcon,

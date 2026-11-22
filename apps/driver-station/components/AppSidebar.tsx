@@ -4,7 +4,9 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Badge, InputGroup, Sidebar, useSidebar } from "@repo/ui/kumo";
+import { Badge } from "@repo/ui/components/badge/badge";
+import { InputGroup } from "@repo/ui/components/input-group/input-group";
+import { Sidebar, useSidebar } from "@repo/ui/components/sidebar/sidebar";
 import { Kbd } from "@repo/ui/components/kbd";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import {

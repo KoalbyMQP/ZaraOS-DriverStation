@@ -2,7 +2,9 @@
 
 import { forwardRef, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
-import { LinkProvider, Sidebar, TooltipProvider, type LinkComponentProps } from "@repo/ui/kumo";
+import { Sidebar } from "@repo/ui/components/sidebar/sidebar";
+import { TooltipProvider } from "@repo/ui/components/tooltip/tooltip";
+import { LinkProvider, type LinkComponentProps } from "@repo/ui/lib/kumo/link-provider";
 import { Header } from "@/components/Header";
 import { AppSidebar } from "@/components/AppSidebar";
 

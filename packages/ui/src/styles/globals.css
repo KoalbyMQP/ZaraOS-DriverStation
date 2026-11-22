@@ -1,10 +1,8 @@
-/* Kumo's theme tokens must be registered before Tailwind. */
-@import "@cloudflare/kumo/styles";
 @import "tailwindcss";
+/* Kumo's theme and helpers, from the kumo-shadcn registry. The shadcn CLI writes there (components.json). */
+@import "./kumo.css";
 @import "./typeset.css";
 
-/* Tailwind skips node_modules, so Kumo's compiled components are scanned explicitly. */
-@source "../../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
@@ -35,28 +33,29 @@
 }
 
 /* Driver Station palette, mapped onto the tokens Kumo's components read.
-   These are unlayered, so they win over Kumo's theme. Dark mode is left to Kumo:
+   These are unlayered, so they win over the theme in kumo.css,
+   which sets them in @layer base. Dark mode is left to Kumo:
    nothing here applies under data-mode="dark". */
 :root:not([data-mode="dark"]) {
   /* Neutrals from dash.cloudflare.com. They equal Kumo's light theme today, and
      are pinned so a Kumo upgrade cannot shift them. */
-  --color-kumo-canvas: oklch(0.9875 0 0); /* page */
-  --color-kumo-base: #fff; /* cards, dialogs, popovers */
-  --color-kumo-control: #fff; /* inputs, menus */
-  --color-kumo-recessed: oklch(0.965 0 0); /* tracks, inset areas */
-  --color-kumo-tint: oklch(0.97 0 0); /* hover and highlighted rows */
-  --color-kumo-fill: oklch(0.922 0 0); /* neutral badges */
-  --color-kumo-line: oklch(0.145 0 0 / 0.1); /* borders and control edges */
-  --text-color-kumo-default: oklch(0.205 0 0);
-  --text-color-kumo-subtle: oklch(0.556 0 0); /* 4.27:1 on kumo-recessed, below 4.5 */
+  --kumo-canvas: oklch(0.9875 0 0); /* page */
+  --kumo-base: #fff; /* cards, dialogs, popovers */
+  --kumo-control: #fff; /* inputs, menus */
+  --kumo-recessed: oklch(0.965 0 0); /* tracks, inset areas */
+  --kumo-tint: oklch(0.97 0 0); /* hover and highlighted rows */
+  --kumo-fill: oklch(0.922 0 0); /* neutral badges */
+  --kumo-line: oklch(0.145 0 0 / 0.1); /* borders and control edges */
+  --kumo-text-default: oklch(0.205 0 0);
+  --kumo-text-subtle: oklch(0.556 0 0); /* 4.27:1 on kumo-recessed, below 4.5 */
 
   /* Accents the app already used. Delete a line to fall back to Kumo's value. */
-  --color-kumo-brand: oklch(0.546 0.245 262.881); /* primary | Kumo: 0.5772 0.2324 260 */
-  --color-kumo-danger: oklch(0.583 0.2387 28.4765); /* destructive | Kumo: 0.637 0.237 25.331 */
-  --color-kumo-success: #16a34a; /* running, active terminal tab | Kumo: 0.596 0.145 163.225 */
-  --color-kumo-badge-green: #16a34a; /* app status: OK */
-  --color-kumo-badge-red: #dc2626; /* app status: Error */
-  --color-kumo-badge-neutral: #737373; /* app status: Off */
+  --kumo-brand: oklch(0.546 0.245 262.881); /* primary | Kumo: 0.5772 0.2324 260 */
+  --kumo-danger: oklch(0.583 0.2387 28.4765); /* destructive | Kumo: 0.637 0.237 25.331 */
+  --kumo-success: #16a34a; /* running, active terminal tab | Kumo: 0.596 0.145 163.225 */
+  --kumo-badge-green: #16a34a; /* app status: OK */
+  --kumo-badge-red: #dc2626; /* app status: Error */
+  --kumo-badge-neutral: #737373; /* app status: Off */
 }
 
 @layer base {
