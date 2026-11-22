@@ -96,8 +96,8 @@ test("Figma shell geometry, stable selection typography, installed status, and h
       return [s.fontSize, s.fontWeight, s.fontFamily];
     });
   const selectedType = await readType();
-  expect(selectedType[0]).toBe("14px");
-  expect(selectedType[1]).toBe("400");
+  expect(selectedType[0]).toBe("13px");
+  expect(selectedType[1]).toBe("500");
   expect(selectedType[2]).toContain("Inter");
   await apps.getByRole("button", { name: "Motor Tester: running" }).click();
   await expect(apps.getByRole("link", { name: "v2 · Logs" })).toBeVisible();

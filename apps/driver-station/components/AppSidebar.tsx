@@ -31,9 +31,6 @@ const robotLinks = [
   { href: "/appstore", label: "App Store", icon: AppStoreLogoIcon },
 ];
 
-// Kumo sets navigation rows in 13px medium; the shell design uses 14px regular.
-const navText = "text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-normal";
-
 function AppStatus({ state }: { state: string }) {
   if (state === "running")
     return (
@@ -69,7 +66,6 @@ function AppPageLinks({ instanceId, closeMobile }: { instanceId: string; closeMo
         active={active}
         aria-current={active ? "page" : undefined}
         onClick={closeMobile}
-        className={navText}
       >
         {`${instance.version} · ${page.title}`}
       </Sidebar.MenuSubButton>
@@ -143,7 +139,6 @@ export function AppSidebar() {
                     active={pathname === href}
                     aria-current={pathname === href ? "page" : undefined}
                     onClick={closeMobile}
-                    className={navText}
                   >
                     {label}
                   </Sidebar.MenuButton>
@@ -169,7 +164,6 @@ export function AppSidebar() {
                     active={pathname === "/motor-control"}
                     aria-current={pathname === "/motor-control" ? "page" : undefined}
                     onClick={closeMobile}
-                    className={navText}
                   >
                     Motor control
                     <Sidebar.MenuBadge>Preview</Sidebar.MenuBadge>
@@ -185,7 +179,6 @@ export function AppSidebar() {
                             <Sidebar.MenuButton
                               icon={<AppStatus state={loading || error ? "unknown" : app.state} />}
                               aria-label={`${app.name}: ${loading || error ? "status unavailable" : app.state}`}
-                              className={navText}
                             >
                               {app.name}
                               <Sidebar.MenuChevron />
@@ -210,12 +203,11 @@ export function AppSidebar() {
                                   version: instance.version,
                                 })}`}
                                 onClick={closeMobile}
-                                className={navText}
                               >
                                 {`${instance.version} · Logs`}
                               </Sidebar.MenuSubButton>
                             ))}
-                            <Sidebar.MenuSubButton href="/appstore" onClick={closeMobile} className={navText}>
+                            <Sidebar.MenuSubButton href="/appstore" onClick={closeMobile}>
                               Open in App Store
                             </Sidebar.MenuSubButton>
                           </Sidebar.MenuSub>
