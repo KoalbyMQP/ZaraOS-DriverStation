@@ -1,14 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Alert, AlertDescription } from "@repo/ui/components/alert";
-import { Button } from "@repo/ui/components/button";
-import { DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@repo/ui/components/dialog";
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldSeparator } from "@repo/ui/components/field";
-import { Input } from "@repo/ui/components/input";
+import { Banner, Button, Dialog, Input, Label } from "@repo/ui/kumo";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@repo/ui/components/input-otp";
-import { Spinner } from "@repo/ui/components/spinner";
-import { CodeIcon, PlugIcon, WarningCircleIcon } from "@repo/ui/icons";
+import { CodeIcon, PlugIcon, WarningCircleIcon, XIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { derivePairingToken } from "@/lib/robot-auth";
 import { mixedContentHint, robotBaseUrl } from "@/lib/robot-api";
@@ -98,117 +93,128 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{pending ? "Enter pairing code" : "Connect to robot"}</DialogTitle>
-        <DialogDescription>
-          {pending
-            ? "Enter the six-digit code displayed on your robot."
-            : "Connect over your network, or use a local Cortex server."}
-        </DialogDescription>
-      </DialogHeader>
-      <form onSubmit={submit} className="flex flex-col gap-5">
+    <Dialog className="flex flex-col gap-5 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <Dialog.Title className="text-lg font-semibold">
+            {pending ? "Enter pairing code" : "Connect to robot"}
+          </Dialog.Title>
+          <Dialog.Description className="text-kumo-subtle">
+            {pending
+              ? "Enter the six-digit code displayed on your robot."
+              : "Connect over your network, or use a local Cortex server."}
+          </Dialog.Description>
+        </div>
+        <Dialog.Close
+          render={
+            <Button variant="ghost" shape="square" size="sm" aria-label="Close" className="-mt-1 -mr-2 shrink-0" />
+          }
+        >
+          <XIcon size={16} />
+        </Dialog.Close>
+      </div>
+      <form onSubmit={submit} className="flex flex-col gap-4">
         {error && (
-          <Alert variant="destructive">
-            <WarningCircleIcon />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <Banner role="alert" variant="error" icon={<WarningCircleIcon weight="fill" />} description={error} />
         )}
-        <FieldGroup>
-          {pending ? (
-            <Field data-invalid={!!error}>
-              <FieldLabel htmlFor="pairing-code">Pairing code</FieldLabel>
-              <InputOTP
-                id="pairing-code"
-                maxLength={6}
-                pattern="^[0-9]*$"
-                value={code}
-                onChange={(value) => {
-                  setCode(value);
-                  setError(null);
-                }}
-                disabled={!!loading}
-                aria-invalid={!!error}
-                autoFocus
-              >
-                <InputOTPGroup>
-                  {Array.from({ length: 6 }, (_, index) => (
-                    <InputOTPSlot key={index} index={index} />
-                  ))}
-                </InputOTPGroup>
-              </InputOTP>
-              <FieldDescription>
-                Codes are valid for {pending.expiresIn} seconds. Go back to request a new one.
-              </FieldDescription>
-            </Field>
-          ) : (
-            <>
-              {connection && (
-                <Field orientation="horizontal">
-                  <div className="min-w-0 flex-1">
-                    <FieldLabel>Connected to {connection.name}</FieldLabel>
-                    <FieldDescription>{connection.ip}</FieldDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      disconnect();
-                      onClose();
-                    }}
-                  >
-                    Disconnect
-                  </Button>
-                </Field>
-              )}
-              <Field>
-                <FieldLabel htmlFor="robot-name">Device name</FieldLabel>
-                <Input
-                  id="robot-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Robot"
-                  disabled={!!loading}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="robot-address">IP address</FieldLabel>
-                <Input
-                  id="robot-address"
-                  value={ip}
-                  onChange={(e) => {
-                    setIp(e.target.value);
-                    setError(null);
+        {pending ? (
+          <div className="grid gap-2">
+            <Label htmlFor="pairing-code">Pairing code</Label>
+            <InputOTP
+              id="pairing-code"
+              maxLength={6}
+              pattern="^[0-9]*$"
+              value={code}
+              onChange={(value) => {
+                setCode(value);
+                setError(null);
+              }}
+              disabled={!!loading}
+              aria-invalid={!!error}
+              autoFocus
+            >
+              <InputOTPGroup>
+                {Array.from({ length: 6 }, (_, index) => (
+                  <InputOTPSlot key={index} index={index} />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
+            <p className="text-sm leading-snug text-kumo-subtle">
+              Codes are valid for {pending.expiresIn} seconds. Go back to request a new one.
+            </p>
+          </div>
+        ) : (
+          <>
+            {connection && (
+              <div className="flex items-center gap-3 rounded-lg bg-kumo-recessed px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">Connected to {connection.name}</p>
+                  <p className="truncate text-sm text-kumo-subtle">{connection.ip}</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    disconnect();
+                    onClose();
                   }}
-                  placeholder="192.168.1.42"
-                  required
-                  disabled={!!loading}
-                  autoComplete="off"
-                />
-                <FieldDescription>
-                  Use the robot’s IP address or hostname. The default port is 8080. Enter an https:// address if the
-                  robot has one.
-                </FieldDescription>
-              </Field>
-              <Button type="submit" disabled={!!loading || !ip.trim()}>
-                {loading === "pair" ? <Spinner data-icon="inline-start" /> : <PlugIcon data-icon="inline-start" />}
-                Connect
-              </Button>
-              <FieldSeparator>Local development</FieldSeparator>
-              <Field>
-                <Button type="button" variant="outline" disabled={!!loading} onClick={connectDevMode}>
-                  {loading === "dev" ? <Spinner data-icon="inline-start" /> : <CodeIcon data-icon="inline-start" />}Dev
-                  Mode
+                >
+                  Disconnect
                 </Button>
-                <FieldDescription>Connect to Cortex on this computer without pairing.</FieldDescription>
-              </Field>
-            </>
-          )}
-        </FieldGroup>
-        <DialogFooter>
+              </div>
+            )}
+            <Input
+              label="Device name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Robot"
+              disabled={!!loading}
+            />
+            <Input
+              label="IP address"
+              description="Use the robot’s IP address or hostname. The default port is 8080. Enter an https:// address if the robot has one."
+              value={ip}
+              onChange={(e) => {
+                setIp(e.target.value);
+                setError(null);
+              }}
+              placeholder="192.168.1.42"
+              required
+              disabled={!!loading}
+              autoComplete="off"
+            />
+            <Button
+              type="submit"
+              variant="primary"
+              icon={PlugIcon}
+              loading={loading === "pair"}
+              disabled={!!loading || !ip.trim()}
+              className="w-full justify-center"
+            >
+              Connect
+            </Button>
+            <div className="flex items-center gap-3 text-sm text-kumo-subtle">
+              <span className="h-px flex-1 bg-kumo-line" />
+              Local development
+              <span className="h-px flex-1 bg-kumo-line" />
+            </div>
+            <div className="grid gap-2">
+              <Button
+                icon={CodeIcon}
+                loading={loading === "dev"}
+                disabled={!!loading}
+                onClick={connectDevMode}
+                className="w-full justify-center"
+              >
+                Dev Mode
+              </Button>
+              <p className="text-sm leading-snug text-kumo-subtle">
+                Connect to Cortex on this computer without pairing.
+              </p>
+            </div>
+          </>
+        )}
+        <div className="flex justify-end gap-2 pt-1">
           <Button
-            type="button"
             variant="ghost"
             onClick={
               pending
@@ -219,17 +225,17 @@ export function IpConnectModal({ onClose }: { onClose: () => void }) {
                   }
                 : onClose
             }
-            disabled={pending && !!loading ? true : undefined}
+            disabled={!!pending && !!loading}
           >
             {pending ? "Back" : "Cancel"}
           </Button>
           {pending && (
-            <Button type="submit" disabled={!!loading || code.length !== 6}>
-              {loading && <Spinner data-icon="inline-start" />}Pair
+            <Button type="submit" variant="primary" loading={!!loading} disabled={code.length !== 6}>
+              Pair
             </Button>
           )}
-        </DialogFooter>
+        </div>
       </form>
-    </DialogContent>
+    </Dialog>
   );
 }

@@ -45,12 +45,12 @@ test("Figma shell geometry, stable selection typography, installed status, and h
   await expect(apps.getByRole("button", { name: "Face: error" })).toContainText("Error");
   await expect(apps.getByRole("button", { name: "Walking: stopped" })).toContainText("Off");
   await apps.getByRole("button", { name: "Motor Tester: running" }).click();
-  await expect(apps.locator('[data-slot="sidebar-menu-sub"]').first()).toHaveCSS("border-left-width", "1px");
+  await expect(apps.locator('[data-sidebar="menu-sub"] > [aria-hidden="true"]').first()).toHaveCSS("width", "1px");
   await expect(page.getByText("Running apps", { exact: true })).toHaveCount(0);
 
-  const sidebar = page.locator('[data-slot="sidebar-container"]');
+  const sidebar = page.locator('[data-sidebar="sidebar"]');
   const header = page.getByRole("banner");
-  const divider = page.locator('[data-slot="sidebar-separator"]');
+  const divider = page.locator('[data-sidebar="header"]');
   const search = page.getByRole("textbox", { name: "Search navigation" });
   const shellBox = await sidebar.boundingBox();
   const headerBox = await header.boundingBox();
@@ -71,7 +71,7 @@ test("Figma shell geometry, stable selection typography, installed status, and h
 
   const robot = page.getByRole("button", { name: "Connect to robot: Koalby 3" });
   const centers = await robot.evaluate((el) =>
-    [el.querySelector("img"), el.querySelector("span")].map((child) => {
+    [el.querySelector("img"), el.querySelector("span.truncate")].map((child) => {
       const box = child!.getBoundingClientRect();
       return box.y + box.height / 2;
     })
@@ -109,12 +109,10 @@ test("Figma shell geometry, stable selection typography, installed status, and h
   await nav.getByRole("link", { name: "Home", exact: true }).click();
   expect(await readType()).toEqual(selectedType);
   const content = page.locator("#page-content");
-  await expect(content.locator('[data-slot="empty"]')).toContainText(
-    "Connect to a robot and open an App from the sidebar."
-  );
+  await expect(content).toContainText("Connect to a robot and open an App from the sidebar.");
   await expect(content.getByRole("link")).toHaveCount(0);
   await expect(content.getByRole("button")).toHaveCount(0);
-  await expect(page.locator('[data-slot="sidebar-inset"]')).toHaveCSS("background-color", "rgb(245, 245, 245)");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(245, 245, 245)");
   await expect(header).toHaveCSS("background-color", "rgb(245, 245, 245)");
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("figma-home.png") });
   motorState = "stopped";

@@ -2,18 +2,16 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Alert, AlertDescription } from "@repo/ui/components/alert";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@repo/ui/components/empty";
-import { Field, FieldLabel } from "@repo/ui/components/field";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@repo/ui/components/select";
+import { Banner, Empty, Select } from "@repo/ui/kumo";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { WarningCircleIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { appSlug, useProject } from "@/contexts/ProjectContext";
 import { LogViewer } from "@/components/LogViewer";
 
 export default function LogsPage() {
   return (
-    <Suspense fallback={<Skeleton className="m-6 h-80" />}>
+    <Suspense fallback={<Skeleton className="m-6 h-80 w-auto rounded-lg" />}>
       <ProjectLogs />
     </Suspense>
   );
@@ -55,52 +53,34 @@ function LogsView({
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4 md:p-6">
       <h1 className="text-2xl font-semibold tracking-tight">App logs</h1>
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+      {error && <Banner role="alert" variant="error" icon={<WarningCircleIcon weight="fill" />} description={error} />}
       {!connection || (!loading && instances.length === 0) ? (
-        <Empty>
-          <EmptyHeader>
-            <EmptyTitle>{connection ? "No app instances" : "No robot connected"}</EmptyTitle>
-            <EmptyDescription>
-              {connection
-                ? "Start an app from the App Store to view its logs."
-                : "Open the robot connection in the topbar to view logs."}
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
+        <Empty
+          title={connection ? "No app instances" : "No robot connected"}
+          description={
+            connection
+              ? "Start an app from the App Store to view its logs."
+              : "Open the robot connection in the topbar to view logs."
+          }
+        />
       ) : loading ? (
-        <Skeleton className="h-80 w-full" />
+        <Skeleton className="h-80 w-full rounded-lg" />
       ) : (
         <>
-          <Field className="max-w-sm">
-            <FieldLabel htmlFor="log-instance">App instance</FieldLabel>
-            <Select items={items} value={selectedId} onValueChange={setSelected}>
-              <SelectTrigger id="log-instance">
-                <SelectValue placeholder="Select an instance" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {items.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
+          <div className="max-w-sm">
+            <Select
+              label="App instance"
+              placeholder="Select an instance"
+              className="w-full"
+              items={items}
+              value={selectedId}
+              onValueChange={setSelected}
+            />
+          </div>
           {selectedId ? (
             <LogViewer key={selectedId} connection={connection} instanceId={selectedId} />
           ) : (
-            <Empty>
-              <EmptyHeader>
-                <EmptyTitle>Select an instance</EmptyTitle>
-                <EmptyDescription>Choose an app above to view its logs.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <Empty title="Select an instance" description="Choose an app above to view its logs." />
           )}
         </>
       )}

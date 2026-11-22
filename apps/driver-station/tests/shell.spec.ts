@@ -196,12 +196,8 @@ test("App Store lists versions and installed images; launched apps update the si
   });
   await page.goto("/appstore");
   await connectDev(page);
-  const online = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole("heading", { name: "Online apps", exact: true }) });
-  const installed = page
-    .locator('[data-slot="card"]')
-    .filter({ has: page.getByRole("heading", { name: "Installed apps", exact: true }) });
+  const online = page.getByRole("region", { name: "Online apps", exact: true });
+  const installed = page.getByRole("region", { name: "Installed apps", exact: true });
   await expect(online.getByRole("listitem")).toHaveCount(2);
   await expect(installed.getByRole("listitem")).toHaveCount(2);
   await expect(online.getByText("Not installed", { exact: true })).toHaveCount(1);

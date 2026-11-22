@@ -1,86 +1,42 @@
 "use client";
 
-import * as React from "react";
-import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
-import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
-import { type VariantProps } from "class-variance-authority";
+import { Toggle } from "@cloudflare/kumo/primitives/toggle";
+import { ToggleGroup as ToggleGroupPrimitive } from "@cloudflare/kumo/primitives/toggle-group";
 import { cn } from "cn";
 
-import { toggleVariants } from "@repo/ui/components/toggle";
+type Size = "sm" | "base";
 
-const ToggleGroupContext = React.createContext<
-  VariantProps<typeof toggleVariants> & {
-    spacing?: number;
-    orientation?: "horizontal" | "vertical";
-  }
->({
-  size: "default",
-  variant: "default",
-  spacing: 2,
-  orientation: "horizontal",
-});
-
-function ToggleGroup({
-  className,
-  variant,
-  size,
-  spacing = 2,
-  orientation = "horizontal",
-  children,
-  ...props
-}: ToggleGroupPrimitive.Props &
-  VariantProps<typeof toggleVariants> & {
-    spacing?: number;
-    orientation?: "horizontal" | "vertical";
-  }) {
+/**
+ * A row of pressable options. Kumo has no toggle group, so this pairs its
+ * primitives with the look of its segmented Tabs: a recessed track and a raised
+ * pill for the pressed option. Items are buttons with `aria-pressed`.
+ */
+function ToggleGroup({ className, size = "base", ...props }: ToggleGroupPrimitive.Props & { size?: Size }) {
   return (
     <ToggleGroupPrimitive
-      data-slot="toggle-group"
-      data-variant={variant}
       data-size={size}
-      data-spacing={spacing}
-      data-orientation={orientation}
-      style={{ "--gap": spacing } as React.CSSProperties}
       className={cn(
-        "group/toggle-group flex w-fit flex-row items-center gap-[--spacing(var(--gap))] rounded-lg data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-vertical:flex-col data-vertical:items-stretch",
+        "group/toggle-group flex w-fit items-stretch gap-0.5 rounded-lg bg-kumo-recessed p-0.5 ring ring-kumo-hairline/70 data-[size=sm]:rounded-md",
         className
       )}
       {...props}
-    >
-      <ToggleGroupContext.Provider value={{ variant, size, spacing, orientation }}>
-        {children}
-      </ToggleGroupContext.Provider>
-    </ToggleGroupPrimitive>
+    />
   );
 }
 
-function ToggleGroupItem({
-  className,
-  children,
-  variant = "default",
-  size = "default",
-  ...props
-}: TogglePrimitive.Props & VariantProps<typeof toggleVariants>) {
-  const context = React.useContext(ToggleGroupContext);
-
+function ToggleGroupItem({ className, ...props }: Toggle.Props) {
   return (
-    <TogglePrimitive
-      data-slot="toggle-group-item"
-      data-variant={context.variant || variant}
-      data-size={context.size || size}
-      data-spacing={context.spacing}
+    <Toggle
       className={cn(
-        "shrink-0 group-data-[spacing=0]/toggle-group:rounded-none group-data-[spacing=0]/toggle-group:px-2 focus:z-10 focus-visible:z-10 group-data-[spacing=0]/toggle-group:has-data-[icon=inline-end]:pr-1.5 group-data-[spacing=0]/toggle-group:has-data-[icon=inline-start]:pl-1.5 group-data-horizontal/toggle-group:data-[spacing=0]:first:rounded-l-lg group-data-vertical/toggle-group:data-[spacing=0]:first:rounded-t-lg group-data-horizontal/toggle-group:data-[spacing=0]:last:rounded-r-lg group-data-vertical/toggle-group:data-[spacing=0]:last:rounded-b-lg group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:border-l-0 group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:border-t-0 group-data-horizontal/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-l group-data-vertical/toggle-group:data-[spacing=0]:data-[variant=outline]:first:border-t",
-        toggleVariants({
-          variant: context.variant || variant,
-          size: context.size || size,
-        }),
+        "group/toggle flex h-8 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-base font-medium whitespace-nowrap text-kumo-subtle select-none hover:text-kumo-default",
+        "group-data-[size=sm]/toggle-group:h-5.5 group-data-[size=sm]/toggle-group:rounded group-data-[size=sm]/toggle-group:px-2 group-data-[size=sm]/toggle-group:text-xs",
+        "focus:outline-hidden focus-visible:ring-2 focus-visible:ring-kumo-brand focus-visible:ring-inset",
+        "data-pressed:bg-kumo-base data-pressed:text-kumo-default data-pressed:shadow-sm data-pressed:ring data-pressed:ring-kumo-line",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
       {...props}
-    >
-      {children}
-    </TogglePrimitive>
+    />
   );
 }
 

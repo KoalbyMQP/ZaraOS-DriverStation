@@ -2,10 +2,16 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import { Button } from "@repo/ui/components/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@repo/ui/components/empty";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@repo/ui/components/tabs";
+import { Empty } from "@repo/ui/kumo";
 import { Spinner } from "@repo/ui/components/spinner";
+import {
+  TerminalTab,
+  TerminalTabPanel,
+  TerminalTabs,
+  TerminalTabsAction,
+  TerminalTabsBar,
+  TerminalTabsList,
+} from "@repo/ui/components/terminal-tabs";
 import { PlusIcon, TerminalWindowIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { robotBaseUrl, signedFetch } from "@/lib/robot-api";
@@ -13,7 +19,7 @@ import { robotBaseUrl, signedFetch } from "@/lib/robot-api";
 const RobotTerminal = dynamic(async () => (await import("@/components/SSHTerminal")).default, {
   ssr: false,
   loading: () => (
-    <div role="status" className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+    <div role="status" className="flex items-center gap-2 p-4 text-kumo-subtle">
       <Spinner />
       Opening terminal…
     </div>
@@ -39,27 +45,22 @@ export default function ConsolePage() {
   }
 
   return (
-    <Tabs value={active} onValueChange={setActive} className="h-full min-h-80 gap-0">
-      <div className="flex h-[41px] shrink-0 overflow-x-auto bg-sidebar">
-        <TabsList variant="terminal" aria-label="Terminal sessions" className="w-auto shrink-0">
+    <TerminalTabs value={active} onValueChange={setActive}>
+      <TerminalTabsBar>
+        <TerminalTabsList aria-label="Terminal sessions">
           {sessions.map((session) => (
-            <TabsTrigger key={session.id} value={session.id}>
+            <TerminalTab key={session.id} value={session.id}>
               {session.title}
-            </TabsTrigger>
+            </TerminalTab>
           ))}
-        </TabsList>
-        <Button variant="terminal" size="terminal" onClick={addSession} disabled={!connection}>
-          <PlusIcon data-icon="inline-start" />
+        </TerminalTabsList>
+        <TerminalTabsAction onClick={addSession} disabled={!connection}>
+          <PlusIcon aria-hidden="true" />
           New session
-        </Button>
-      </div>
+        </TerminalTabsAction>
+      </TerminalTabsBar>
       {sessions.map((session) => (
-        <TabsContent
-          key={session.id}
-          value={session.id}
-          keepMounted
-          className="min-h-0 overflow-hidden data-hidden:hidden [[inert]]:hidden"
-        >
+        <TerminalTabPanel key={session.id} value={session.id} keepMounted>
           {connection ? (
             <RobotTerminal
               robotUrl={robotBaseUrl(connection)}
@@ -69,18 +70,17 @@ export default function ConsolePage() {
               }
             />
           ) : (
-            <Empty className="h-full">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <TerminalWindowIcon />
-                </EmptyMedia>
-                <EmptyTitle>No robot connected</EmptyTitle>
-                <EmptyDescription>Open the robot connection in the topbar to connect or use Dev Mode.</EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+            <div className="flex h-full items-center justify-center p-4 md:p-6">
+              <Empty
+                className="max-w-2xl"
+                icon={<TerminalWindowIcon size={32} className="text-kumo-subtle" />}
+                title="No robot connected"
+                description="Open the robot connection in the topbar to connect or use Dev Mode."
+              />
+            </div>
           )}
-        </TabsContent>
+        </TerminalTabPanel>
       ))}
-    </Tabs>
+    </TerminalTabs>
   );
 }

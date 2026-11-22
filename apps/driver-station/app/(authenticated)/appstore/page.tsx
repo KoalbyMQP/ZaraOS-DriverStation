@@ -1,27 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Alert, AlertDescription } from "@repo/ui/components/alert";
-import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@repo/ui/components/card";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@repo/ui/components/empty";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@repo/ui/components/field";
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@repo/ui/components/input-group";
-import { Item, ItemActions, ItemContent, ItemGroup, ItemTitle } from "@repo/ui/components/item";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Badge, Banner, Button, DropdownMenu, Empty, Field, InputGroup, LayerCard } from "@repo/ui/kumo";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Spinner } from "@repo/ui/components/spinner";
-import { ArrowClockwiseIcon, CaretRightIcon, FunnelIcon, MagnifyingGlassIcon, PackageIcon } from "@repo/ui/icons";
-import { cn } from "@repo/ui/lib/utils";
+import {
+  ArrowClockwiseIcon,
+  CaretRightIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PackageIcon,
+  WarningCircleIcon,
+} from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { appSlug, useProject, type AppLaunch } from "@/contexts/ProjectContext";
 import {
@@ -40,6 +30,7 @@ const sources: Record<ReleaseSource, string> = {
   control: "Control",
   sensing: "Sensing",
 };
+const errorIcon = <WarningCircleIcon weight="fill" />;
 const imageName = (repository: string) => repository.split("/").at(-1) || repository;
 const runnableTags = (tags: string[]) =>
   [...new Set(tags.filter((tag) => tag && tag !== "<none>"))].sort((a, b) =>
@@ -57,6 +48,7 @@ type CatalogApp = {
 };
 
 function DirectImageForm() {
+  const labelId = useId();
   const { connection } = useConnection();
   const { startApp, pendingRuns } = useProject();
   const [value, setValue] = useState("");
@@ -87,42 +79,38 @@ function DirectImageForm() {
         runImage();
       }}
     >
-      <FieldGroup>
-        <Field data-invalid={!!error} data-disabled={pending}>
-          <FieldLabel htmlFor="container-image">Container image</FieldLabel>
-          <InputGroup
-            // A disabled Run button should not dim the editable image field.
-            className={cn(!pending && "has-disabled:bg-control has-disabled:opacity-100 dark:has-disabled:bg-input/30")}
+      <Field
+        label={<span id={labelId}>Container image</span>}
+        description={
+          connection ? "Run an image directly on the connected robot." : "Connect to a robot to run an image."
+        }
+        error={error ? { message: <span role="alert">{error}</span>, match: true } : undefined}
+      >
+        <InputGroup disabled={pending}>
+          <InputGroup.Input
+            name="image"
+            aria-labelledby={labelId}
+            placeholder="ghcr.io/koalbymqp/python-example:test-1"
+            value={value}
+            onChange={(event) => {
+              setValue(event.target.value);
+              setError(null);
+            }}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-invalid={!!error}
+          />
+          <InputGroup.Button
+            type="submit"
+            variant="primary"
+            icon={pending ? <Spinner /> : undefined}
+            disabled={!connection || !image || pending}
           >
-            <InputGroupInput
-              id="container-image"
-              name="image"
-              placeholder="ghcr.io/koalbymqp/python-example:test-1"
-              value={value}
-              onChange={(event) => {
-                setValue(event.target.value);
-                setError(null);
-              }}
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              disabled={false}
-              aria-invalid={!!error}
-              aria-describedby={error ? "container-image-error" : "container-image-help"}
-            />
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton type="submit" variant="default" disabled={!connection || !image || pending}>
-                {pending && <Spinner data-icon="inline-start" aria-hidden="true" />}
-                {pending ? "Starting…" : "Run image"}
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-          <FieldDescription id="container-image-help">
-            {connection ? "Run an image directly on the connected robot." : "Connect to a robot to run an image."}
-          </FieldDescription>
-          {error && <FieldError id="container-image-error">{error}</FieldError>}
-        </Field>
-      </FieldGroup>
+            {pending ? "Starting…" : "Run image"}
+          </InputGroup.Button>
+        </InputGroup>
+      </Field>
     </form>
   );
 }
@@ -135,56 +123,55 @@ function AppRow({ app }: { app: CatalogApp }) {
   const channel =
     app.channel ?? (latest ? getReleaseChannel({ name: app.name, tag_name: latest.version, prerelease: false }) : null);
   return (
-    <Item role="listitem" size="sm" className="flex-nowrap">
-      <ItemContent className="min-w-0 flex-row flex-wrap items-center gap-2">
-        <ItemTitle className="max-w-full truncate" title={app.name}>
+    <li className="flex items-center gap-3 py-2.5">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <span className="max-w-full truncate font-medium" title={app.name}>
           {app.name}
-        </ItemTitle>
+        </span>
         <Badge variant="secondary">{app.source}</Badge>
         {latest && (
-          <Badge variant="outline" className="max-w-full truncate" title={latest.version}>
-            {latest.version}
-            {channel && !latest.version.toLowerCase().includes(channel) ? ` (${channel})` : ""}
+          <Badge variant="outline" className="max-w-56 shrink">
+            <span className="truncate" title={latest.version}>
+              {latest.version}
+              {channel && !latest.version.toLowerCase().includes(channel) ? ` (${channel})` : ""}
+            </span>
           </Badge>
         )}
-        <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
+        <span className="text-xs whitespace-nowrap text-kumo-subtle tabular-nums">
           {app.versions.length} {app.versions.length === 1 ? "version" : "versions"}
         </span>
         {app.installationKnown && (
-          <span className="text-xs text-muted-foreground">{app.installed ? "Installed" : "Not installed"}</span>
+          <span className="text-xs text-kumo-subtle">{app.installed ? "Installed" : "Not installed"}</span>
         )}
-      </ItemContent>
-      <ItemActions className="ml-auto shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                size="sm"
-                disabled={!connection || !latest || pending}
-                aria-label={`Run ${app.name}`}
-                title={
-                  !connection ? "Connect to a robot to run apps" : !latest ? "No tagged versions available" : undefined
-                }
-              />
+      </div>
+      <DropdownMenu>
+        <DropdownMenu.Trigger>
+          <Button
+            variant="primary"
+            size="sm"
+            icon={pending ? <Spinner size={12} /> : undefined}
+            disabled={!connection || !latest || pending}
+            aria-label={`Run ${app.name}`}
+            title={
+              !connection ? "Connect to a robot to run apps" : !latest ? "No tagged versions available" : undefined
             }
           >
-            {pending ? <Spinner data-icon="inline-start" /> : null}
             {pending ? "Starting…" : "Run"}
-            <CaretRightIcon data-icon="inline-end" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Run a version</DropdownMenuLabel>
-              {app.versions.map((version) => (
-                <DropdownMenuItem key={version.url} onClick={() => void startApp(version)}>
-                  <span className="truncate">{version.version}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </ItemActions>
-    </Item>
+            <CaretRightIcon />
+          </Button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content align="end" className="w-64">
+          <DropdownMenu.Group>
+            <DropdownMenu.Label>Run a version</DropdownMenu.Label>
+            {app.versions.map((version) => (
+              <DropdownMenu.Item key={version.url} onClick={() => void startApp(version)}>
+                <span className="truncate">{version.version}</span>
+              </DropdownMenu.Item>
+            ))}
+          </DropdownMenu.Group>
+        </DropdownMenu.Content>
+      </DropdownMenu>
+    </li>
   );
 }
 
@@ -203,28 +190,40 @@ function CatalogList({
     return (
       <div className="flex flex-col gap-3" aria-label="Loading apps">
         {[0, 1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
+          <Skeleton key={i} className="h-11 w-full rounded-lg" />
         ))}
       </div>
     );
   if (apps.length === 0)
     return (
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <PackageIcon />
-          </EmptyMedia>
-          <EmptyTitle>{emptyTitle}</EmptyTitle>
-          <EmptyDescription>{emptyDescription}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
+      <Empty
+        size="sm"
+        icon={<PackageIcon size={28} className="text-kumo-subtle" />}
+        title={emptyTitle}
+        description={emptyDescription}
+      />
     );
   return (
-    <ItemGroup className="gap-1">
+    <ul role="list" className="flex flex-col divide-y divide-kumo-hairline">
       {apps.map((app) => (
         <AppRow key={app.id} app={app} />
       ))}
-    </ItemGroup>
+    </ul>
+  );
+}
+
+function CatalogCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  const id = useId();
+  return (
+    <LayerCard render={<section aria-labelledby={id} />} className="min-w-0">
+      <LayerCard.Secondary className="flex-wrap justify-between gap-x-4 gap-y-1">
+        <h2 id={id} className="text-kumo-default">
+          {title}
+        </h2>
+        <p className="text-sm font-normal">{description}</p>
+      </LayerCard.Secondary>
+      <LayerCard.Primary className="gap-3 pr-4">{children}</LayerCard.Primary>
+    </LayerCard>
   );
 }
 
@@ -346,19 +345,18 @@ export default function AppsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight">App Store</h1>
-          <p className="text-sm text-muted-foreground">Choose an app, pick a version, and run it on your robot.</p>
+          <p className="text-kumo-subtle">Choose an app, pick a version, and run it on your robot.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={refresh} disabled={loadingOnline || loadingInstalled}>
-          <ArrowClockwiseIcon data-icon="inline-start" />
+        <Button icon={ArrowClockwiseIcon} onClick={refresh} disabled={loadingOnline || loadingInstalled}>
           Refresh
         </Button>
       </div>
       <div className="flex items-center gap-2">
         <InputGroup className="max-w-sm">
-          <InputGroupAddon>
-            <MagnifyingGlassIcon />
-          </InputGroupAddon>
-          <InputGroupInput
+          <InputGroup.Addon>
+            <MagnifyingGlassIcon aria-hidden="true" />
+          </InputGroup.Addon>
+          <InputGroup.Input
             type="search"
             aria-label="Search apps"
             placeholder="Search apps…"
@@ -367,15 +365,14 @@ export default function AppsPage() {
           />
         </InputGroup>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" />}>
-            <FunnelIcon data-icon="inline-start" />
-            Sources
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Online repositories</DropdownMenuLabel>
+          <DropdownMenu.Trigger>
+            <Button icon={FunnelIcon}>Sources</Button>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content>
+            <DropdownMenu.Group>
+              <DropdownMenu.Label>Online repositories</DropdownMenu.Label>
               {Object.values(sources).map((source) => (
-                <DropdownMenuCheckboxItem
+                <DropdownMenu.CheckboxItem
                   key={source}
                   checked={enabledSources.includes(source)}
                   onCheckedChange={(checked) =>
@@ -383,76 +380,47 @@ export default function AppsPage() {
                   }
                 >
                   {source}
-                </DropdownMenuCheckboxItem>
+                </DropdownMenu.CheckboxItem>
               ))}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
+            </DropdownMenu.Group>
+          </DropdownMenu.Content>
         </DropdownMenu>
       </div>
-      {actionError && (
-        <Alert variant="destructive">
-          <AlertDescription>{actionError}</AlertDescription>
-        </Alert>
-      )}
-      {notice && (
-        <Alert role="status">
-          <AlertDescription>{notice}</AlertDescription>
-        </Alert>
-      )}
+      {actionError && <Banner role="alert" variant="error" icon={errorIcon} description={actionError} />}
+      {notice && <Banner role="status" description={notice} />}
       <div className="grid items-start gap-6 xl:grid-cols-2">
-        <Card className="min-w-0 bg-control">
-          <CardHeader>
-            <CardTitle>
-              <h2>Online apps</h2>
-            </CardTitle>
-            <CardDescription>Releases from Core, Apps, Drivers, Control, and Sensing.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <DirectImageForm />
-            {onlineError && (
-              <Alert variant="destructive">
-                <AlertDescription>{onlineError}</AlertDescription>
-              </Alert>
-            )}
-            <CatalogList
-              apps={filteredOnline}
-              loading={loadingOnline}
-              emptyTitle={query || enabledSources.length < 5 ? "No matching apps" : "No online apps"}
-              emptyDescription="Try another search, adjust the sources, or refresh the catalog."
-            />
-          </CardContent>
-        </Card>
-        <Card className="min-w-0 bg-control">
-          <CardHeader>
-            <CardTitle>
-              <h2>Installed apps</h2>
-            </CardTitle>
-            <CardDescription>
-              {connection?.devMode
-                ? "Container images installed on this computer."
-                : "Container images installed on the connected robot."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            {installedError && (
-              <Alert variant="destructive">
-                <AlertDescription>{installedError}</AlertDescription>
-              </Alert>
-            )}
-            <CatalogList
-              apps={filteredInstalled}
-              loading={loadingInstalled}
-              emptyTitle={
-                !connection ? "Connect to view installed apps" : query ? "No matching apps" : "No installed apps"
-              }
-              emptyDescription={
-                !connection
-                  ? "Open the robot connection in the topbar, or choose Dev Mode for local apps."
-                  : "Run an online app to install its image, or build an image in your container runtime."
-              }
-            />
-          </CardContent>
-        </Card>
+        <CatalogCard title="Online apps" description="Releases from Core, Apps, Drivers, Control, and Sensing.">
+          <DirectImageForm />
+          {onlineError && <Banner role="alert" variant="error" icon={errorIcon} description={onlineError} />}
+          <CatalogList
+            apps={filteredOnline}
+            loading={loadingOnline}
+            emptyTitle={query || enabledSources.length < 5 ? "No matching apps" : "No online apps"}
+            emptyDescription="Try another search, adjust the sources, or refresh the catalog."
+          />
+        </CatalogCard>
+        <CatalogCard
+          title="Installed apps"
+          description={
+            connection?.devMode
+              ? "Container images installed on this computer."
+              : "Container images installed on the connected robot."
+          }
+        >
+          {installedError && <Banner role="alert" variant="error" icon={errorIcon} description={installedError} />}
+          <CatalogList
+            apps={filteredInstalled}
+            loading={loadingInstalled}
+            emptyTitle={
+              !connection ? "Connect to view installed apps" : query ? "No matching apps" : "No installed apps"
+            }
+            emptyDescription={
+              !connection
+                ? "Open the robot connection in the topbar, or choose Dev Mode for local apps."
+                : "Run an online app to install its image, or build an image in your container runtime."
+            }
+          />
+        </CatalogCard>
       </div>
     </div>
   );

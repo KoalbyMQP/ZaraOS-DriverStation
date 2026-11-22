@@ -1,21 +1,18 @@
 "use client";
 
-import * as React from "react";
+import { useContext, type ComponentProps } from "react";
 import { cn } from "cn";
 import { OTPInput, OTPInputContext } from "input-otp";
-import { MinusIcon } from "@phosphor-icons/react";
 
+/** One-time-code input. Kumo has no equivalent, so the slots are styled like its Input. */
 function InputOTP({
   className,
   containerClassName,
   ...props
-}: React.ComponentProps<typeof OTPInput> & {
-  containerClassName?: string;
-}) {
+}: ComponentProps<typeof OTPInput> & { containerClassName?: string }) {
   return (
     <OTPInput
-      data-slot="input-otp"
-      containerClassName={cn("cn-input-otp flex items-center has-disabled:opacity-50", containerClassName)}
+      containerClassName={cn("group/otp flex items-center has-disabled:opacity-50", containerClassName)}
       spellCheck={false}
       className={cn("disabled:cursor-not-allowed", className)}
       {...props}
@@ -23,35 +20,18 @@ function InputOTP({
   );
 }
 
-function InputOTPGroup({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="input-otp-group"
-      className={cn(
-        "flex items-center rounded-lg has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 dark:has-aria-invalid:ring-destructive/40",
-        className
-      )}
-      {...props}
-    />
-  );
+function InputOTPGroup({ className, ...props }: ComponentProps<"div">) {
+  return <div className={cn("flex items-center gap-1.5", className)} {...props} />;
 }
 
-function InputOTPSlot({
-  index,
-  className,
-  ...props
-}: React.ComponentProps<"div"> & {
-  index: number;
-}) {
-  const inputOTPContext = React.useContext(OTPInputContext);
-  const { char, hasFakeCaret, isActive } = inputOTPContext?.slots[index] ?? {};
-
+function InputOTPSlot({ index, className, ...props }: ComponentProps<"div"> & { index: number }) {
+  const { char, hasFakeCaret, isActive } = useContext(OTPInputContext)?.slots[index] ?? {};
   return (
     <div
-      data-slot="input-otp-slot"
       data-active={isActive}
       className={cn(
-        "relative flex size-8 items-center justify-center border-y border-r border-input text-sm transition-[color,background-color,border-color,box-shadow] outline-none first:rounded-l-lg first:border-l last:rounded-r-lg aria-invalid:border-destructive data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-3 data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[active=true]:aria-invalid:ring-destructive/40",
+        "relative flex size-9 items-center justify-center rounded-lg bg-kumo-control text-base text-kumo-default ring ring-kumo-line",
+        "group-has-aria-invalid/otp:ring-kumo-danger data-[active=true]:z-10 data-[active=true]:ring-[1.5px] data-[active=true]:ring-kumo-focus/50",
         className
       )}
       {...props}
@@ -59,24 +39,11 @@ function InputOTPSlot({
       {char}
       {hasFakeCaret && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="h-4 w-px animate-caret-blink bg-foreground duration-1000" />
+          <div className="h-4 w-px animate-caret-blink bg-kumo-contrast" />
         </div>
       )}
     </div>
   );
 }
 
-function InputOTPSeparator({ ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="input-otp-separator"
-      className="flex items-center [&_svg:not([class*='size-'])]:size-4"
-      role="separator"
-      {...props}
-    >
-      <MinusIcon />
-    </div>
-  );
-}
-
-export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator };
+export { InputOTP, InputOTPGroup, InputOTPSlot };

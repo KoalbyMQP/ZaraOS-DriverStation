@@ -123,8 +123,8 @@ export default function RobotTerminal({ robotUrl, signedFetch, onClose, onTitleC
   }, [robotUrl, signedFetch, onClose]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background p-1">
-      <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden bg-background font-mono text-foreground" />
+    <div className="flex h-full w-full flex-col overflow-hidden bg-kumo-canvas p-1">
+      <div ref={containerRef} className="min-h-0 flex-1 overflow-hidden bg-kumo-canvas font-mono text-kumo-default" />
     </div>
   );
 }

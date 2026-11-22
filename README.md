@@ -7,7 +7,7 @@ New driver station for ZaraOS robots.
 This repo is a monorepo. It contains a few packages:
 
 1. The driver station webapp itself
-2. A UI library built on top of ShadCN
+2. A UI library built on top of Kumo
 3. Linter & formatter configurations
 
 We use Turborepo to manage the repo. Turborepo is an incremental build system that works well with javascript (and some other languages too, but we're not using those here). Package management is handled by `pnpm`, for a few reasons:
@@ -30,7 +30,9 @@ The driver station is a Next.js app using the App router on Next.js 16 and React
 
 #### UI
 
-We use ShadCN with a custom [TweakCN theme](https://tweakcn.com/themes/cmulobjp9000004l39em7guus).
+We use [Kumo](https://github.com/cloudflare/kumo), Cloudflare's component library, through `packages/ui`. Import its components from `@repo/ui/kumo` and icons from `@repo/ui/icons`. The few components Kumo does not have (terminal tabs, toggle group, one-time-code input) live in `packages/ui/src/components`.
+
+Colours are set in `packages/ui/src/styles/globals.css`, which maps our palette onto Kumo's tokens. Style with those tokens (`bg-kumo-base`, `text-kumo-subtle`), not raw Tailwind colours. Kumo also sets the type scale: `text-base` is 14px and `text-sm` is 13px.
 
 ## Linting & Formatting
 

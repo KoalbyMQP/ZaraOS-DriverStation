@@ -1,9 +1,7 @@
 "use client";
 
 import { Component, useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { Alert, AlertDescription } from "@repo/ui/components/alert";
-import { Button } from "@repo/ui/components/button";
-import { Empty, EmptyHeader, EmptyTitle } from "@repo/ui/components/empty";
+import { Banner, Empty } from "@repo/ui/kumo";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { useAppUi, useInstanceUi } from "@/contexts/AppUiContext";
@@ -13,14 +11,28 @@ import { createAppServices } from "@/lib/app-ui/services";
 
 function Failure({ message, retry }: { message: string; retry?: () => void }) {
   return (
-    <Alert>
-      <AlertDescription>{message}</AlertDescription>
-      {retry && (
-        <Button variant="outline" size="sm" onClick={retry}>
-          Retry
-        </Button>
-      )}
-    </Alert>
+    <div className="p-4 md:p-6">
+      <Banner
+        role="alert"
+        variant="secondary"
+        description={message}
+        action={
+          retry && (
+            <Banner.Action variant="secondary" onClick={retry}>
+              Retry
+            </Banner.Action>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+function PageSkeleton({ label }: { label: string }) {
+  return (
+    <div className="p-4 md:p-6" aria-label={label}>
+      <Skeleton className="h-64 w-full rounded-lg" />
+    </div>
   );
 }
 
@@ -78,7 +90,7 @@ function RemotePage({
     };
   }, [connection, descriptor, pageId, instanceId]);
   if (loaded && "error" in loaded) return <Failure message={loaded.error} retry={retry} />;
-  if (!loaded) return <Skeleton className="h-64 w-full" aria-label="Loading App page" />;
+  if (!loaded) return <PageSkeleton label="Loading App page" />;
   return <loaded.View instanceId={instanceId} services={loaded.services} />;
 }
 
@@ -86,16 +98,14 @@ export function AppPage({ instanceId, pageId }: { instanceId: string; pageId?: s
   const { instance, descriptor, loading, error } = useInstanceUi(instanceId);
   const { retry } = useAppUi();
   const [attempt, setAttempt] = useState(0);
-  if (loading) return <Skeleton className="h-64 w-full" aria-label="Loading App UI" />;
+  if (loading) return <PageSkeleton label="Loading App UI" />;
   if (error || !descriptor || !instance) return <Failure message={error ?? "App UI is unavailable."} retry={retry} />;
   const selected = pageId ?? Object.keys(descriptor.pages)[0];
   if (!selected)
     return (
-      <Empty className="h-full">
-        <EmptyHeader>
-          <EmptyTitle>This App has no pages.</EmptyTitle>
-        </EmptyHeader>
-      </Empty>
+      <div className="flex h-full items-center justify-center p-4 md:p-6">
+        <Empty className="max-w-2xl" title="This App has no pages." />
+      </div>
     );
   if (!Object.hasOwn(descriptor.pages, selected)) return <Failure message="This App page is unavailable." />;
   if (instance.state !== "running")

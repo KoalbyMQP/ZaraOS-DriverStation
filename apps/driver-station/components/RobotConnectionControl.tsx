@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Button } from "@repo/ui/components/button";
-import { Dialog, DialogTrigger } from "@repo/ui/components/dialog";
+import { Button, Dialog } from "@repo/ui/kumo";
 import { CaretDownIcon } from "@repo/ui/icons";
 import { useConnection } from "@/contexts/ConnectionContext";
 import { IpConnectModal } from "@/components/IpConnectModal";
@@ -13,12 +12,12 @@ export function RobotConnectionControl() {
   const [open, setOpen] = useState(false);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
+    <Dialog.Root open={open} onOpenChange={setOpen}>
+      <Dialog.Trigger
         render={
           <Button
             variant="ghost"
-            className="h-6 gap-2 border-0 px-0 font-heading leading-5"
+            className="gap-2 px-2 font-heading md:-ml-2"
             aria-label={`Connect to robot: ${connection?.name ?? "no robot connected"}`}
           />
         }
@@ -32,9 +31,9 @@ export function RobotConnectionControl() {
           unoptimized
         />
         <span className="max-w-32 truncate sm:max-w-40">{connection?.name ?? "No robot connected"}</span>
-        <CaretDownIcon data-icon="inline-end" aria-hidden="true" />
-      </DialogTrigger>
+        <CaretDownIcon className="text-kumo-subtle" aria-hidden="true" />
+      </Dialog.Trigger>
       {open && <IpConnectModal onClose={() => setOpen(false)} />}
-    </Dialog>
+    </Dialog.Root>
   );
 }

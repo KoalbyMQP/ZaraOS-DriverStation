@@ -1,14 +1,17 @@
 "use client";
 
 import { useLayoutEffect, useMemo, useState, useRef, useCallback } from "react";
-import { Alert, AlertAction, AlertDescription } from "@repo/ui/components/alert";
-import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@repo/ui/components/card";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@repo/ui/components/empty";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@repo/ui/components/input-group";
+import { Badge, Banner, Button, Empty, InputGroup, LayerCard } from "@repo/ui/kumo";
 import { ToggleGroup, ToggleGroupItem } from "@repo/ui/components/toggle-group";
-import { CopyIcon, DownloadSimpleIcon, MagnifyingGlassIcon, PauseIcon, PlayIcon, XIcon } from "@repo/ui/icons";
+import {
+  CopyIcon,
+  DownloadSimpleIcon,
+  MagnifyingGlassIcon,
+  PauseIcon,
+  PlayIcon,
+  WarningCircleIcon,
+  XIcon,
+} from "@repo/ui/icons";
 import { cn } from "@repo/ui/lib/utils";
 import type { Connection } from "@/contexts/ConnectionContext";
 import { useLogStream, type LogEntry } from "@/lib/log-stream";
@@ -167,39 +170,38 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
   }, [logs.length, filteredLogs.length, isPaused]);
 
   return (
-    <Card className="min-h-64 flex-1 overflow-hidden">
-      <CardHeader className="flex flex-col gap-3">
+    <LayerCard className="flex min-h-64 flex-1 flex-col">
+      <div className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>
+          <h2 className="text-lg font-semibold">
             Logs{" "}
-            <span className="text-sm font-normal text-muted-foreground tabular-nums">
+            <span className="text-sm font-normal text-kumo-subtle tabular-nums">
               {logs.length} entries{filterActive ? ` · showing ${filteredLogs.length}` : ""}
             </span>
-          </CardTitle>
+          </h2>
           <ToggleGroup
             value={[levelFilter]}
             onValueChange={(value) => {
               if (value.length) setLevelFilter(value[0] as LevelFilter);
             }}
-            variant="outline"
-            size="sm"
-            spacing={0}
             aria-label="Filter by severity"
           >
             {levels.map(({ id, label }) => (
               <ToggleGroupItem key={id} value={id} aria-label={label}>
                 {label}
-                <span className="tabular-nums">{id === "all" ? logs.length : levelCounts[id]}</span>
+                <span className="font-normal text-kumo-subtle tabular-nums">
+                  {id === "all" ? logs.length : levelCounts[id]}
+                </span>
               </ToggleGroupItem>
             ))}
           </ToggleGroup>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <InputGroup className="min-w-40 flex-1">
-            <InputGroupAddon>
-              <MagnifyingGlassIcon />
-            </InputGroupAddon>
-            <InputGroupInput
+            <InputGroup.Addon>
+              <MagnifyingGlassIcon aria-hidden="true" />
+            </InputGroup.Addon>
+            <InputGroup.Input
               type="search"
               aria-label="Search logs"
               placeholder="Search messages…"
@@ -208,47 +210,53 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
             />
           </InputGroup>
           <Button
-            variant="outline"
-            size="sm"
+            icon={isPaused ? PlayIcon : PauseIcon}
             onClick={handlePauseToggle}
             aria-label={isPaused ? "Resume streaming" : "Pause streaming"}
           >
-            {isPaused ? <PlayIcon data-icon="inline-start" /> : <PauseIcon data-icon="inline-start" />}
             {isPaused ? "Paused" : "Live"}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleClear}>
-            Clear
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCopy} aria-label="Copy logs">
-            <CopyIcon data-icon="inline-start" />
+          <Button onClick={handleClear}>Clear</Button>
+          <Button icon={CopyIcon} onClick={handleCopy} aria-label="Copy logs">
             {copyLabel}
           </Button>
-          <Button variant="outline" size="sm" onClick={handleDownload} aria-label="Download logs">
-            <DownloadSimpleIcon data-icon="inline-start" />
+          <Button icon={DownloadSimpleIcon} onClick={handleDownload} aria-label="Download logs">
             Download
           </Button>
         </div>
-      </CardHeader>
+      </div>
       {error && (
-        <Alert variant="destructive" className="mx-4 w-auto">
-          <AlertDescription>{error}</AlertDescription>
-          <AlertAction>
-            <Button variant="ghost" size="icon-xs" aria-label="Dismiss log error" onClick={() => setError(null)}>
-              <XIcon />
+        <Banner
+          role="alert"
+          variant="error"
+          className="mx-4 mb-3 w-auto"
+          icon={<WarningCircleIcon weight="fill" />}
+          description={error}
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
+              aria-label="Dismiss log error"
+              onClick={() => setError(null)}
+            >
+              <XIcon size={14} />
             </Button>
-          </AlertAction>
-        </Alert>
+          }
+        />
       )}
-      <CardContent ref={scrollContainerRef} onScroll={handleScrollContainer} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScrollContainer}
+        className="min-h-0 flex-1 overflow-y-auto border-t border-kumo-hairline px-4 py-2"
+      >
         {filteredLogs.length === 0 ? (
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>{logs.length ? "No matching logs" : "Waiting for logs…"}</EmptyTitle>
-              <EmptyDescription>
-                {logs.length ? "Try another search or severity filter." : "New output will appear here."}
-              </EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <Empty
+            size="sm"
+            className="border-0 bg-transparent"
+            title={logs.length ? "No matching logs" : "Waiting for logs…"}
+            description={logs.length ? "Try another search or severity filter." : "New output will appear here."}
+          />
         ) : (
           <div className="font-mono text-xs leading-relaxed">
             {filteredLogs.map((log, index) => {
@@ -256,13 +264,13 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
               return (
                 <div
                   key={`${log.seq}-${log.ts}-${index}`}
-                  className={cn("flex items-start gap-3 py-1.5", severity === "error" && "text-destructive")}
+                  className={cn("flex items-start gap-3 py-1.5", severity === "error" && "text-kumo-danger")}
                 >
-                  <span className="shrink-0 text-muted-foreground tabular-nums" title={log.ts}>
+                  <span className="shrink-0 text-kumo-subtle tabular-nums" title={log.ts}>
                     {formatLogTime(log.ts)}
                   </span>
                   {severity !== "info" && (
-                    <Badge variant={severity === "error" ? "destructive" : "secondary"}>
+                    <Badge variant={severity === "error" ? "error" : "warning"}>
                       {severity === "warn" ? "WRN" : "ERR"}
                     </Badge>
                   )}
@@ -272,16 +280,14 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
             })}
           </div>
         )}
-      </CardContent>
-      <CardFooter>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {isPaused
-            ? pendingWhilePaused
-              ? `${pendingWhilePaused} new entries while paused`
-              : "Paused"
-            : "Streaming live"}
-        </p>
-      </CardFooter>
-    </Card>
+      </div>
+      <p className="border-t border-kumo-hairline px-4 py-2.5 text-xs text-kumo-subtle tabular-nums">
+        {isPaused
+          ? pendingWhilePaused
+            ? `${pendingWhilePaused} new entries while paused`
+            : "Paused"
+          : "Streaming live"}
+      </p>
+    </LayerCard>
   );
 }

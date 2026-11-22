@@ -1,16 +1,13 @@
-import { cn } from "cn";
-import { SpinnerIcon } from "@phosphor-icons/react";
+import { Loader } from "@cloudflare/kumo/components/loader";
 
-function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
+/**
+ * Kumo's Loader, hidden from assistive technology. Use it beside text that
+ * already states the progress ("Starting…"); Loader alone announces "Loading".
+ */
+export function Spinner({ size = 14, className }: { size?: number; className?: string }) {
   return (
-    <SpinnerIcon
-      data-slot="spinner"
-      role="status"
-      aria-label="Loading"
-      className={cn("size-4 animate-spin", className)}
-      {...props}
-    />
+    <span aria-hidden="true" className="inline-flex shrink-0">
+      <Loader size={size} className={className} />
+    </span>
   );
 }
-
-export { Spinner };

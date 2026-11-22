@@ -1,212 +1,67 @@
+/* Kumo's theme tokens must be registered before Tailwind. */
+@import "@cloudflare/kumo/styles";
 @import "tailwindcss";
 @import "./typeset.css";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Tailwind skips node_modules, so Kumo's compiled components are scanned explicitly. */
+@source "../../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @theme inline {
+  --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
+  --font-mono: JetBrains Mono, ui-monospace, monospace;
+  --font-serif: Source Serif 4, ui-serif, serif;
   --font-heading: var(--font-geist-sans, Geist), ui-sans-serif, sans-serif;
-  --color-control: var(--control);
-  --color-shell-border: var(--shell-border);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-status-error: var(--status-error);
-  --color-status-off: var(--status-off);
-  --color-status-off-foreground: var(--status-off-foreground);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-  --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
-  --font-mono: JetBrains Mono, ui-monospace, monospace;
-  --font-serif: Source Serif 4, ui-serif, serif;
-  --radius: 0.625rem;
-  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
-  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
-  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
-  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
-  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-  --tracking-normal: var(--tracking-normal);
-  --shadow-2xl: var(--shadow-2xl);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-md: var(--shadow-md);
-  --shadow: var(--shadow);
-  --shadow-sm: var(--shadow-sm);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-2xs: var(--shadow-2xs);
-  --spacing: var(--spacing);
-  --letter-spacing: var(--letter-spacing);
-  --shadow-offset-y: var(--shadow-offset-y);
-  --shadow-offset-x: var(--shadow-offset-x);
-  --shadow-spread: var(--shadow-spread);
-  --shadow-blur: var(--shadow-blur);
-  --shadow-opacity: var(--shadow-opacity);
-  --color-shadow-color: var(--shadow-color);
-  --color-destructive-foreground: var(--destructive-foreground);
 }
 
-:root {
-  --background: oklch(1 0 0);
-  --control: #ffffff;
-  --shell-border: #d4d4d4;
-  --success: #16a34a;
-  --success-foreground: #fafafa;
-  --status-error: #dc2626;
-  --status-off: #737373;
-  --status-off-foreground: #fafafa;
-  --foreground: oklch(0.1448 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.1448 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.1448 0 0);
-  --primary: oklch(0.546 0.245 262.881);
-  --primary-foreground: oklch(0.9705 0.0142 254.6042);
-  --secondary: oklch(0.9674 0.0013 286.3752);
-  --secondary-foreground: oklch(0.2103 0.0059 285.8852);
-  --muted: oklch(0.9702 0 0);
-  --muted-foreground: oklch(0.5555 0 0);
-  --accent: oklch(0.9702 0 0);
-  --accent-foreground: oklch(0.2046 0 0);
-  --destructive: oklch(0.583 0.2387 28.4765);
-  --border: oklch(0.9219 0 0);
-  --input: oklch(0.9219 0 0);
-  --ring: oklch(0.709 0 0);
-  --chart-1: oklch(0.8071 0.1007 250.4462);
-  --chart-2: oklch(0.6187 0.2067 259.2316);
-  --chart-3: oklch(0.5465 0.2455 262.8657);
-  --chart-4: oklch(0.4878 0.2432 264.4045);
-  --chart-5: oklch(0.4242 0.1982 265.4989);
-  --radius: 0.45rem;
-  --sidebar: oklch(0.9851 0 0);
-  --sidebar-foreground: oklch(0.1448 0 0);
-  --sidebar-primary: oklch(0.623 0.214 259.815);
-  --sidebar-primary-foreground: oklch(0.9705 0.0142 254.6042);
-  --sidebar-accent: oklch(0.9702 0 0);
-  --sidebar-accent-foreground: oklch(0.2046 0 0);
-  --sidebar-border: oklch(0.9219 0 0);
-  --sidebar-ring: oklch(0.709 0 0);
-  --destructive-foreground: oklch(1 0 0);
-  --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
-  --font-serif: Source Serif 4, ui-serif, serif;
-  --font-mono: JetBrains Mono, ui-monospace, monospace;
-  --shadow-color: oklch(0 0 0);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-offset-x: 0;
-  --shadow-offset-y: 1px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
+@theme {
+  /* Shell chrome, measured on dash.cloudflare.com. Kumo's Sidebar defaults to a
+     white panel (kumo-base) with kumo-tint rows; the dashboard uses these. */
+  --color-shell: oklch(0.9875 0 0); /* sidebar and topbar sit on the canvas */
+  --color-shell-active: oklch(0.965 0 0); /* nav hover and active row */
+
+  --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+  @keyframes caret-blink {
+    0%,
+    70%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    50% {
+      opacity: 0;
+    }
+  }
 }
 
-.dark {
-  --background: oklch(0.1448 0 0);
-  --foreground: oklch(0.9851 0 0);
-  --card: oklch(0.2046 0 0);
-  --card-foreground: oklch(0.9851 0 0);
-  --popover: oklch(0.2046 0 0);
-  --popover-foreground: oklch(0.9851 0 0);
-  --primary: oklch(0.4242 0.1982 265.4989);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.2739 0.0055 286.0326);
-  --secondary-foreground: oklch(0.9851 0 0);
-  --muted: oklch(0.2686 0 0);
-  --muted-foreground: oklch(0.709 0 0);
-  --accent: oklch(0.2686 0 0);
-  --accent-foreground: oklch(0.9851 0 0);
-  --destructive: oklch(0.7022 0.1892 22.2279);
-  --border: oklch(1 0 0);
-  --input: oklch(1 0 0);
-  --ring: oklch(0.5555 0 0);
-  --chart-1: oklch(0.8071 0.1007 250.4462);
-  --chart-2: oklch(0.6187 0.2067 259.2316);
-  --chart-3: oklch(0.5465 0.2455 262.8657);
-  --chart-4: oklch(0.4878 0.2432 264.4045);
-  --chart-5: oklch(0.4242 0.1982 265.4989);
-  --sidebar: oklch(0.2046 0 0);
-  --sidebar-foreground: oklch(0.9851 0 0);
-  --sidebar-primary: oklch(0.6187 0.2067 259.2316);
-  --sidebar-primary-foreground: oklch(0.9705 0.0142 254.6042);
-  --sidebar-accent: oklch(0.2686 0 0);
-  --sidebar-accent-foreground: oklch(0.9851 0 0);
-  --sidebar-border: oklch(1 0 0);
-  --sidebar-ring: oklch(0.5555 0 0);
-  --destructive-foreground: oklch(0.985 0 0);
-  --radius: 0.625rem;
-  --font-sans: Geist, ui-sans-serif, sans-serif, system-ui;
-  --font-serif: Source Serif 4, ui-serif, serif;
-  --font-mono: JetBrains Mono, ui-monospace, monospace;
-  --shadow-color: oklch(0 0 0);
-  --shadow-opacity: 0.1;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-offset-x: 0;
-  --shadow-offset-y: 1px;
-  --letter-spacing: 0em;
-  --spacing: 0.25rem;
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+/* Driver Station palette, mapped onto the tokens Kumo's components read.
+   These are unlayered, so they win over Kumo's theme. Dark mode is left to Kumo:
+   nothing here applies under data-mode="dark". */
+:root:not([data-mode="dark"]) {
+  /* Neutrals from dash.cloudflare.com. They equal Kumo's light theme today, and
+     are pinned so a Kumo upgrade cannot shift them. */
+  --color-kumo-canvas: oklch(0.9875 0 0); /* page */
+  --color-kumo-base: #fff; /* cards, dialogs, popovers */
+  --color-kumo-control: #fff; /* inputs, menus */
+  --color-kumo-recessed: oklch(0.965 0 0); /* tracks, inset areas */
+  --color-kumo-tint: oklch(0.97 0 0); /* hover and highlighted rows */
+  --color-kumo-fill: oklch(0.922 0 0); /* neutral badges */
+  --color-kumo-line: oklch(0.145 0 0 / 0.1); /* borders and control edges */
+  --text-color-kumo-default: oklch(0.205 0 0);
+  --text-color-kumo-subtle: oklch(0.556 0 0); /* 4.27:1 on kumo-recessed, below 4.5 */
+
+  /* Accents the app already used. Delete a line to fall back to Kumo's value. */
+  --color-kumo-brand: oklch(0.546 0.245 262.881); /* primary | Kumo: 0.5772 0.2324 260 */
+  --color-kumo-danger: oklch(0.583 0.2387 28.4765); /* destructive | Kumo: 0.637 0.237 25.331 */
+  --color-kumo-success: #16a34a; /* running, active terminal tab | Kumo: 0.596 0.145 163.225 */
+  --color-kumo-badge-green: #16a34a; /* app status: OK */
+  --color-kumo-badge-red: #dc2626; /* app status: Error */
+  --color-kumo-badge-neutral: #737373; /* app status: Off */
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
   body {
-    @apply bg-background text-foreground;
-    letter-spacing: var(--tracking-normal);
+    @apply bg-kumo-canvas text-base text-kumo-default;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -214,66 +69,19 @@
   }
 }
 
+/* shadcn/typeset reads these names; point them at Kumo's tokens. */
+.typeset {
+  --color-foreground: var(--text-color-kumo-default);
+  --color-muted-foreground: var(--text-color-kumo-subtle);
+  --color-border: var(--color-kumo-line);
+  --color-muted: var(--color-kumo-recessed);
+  --color-ring: var(--color-kumo-brand);
+  --color-primary: var(--color-kumo-brand);
+  --radius: 0.5rem;
+}
+
 .typeset-docs {
   --typeset-size: 15px;
   --typeset-leading: 1.75;
   --typeset-flow: 1.25em;
-}
-
-/* TEMPORARY: light-mode contrast overrides, kept apart for A/B comparison.
-   Comment out a line (or the whole block) to fall back to the previous value
-   in the main :root block above. Fold these into that block when settled:
-   left here, they would also override .dark if that class is put on <html>. */
-:root {
-  /* Text: placeholders, captions, table headers, descriptions */
-  --muted-foreground: oklch(0.48 0 0); /* was 0.5555 | 6.54 on background, 5.82 on muted, 5.48 on accent */
-
-  /* Surfaces: hover and selected states */
-  --muted: oklch(0.96 0 0); /* was 0.9702 */
-  --secondary: oklch(0.94 0 0); /* was 0.9674 0.0013 286.3752 */
-  --accent: oklch(0.94 0 0); /* was 0.9702 */
-  --sidebar-accent: oklch(0.94 0 0); /* was 0.9702 */
-
-  /* Lines: decorative dividers and cards, no 3:1 needed */
-  --border: oklch(0.87 0 0); /* was 0.9219 */
-  --sidebar-border: oklch(0.87 0 0); /* was 0.9219 */
-
-  /* Form-control edges, need 3:1 */
-  --input: oklch(0.87 0 0); /* was 0.9219 | 3.23 on white, 3.10 on sidebar */
-
-  /* Focus: components render the ring at 50% alpha */
-}
-
-/* TRIAL: Cloudflare Kumo light-mode neutrals mapped onto the shadcn tokens.
-   Values match Kumo's theme-kumo.css and the computed styles on
-   dash.cloudflare.com; the Kumo token is named on each line.
-   This block wins over the one above because it comes later, so comment it out
-   (or delete it) to get the previous look back. */
-:root {
-  /* Layering: the page, header and nav sit on an off-white canvas, and every
-     card, popover and control is pure white on top of it. */
-  --background: oklch(0.9875 0 0); /* kumo-canvas | was white */
-  --sidebar: oklch(0.9875 0 0); /* kumo-canvas | was 0.9851 */
-  --card: oklch(1 0 0); /* kumo-base | unchanged */
-  --popover: oklch(1 0 0); /* kumo-base | unchanged */
-  --control: oklch(1 0 0); /* kumo-control | unchanged */
-
-  /* Text */
-  --foreground: oklch(0.205 0 0); /* text-kumo-default | was 0.1448 */
-  --card-foreground: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.205 0 0);
-  --muted-foreground: oklch(0.556 0 0); /* text-kumo-subtle | was 0.48 | 4.27:1 on muted, below 4.5 */
-
-  /* Surfaces */
-  --muted: oklch(0.965 0 0); /* kumo-recessed: tab tracks, inset areas | was 0.96 */
-  --accent: oklch(0.97 0 0); /* kumo-tint: hover and highlighted rows | was 0.94 */
-  --sidebar-accent: oklch(0.965 0 0); /* measured on the dashboard's nav hover and active item | was 0.94 */
-  --secondary: oklch(0.922 0 0); /* kumo-fill | was 0.94 */
-
-  /* Lines: Kumo uses one translucent near-black for borders and control edges */
-  --border: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
-  --sidebar-border: oklch(0.145 0 0 / 0.1);
-  --input: oklch(0.145 0 0 / 0.1); /* kumo-line | was 0.87 */
-  --shell-border: oklch(0.145 0 0 / 0.1); /* kumo-line | was #d4d4d4 */
 }

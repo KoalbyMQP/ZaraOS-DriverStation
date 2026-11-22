@@ -1,27 +1,22 @@
 "use client";
 
+import { Empty } from "@repo/ui/kumo";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@repo/ui/components/empty";
 
 export default function HomePage() {
-  const connection = useConnection();
+  const { connection } = useConnection();
 
   return (
-    <Empty className="h-full">
-      <EmptyHeader>
-        <EmptyTitle>Driver Station</EmptyTitle>
-        <EmptyDescription>
-          {connection.connection ? (
-            <>
-              You&apos;re connected to a robot.
-              <br />
-              Open an app from the sidebar.
-            </>
-          ) : (
-            <>Connect to a robot and open an app from the sidebar.</>
-          )}
-        </EmptyDescription>
-      </EmptyHeader>
-    </Empty>
+    <div className="flex h-full items-center justify-center p-4 md:p-6">
+      <Empty
+        className="max-w-2xl"
+        title="Driver Station"
+        description={
+          connection
+            ? "You’re connected to a robot. Open an app from the sidebar."
+            : "Connect to a robot and open an app from the sidebar."
+        }
+      />
+    </div>
   );
 }
