@@ -76,6 +76,29 @@ Run `pnpm --filter @repo/driver-station test:ui motor-control.spec.ts` to check
 validation, desktop/mobile interactions, reset, and the absence of motor requests
 even while connected to a robot.
 
+### Gamepad motors preview
+
+Visit `/gamepad-motors` (not in the sidebar). It drives two motors from an Xbox
+controller through the browser Gamepad API: the left stick sets motor 1, the right
+stick motor 2. Each stick uses one axis (Y by default, up = positive; X can be
+picked and either direction can be positive). The deflection outside a deadzone
+(0.15) maps to an absolute position in a per-motor range (±45° by default, a UI
+default, not a hardware limit), rounded to 0.5°. A released stick returns its
+motor to the middle of its range. Without a controller, sliders set the targets.
+
+Nothing is sent while disarmed. Arm with **A** or the **Arm** button, only with
+both sticks centred. **A** or **B** disarms, as does connecting, disconnecting or
+swapping the controller, the window losing focus, and leaving the page. Settings
+are locked while armed. While armed, targets go out at most 20 times a second and
+only when one changed.
+
+There is no backend yet: positions go to `noBackend` in
+`components/apps/gamepad-motors/backend.ts`, which drops them, and the page says
+so. The real backend implements `MotorBackend.sendPositions(motor1, motor2)` there.
+
+Run `pnpm --filter @repo/driver-station test:ui gamepad-motors.spec.ts`. It mocks
+`navigator.getGamepads()` to drive the sticks and buttons.
+
 ### Remote app pages
 
 Apps expose **pages** and **components** as React modules through Module Federation.
