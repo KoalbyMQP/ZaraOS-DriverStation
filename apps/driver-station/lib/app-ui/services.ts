@@ -52,6 +52,21 @@ async function readEvents(body: ReadableStream<Uint8Array>, onEvent: (event: str
   }
 }
 
+/**
+ * A request Cortex or the App answered with an error. `explained` is false when the response had
+ * no JSON error message, e.g. the plain-text 404 an older Cortex returns for a route it lacks.
+ */
+export class AppRequestError extends Error {
+  readonly status: number;
+  readonly explained: boolean;
+  constructor(message: string, status: number, explained: boolean) {
+    super(message);
+    this.name = "AppRequestError";
+    this.status = status;
+    this.explained = explained;
+  }
+}
+
 export function createAppServices(connection: Connection, instanceId: string, lifetime: AbortSignal): AppServices {
   const base = `/instances/${encodeURIComponent(instanceId)}`;
   const within = (signal?: AbortSignal) => (signal ? AbortSignal.any([lifetime, signal]) : lifetime);
@@ -78,8 +93,12 @@ export function createAppServices(connection: Connection, instanceId: string, li
   }
 
   function failure(what: string, response: Response, data: Json | null) {
-    const message = typeof data?.error === "string" && data.error ? data.error : `${what} failed (${response.status}).`;
-    return new Error(message);
+    const explained = typeof data?.error === "string" && !!data.error;
+    return new AppRequestError(
+      explained ? (data.error as string) : `${what} failed (${response.status}).`,
+      response.status,
+      explained
+    );
   }
 
   /** Fetch a list Cortex returns under `key`. */

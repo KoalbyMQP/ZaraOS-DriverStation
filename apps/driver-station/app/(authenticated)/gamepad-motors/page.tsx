@@ -1,5 +1,5 @@
-import GamepadMotorsPage from "@/components/apps/gamepad-motors/GamepadMotorsPage";
+import JointMoverGamepad from "@/components/apps/gamepad-motors/JointMoverGamepad";
 
-export default function GamepadMotorsPreviewPage() {
-  return <GamepadMotorsPage />;
+export default function GamepadMotorsRoute() {
+  return <JointMoverGamepad />;
 }

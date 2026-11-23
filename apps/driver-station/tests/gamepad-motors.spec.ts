@@ -73,6 +73,85 @@ async function connectRobot(page: Page) {
 
 const target = (page: Page, motor: 1 | 2) => page.getByLabel(`Motor ${motor} target`, { exact: true });
 
+const instance = (id: string, app: string, image: string, state = "running") => ({
+  id,
+  app,
+  version: "v0.1.0",
+  image: `${image}:v0.1.0`,
+  state,
+  error: null,
+  started_at: "2026-11-23T10:00:00Z",
+  stopped_at: null,
+});
+const JOINT_MOVER = instance("jm-1", "joint_mover_demo", "ghcr.io/koalbymqp/joint-mover-demo");
+const OTHER_APPS = [
+  instance("hello-1", "hello-ui", "ghcr.io/koalbymqp/hello-ui"),
+  instance("jm-old", "joint_mover_demo", "ghcr.io/koalbymqp/joint-mover-demo", "stopped"),
+];
+
+type MoveCall = { instance: string; joint_name: string; position: number };
+type Reply = { status: number; json?: unknown; body?: string };
+
+/** Cortex's reply to `POST /instances/{id}/command` (ZaraOS spike/app-interactivity-system). */
+const appReply = (id: string, status: number, reply: { ok: boolean; result?: unknown; error?: string | null }) => ({
+  status,
+  json: {
+    instance: id,
+    command: "move_joint",
+    transport: "http",
+    forward_us: 850,
+    reply: { result: null, error: null, handler_us: 40, ...reply },
+  },
+});
+const accepted = (call: MoveCall) =>
+  appReply(call.instance, 200, { ok: true, result: { joint: call.joint_name, target: call.position } });
+
+/**
+ * A connected robot whose instance list is `instances`, answering move_joint commands with
+ * `respond`. Every command request is checked against the real request shape and recorded.
+ */
+async function robotWithApps(
+  page: Page,
+  instances: object[],
+  respond: (call: MoveCall) => Reply | Promise<Reply> = accepted
+) {
+  const robotRequests = await connectRobot(page);
+  const calls: MoveCall[] = [];
+  await page.route("http://127.0.0.1:8080/instances", (route) => route.fulfill({ json: { instances } }));
+  await page.route("http://127.0.0.1:8080/instances/*/command", async (route) => {
+    const request = route.request();
+    expect(request.method()).toBe("POST");
+    const body = request.postDataJSON() as { command: string; args: { joint_name: string; position: number } };
+    expect(Object.keys(body).sort()).toEqual(["args", "command"]);
+    expect(body.command).toBe("move_joint");
+    expect(Object.keys(body.args).sort()).toEqual(["joint_name", "position"]);
+    expect(typeof body.args.position).toBe("number");
+    const call = { instance: new URL(request.url()).pathname.split("/")[2]!, ...body.args };
+    calls.push(call);
+    const reply = await respond(call);
+    await route.fulfill(
+      reply.json === undefined
+        ? { status: reply.status, contentType: "text/plain; charset=utf-8", body: reply.body ?? "" }
+        : { status: reply.status, json: reply.json }
+    );
+  });
+  return { calls, robotRequests };
+}
+
+async function setJoints(page: Page, motor1: string, motor2: string) {
+  // The manual move panel's field comes first, then Motor 1's and Motor 2's.
+  await page.getByLabel("Joint name").nth(1).fill(motor1);
+  await page.getByLabel("Joint name").nth(2).fill(motor2);
+}
+
+const lastSent = (page: Page) => page.getByLabel("Last sent", { exact: true });
+const shot = async (page: Page, path: string, scrollTo: "top" | "bottom" = "top") => {
+  await page
+    .locator("#page-content")
+    .evaluate((element, to) => element.scrollTo(0, to === "top" ? 0 : element.scrollHeight), scrollTo);
+  await page.screenshot({ path, fullPage: true });
+};
+
 test("maps both sticks to both motors, arms only from centre, and never contacts the robot", async ({
   page,
 }, testInfo) => {
@@ -83,7 +162,7 @@ test("maps both sticks to both motors, arms only from centre, and never contacts
   await page.goto("/gamepad-motors");
 
   await expect(page.getByRole("heading", { name: "Gamepad motors", exact: true })).toBeVisible();
-  await expect(page.getByRole("note")).toContainText("No backend yet — positions are not sent");
+  await expect(page.getByRole("note")).toContainText("Joint mover app not running — moves are not sent");
   const status = page.getByRole("status", { name: "Controller status" });
   await expect(status).toContainText("No controller");
   await expect(page.getByRole("slider")).toHaveCount(2);
@@ -160,6 +239,8 @@ test("maps both sticks to both motors, arms only from centre, and never contacts
 test("falls back to keyboard sliders without a controller and validates the mapping", async ({ page }) => {
   await mockGamepads(page);
   await page.goto("/gamepad-motors");
+  await expect(page.getByRole("note")).toContainText("No robot connected — moves are not sent");
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeDisabled();
   const slider = page.getByRole("slider", { name: "Motor 1 target (no controller)" });
   await slider.focus();
   await page.keyboard.press("ArrowRight");
@@ -194,4 +275,209 @@ test("fits a phone screen without horizontal scrolling", async ({ page }) => {
   expect(await page.locator("#page-content").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(
     true
   );
+});
+
+test("manual move sends one move_joint to the running joint mover and shows the reply or the error", async ({
+  page,
+}, testInfo) => {
+  let next: Reply | null = null;
+  const { calls } = await robotWithApps(page, [...OTHER_APPS, JOINT_MOVER], (call) => next ?? accepted(call));
+  await mockGamepads(page);
+  await page.goto("/gamepad-motors");
+
+  // Only the running joint mover is offered, and it is picked by default.
+  await expect(page.getByText("joint_mover_demo · v0.1.0 · jm-1")).toBeVisible();
+  await expect(page.getByText(/hello-ui|jm-old/)).toHaveCount(0);
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Gamepad motors", exact: true }).getByText("Connected", { exact: true })
+  ).toBeVisible();
+
+  const move = page.getByRole("button", { name: "Move", exact: true });
+  await expect(move).toBeDisabled();
+  await page.getByLabel("Joint name").first().fill("Shoulder");
+  await page.getByLabel("Position", { exact: true }).fill("");
+  await expect(page.getByText("Enter a position in degrees.")).toBeVisible();
+  await expect(move).toBeDisabled();
+  await page.getByLabel("Position", { exact: true }).fill("12.5");
+  await move.click();
+  await expect(page.getByRole("status", { name: "Manual move result" })).toHaveText(
+    'Sent Shoulder to 12.5°. The app replied {"joint":"Shoulder","target":12.5}.'
+  );
+  expect(calls).toEqual([{ instance: "jm-1", joint_name: "Shoulder", position: 12.5 }]);
+  await shot(page, testInfo.outputPath("manual-move-sent.png"));
+
+  // The app's own error comes through Cortex's wrapper.
+  next = appReply("jm-1", 400, { ok: false, error: "bad args: missing a required argument: 'position'" });
+  await move.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Move failed" })).toContainText(
+    "Shoulder to 12.5°: bad args: missing a required argument: 'position' (HTTP 400)"
+  );
+
+  // A Cortex without the command route answers with Go's plain-text 404.
+  next = { status: 404, body: "404 page not found\n" };
+  await move.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Move failed" })).toContainText(
+    "This robot's Cortex doesn't support app commands yet."
+  );
+  // So does develop's Cortex, whose catch-all route answers in JSON.
+  next = { status: 404, json: { error: "not found" } };
+  await move.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Move failed" })).toContainText(
+    "This robot's Cortex doesn't support app commands yet."
+  );
+  await page.getByLabel("Position", { exact: true }).fill("10");
+  // Any other JSON 404 is Cortex or the app explaining itself, not a missing route.
+  next = { status: 404, json: { error: "instance not found" } };
+  await move.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Move failed" })).toContainText(
+    "Shoulder to 10.0°: instance not found (HTTP 404)"
+  );
+  expect(calls).toHaveLength(5);
+
+  // Manual moves are off while the gamepad drives the joints.
+  next = null;
+  await setJoints(page, "Shoulder", "Hip");
+  await page.getByRole("button", { name: "Arm", exact: true }).click();
+  await expect(page.getByText("Armed", { exact: true })).toBeVisible();
+  await expect(move).toBeDisabled();
+  await expect(page.getByText("Disarm the gamepad to move a joint by hand.")).toBeVisible();
+});
+
+test("gamepad sends move_joint per joint, only for changed targets, never queued or while disarmed", async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  let hold: Promise<void> | null = null;
+  const { calls } = await robotWithApps(page, [JOINT_MOVER], async (call) => {
+    if (hold && call.joint_name === "Shoulder") await hold;
+    return accepted(call);
+  });
+  await mockGamepads(page);
+  await page.goto("/gamepad-motors");
+  await setPad(page, { axes: [0, 0, 0, 0] });
+  await expect(page.getByText("joint_mover_demo · v0.1.0 · jm-1")).toBeVisible();
+
+  // Joint names are required once connected, and must differ.
+  const armButton = page.getByRole("button", { name: "Arm", exact: true });
+  await expect(page.getByText("Enter the joint this motor drives.")).toHaveCount(2);
+  await expect(armButton).toBeDisabled();
+  await setJoints(page, "Shoulder", "Shoulder");
+  await expect(page.getByText("Motor 1 already drives this joint.")).toBeVisible();
+  await expect(armButton).toBeDisabled();
+  await setJoints(page, "Shoulder", "Hip");
+
+  // Nothing is sent while disarmed, whatever the sticks do.
+  await setPad(page, { axes: [0, -1, 0, 1] });
+  await page.waitForTimeout(200);
+  expect(calls).toEqual([]);
+  await setPad(page, { axes: [0, 0, 0, 0] });
+
+  // Arming sends both current targets, one call per joint.
+  await press(page, [0, 0, 0, 0], "a");
+  await expect(page.getByText("Armed", { exact: true })).toBeVisible();
+  await expect.poll(() => calls.length).toBe(2);
+  expect(calls).toEqual(
+    expect.arrayContaining([
+      { instance: "jm-1", joint_name: "Shoulder", position: 0 },
+      { instance: "jm-1", joint_name: "Hip", position: 0 },
+    ])
+  );
+  await expect(page.getByLabel("Joint name").nth(1)).toBeDisabled();
+
+  // Moving only the left stick moves only Shoulder.
+  await setPad(page, { axes: [0, -1, 0, 0] });
+  await expect.poll(() => calls.length).toBe(3);
+  expect(calls[2]).toEqual({ instance: "jm-1", joint_name: "Shoulder", position: 45 });
+  await setPad(page, { axes: [0, -1, 0, 0.5] });
+  await expect.poll(() => calls.length).toBe(4);
+  expect(calls[3]).toEqual({ instance: "jm-1", joint_name: "Hip", position: -18.5 });
+  await expect(lastSent(page)).toHaveText("45.0° · -18.5°");
+  // Holding still sends nothing more.
+  await page.waitForTimeout(300);
+  expect(calls).toHaveLength(4);
+  await shot(page, testInfo.outputPath("gamepad-armed-top.png"));
+  await shot(page, testInfo.outputPath("gamepad-armed-motors.png"), "bottom");
+
+  // While Shoulder's move is in flight, its newer targets wait; only the latest goes out after.
+  let release = () => {};
+  hold = new Promise((resolve) => (release = resolve));
+  await setPad(page, { axes: [0, -0.5, 0, 0.5] });
+  await expect.poll(() => calls.length).toBe(5);
+  expect(calls[4]).toEqual({ instance: "jm-1", joint_name: "Shoulder", position: 18.5 });
+  await setPad(page, { axes: [0, -0.7, 0, 0.5] });
+  await page.waitForTimeout(150);
+  await setPad(page, { axes: [0, 0, 0, 0.5] });
+  await page.waitForTimeout(150);
+  expect(calls).toHaveLength(5);
+  hold = null;
+  release();
+  await expect.poll(() => calls.length).toBe(6);
+  expect(calls[5]).toEqual({ instance: "jm-1", joint_name: "Shoulder", position: 0 });
+  await page.waitForTimeout(200);
+  expect(calls).toHaveLength(6);
+
+  // B disarms; nothing is sent afterwards.
+  await press(page, [0, 0, 0, 0.5], "b");
+  await expect(page.getByText("Disarmed", { exact: true })).toBeVisible();
+  await setPad(page, { axes: [0, 1, 0, -1] });
+  await page.waitForTimeout(300);
+  expect(calls).toHaveLength(6);
+  expect(errors).toEqual([]);
+});
+
+test("a failed move disarms and shows the error", async ({ page }, testInfo) => {
+  let unsupported = false;
+  const { calls } = await robotWithApps(page, [JOINT_MOVER], (call) =>
+    unsupported
+      ? { status: 404, body: "404 page not found\n" }
+      : call.joint_name === "Hip" && call.position !== 0
+        ? appReply("jm-1", 500, { ok: false, error: "ValueError: could not convert string to float: 'x'" })
+        : accepted(call)
+  );
+  await mockGamepads(page);
+  await page.goto("/gamepad-motors");
+  await expect(page.getByText("joint_mover_demo · v0.1.0 · jm-1")).toBeVisible();
+  await setPad(page, { axes: [0, 0, 0, 0] });
+  await setJoints(page, "Shoulder", "Hip");
+  await press(page, [0, 0, 0, 0], "a");
+  await expect.poll(() => calls.length).toBe(2);
+
+  await setPad(page, { axes: [0, 0, 0, -1] });
+  const failure = page.getByRole("alert").filter({ hasText: "Sending failed — disarmed" });
+  await expect(failure).toContainText("Hip to 45.0°: ValueError: could not convert string to float: 'x' (HTTP 500)");
+  await expect(page.getByText("Disarmed", { exact: true })).toBeVisible();
+  await setPad(page, { axes: [0, -1, 0, 1] });
+  await page.waitForTimeout(300);
+  expect(calls).toHaveLength(3);
+
+  // Re-arming clears the error; a Cortex without the command route is named as such.
+  unsupported = true;
+  await setPad(page, { axes: [0, 0, 0, 0] });
+  await press(page, [0, 0, 0, 0], "a");
+  await expect(failure).toContainText("This robot's Cortex doesn't support app commands yet.");
+  await expect(page.getByText("Disarmed", { exact: true })).toBeVisible();
+  await shot(page, testInfo.outputPath("gamepad-error.png"));
+});
+
+test("without a running joint mover nothing is sent and the page says why", async ({ page }) => {
+  const { calls, robotRequests } = await robotWithApps(page, OTHER_APPS);
+  await mockGamepads(page);
+  await page.goto("/gamepad-motors");
+  await expect(page.getByRole("note")).toContainText("Joint mover app not running — moves are not sent");
+  await expect(page.getByRole("note")).toContainText("Start joint_mover_demo from the App Store.");
+  await expect(page.getByText("Joint mover instance")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Move", exact: true })).toBeDisabled();
+  await expect(page.getByText("Connect to a running joint mover app to send moves.")).toBeVisible();
+
+  // The local preview still arms without joint names, and sends nothing.
+  await setPad(page, { axes: [0, 0, 0, 0] });
+  await press(page, [0, 0, 0, 0], "a");
+  await expect(page.getByText("Armed", { exact: true })).toBeVisible();
+  await expect(lastSent(page)).toHaveText("0.0° · 0.0°");
+  await setPad(page, { axes: [0, -1, 0, 1] });
+  await expect(lastSent(page)).toHaveText("45.0° · -45.0°");
+  expect(calls).toEqual([]);
+  expect(robotRequests).toEqual([]);
 });
