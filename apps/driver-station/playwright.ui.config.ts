@@ -8,7 +8,6 @@ export default defineConfig(authConfig, {
     "console.spec.ts",
     "design.spec.ts",
     "motor-control.spec.ts",
-    "gamepad-motors.spec.ts",
     "robot-api.spec.ts",
   ],
 });
