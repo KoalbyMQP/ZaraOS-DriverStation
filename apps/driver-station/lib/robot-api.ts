@@ -231,6 +231,19 @@ export async function getInstances(connection: Connection, signal?: AbortSignal)
 }
 
 /**
+ * Container options for starting an app. Cortex adds them to the defaults the app declares,
+ * and keeps them on the instance so a restart or update starts the same way.
+ */
+export type InstanceOptions = {
+  privileged?: boolean;
+  /** Host devices to pass through, e.g. "/dev/ttyUSB0". */
+  devices?: string[];
+  /** Bind mounts as "host:container" or "host:container:ro". */
+  volumes?: string[];
+  env?: Record<string, string>;
+};
+
+/**
  * POST /instances — start an app. Returns the created instance (state may be "starting").
  * Use getInstance to poll until state === "running".
  * When `image` is set (e.g. local `repository:tag`), the server uses it as the container image override.
@@ -240,10 +253,18 @@ export async function createInstance(
   app: string,
   version: string,
   image?: string,
+  options: InstanceOptions = {},
   signal?: AbortSignal
 ): Promise<RobotAppInstance> {
-  const payload = image !== undefined && image !== "" ? { app, version, image } : { app, version };
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify({
+    app,
+    version,
+    ...(image ? { image } : {}),
+    ...(options.privileged ? { privileged: true } : {}),
+    ...(options.devices?.length ? { devices: options.devices } : {}),
+    ...(options.volumes?.length ? { volumes: options.volumes } : {}),
+    ...(options.env && Object.keys(options.env).length ? { env: options.env } : {}),
+  });
   const res = await signedFetch(connection, "POST", "/instances", body, { signal });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -266,6 +287,32 @@ export async function getInstance(
     throw new Error((err as { error?: string })?.error ?? `get instance failed: ${res.status}`);
   }
   return res.json() as Promise<RobotAppInstance>;
+}
+
+/**
+ * POST /instances/:id/restart — replace an instance with a fresh one of the same version.
+ * Resolves with the new instance's id.
+ */
+export async function restartInstance(connection: Connection, instanceId: string): Promise<string> {
+  const res = await signedFetch(connection, "POST", `/instances/${instanceId}/restart`);
+  const data = (await res.json().catch(() => ({}))) as { error?: string; new_id?: string };
+  if (!res.ok || !data.new_id) throw new Error(data.error ?? `restart instance failed: ${res.status}`);
+  return data.new_id;
+}
+
+/**
+ * POST /instances/:id/update — replace an instance with another version of the same app.
+ * Resolves with the new instance's id, or the same id when it already runs that version.
+ */
+export async function updateInstance(
+  connection: Connection,
+  instanceId: string,
+  target: { version: string; image?: string }
+): Promise<string> {
+  const res = await signedFetch(connection, "POST", `/instances/${instanceId}/update`, JSON.stringify(target));
+  const data = (await res.json().catch(() => ({}))) as { error?: string; new_id?: string };
+  if (!res.ok) throw new Error(data.error ?? `update instance failed: ${res.status}`);
+  return data.new_id ?? instanceId;
 }
 
 /**

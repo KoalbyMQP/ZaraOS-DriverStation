@@ -8,12 +8,17 @@ import {
   getInstance,
   getInstances,
   getImages,
+  restartInstance,
+  updateInstance,
   type LocalContainerImage,
   type RobotAppInstance,
 } from "@/lib/robot-api";
+import { launchOptionsFor } from "@/lib/launch-options";
 
 export type SelectedProject = { url: string; name: string; version: string };
 export type AppLaunch = SelectedProject & { app: string; image?: string };
+export type InstanceAction = "stopping" | "restarting" | "updating";
+export const isLive = (instance: RobotAppInstance) => instance.state === "running" || instance.state === "starting";
 
 type ProjectContextValue = {
   images: LocalContainerImage[];
@@ -25,10 +30,15 @@ type ProjectContextValue = {
   actionError: string | null;
   notice: string | null;
   pendingRuns: string[];
-  stoppingIds: string[];
+  /** What is being done to an instance right now, by instance id. */
+  busy: Record<string, InstanceAction>;
   refresh: () => Promise<void>;
+  /** Start an app with the launch options saved for it in this browser. */
   startApp: (app: AppLaunch) => Promise<void>;
   stopApp: (instance: RobotAppInstance) => Promise<void>;
+  /** Restart and update replace the instance; they resolve with the new instance's id, or null on failure. */
+  restartApp: (instance: RobotAppInstance) => Promise<string | null>;
+  updateApp: (instance: RobotAppInstance, target: AppLaunch) => Promise<string | null>;
 };
 
 const ProjectContext = createContext<ProjectContextValue | null>(null);
@@ -59,7 +69,7 @@ function ProjectSession({ connection, children }: { connection: Connection | nul
   const [actionError, setActionError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingRuns, setPendingRuns] = useState<string[]>([]);
-  const [stoppingIds, setStoppingIds] = useState<string[]>([]);
+  const [busy, setBusy] = useState<Record<string, InstanceAction>>({});
   const runningRequests = useRef(new Set<string>());
   const lifecycle = useRef(new AbortController());
 
@@ -113,7 +123,14 @@ function ProjectSession({ connection, children }: { connection: Connection | nul
     setActionError(null);
     setNotice(null);
     try {
-      let instance = await createInstance(connection, app.app, app.version, app.image, signal);
+      let instance = await createInstance(
+        connection,
+        app.app,
+        app.version,
+        app.image,
+        launchOptionsFor(app.app),
+        signal
+      );
       for (let attempt = 0; instance.state === "starting" && attempt < 38 && !signal.aborted; attempt++) {
         await new Promise<void>((resolve) => window.setTimeout(resolve, 800));
         if (signal.aborted) return;
@@ -139,21 +156,70 @@ function ProjectSession({ connection, children }: { connection: Connection | nul
     }
   }
 
-  async function stopApp(instance: RobotAppInstance) {
-    if (!connection || stoppingIds.includes(instance.id)) return;
+  /** Run one action on an instance at a time, then reload the instance list. Resolves null on failure. */
+  async function act<T>(
+    instance: RobotAppInstance,
+    action: InstanceAction,
+    failure: string,
+    run: (connection: Connection, signal: AbortSignal) => Promise<T>
+  ): Promise<T | null> {
+    const key = `instance:${instance.id}`;
+    if (!connection || runningRequests.current.has(key)) return null;
     const signal = lifecycle.current.signal;
-    setStoppingIds((prev) => [...prev, instance.id]);
+    runningRequests.current.add(key);
+    setBusy((prev) => ({ ...prev, [instance.id]: action }));
     setActionError(null);
+    setNotice(null);
     try {
-      await deleteInstance(connection, instance.id);
-      if (signal.aborted) return;
-      setInstances((prev) => prev.filter((i) => i.id !== instance.id));
+      const result = await run(connection, signal);
+      if (signal.aborted) return null;
       await refresh();
+      return result;
     } catch (err) {
-      if (!signal.aborted) setActionError(err instanceof Error ? err.message : "Failed to stop app.");
+      if (!signal.aborted) {
+        setActionError(err instanceof Error ? err.message : failure);
+        void refresh();
+      }
+      return null;
     } finally {
-      if (!signal.aborted) setStoppingIds((prev) => prev.filter((id) => id !== instance.id));
+      runningRequests.current.delete(key);
+      if (!signal.aborted)
+        setBusy((prev) => Object.fromEntries(Object.entries(prev).filter(([id]) => id !== instance.id)));
     }
+  }
+
+  /** Cortex replies once the replacement container has started or failed; report a failure. */
+  async function replaced(connection: Connection, id: string, label: string, signal: AbortSignal) {
+    const instance = await getInstance(connection, id, signal);
+    if (!signal.aborted && !isLive(instance))
+      setActionError(instance.error || `${label} did not start (${instance.state}).`);
+    return id;
+  }
+
+  async function stopApp(instance: RobotAppInstance) {
+    await act(instance, "stopping", "Failed to stop app.", (connection) => deleteInstance(connection, instance.id));
+  }
+
+  function restartApp(instance: RobotAppInstance) {
+    return act(instance, "restarting", "Failed to restart app.", async (connection, signal) =>
+      replaced(
+        connection,
+        await restartInstance(connection, instance.id),
+        `${instance.app} ${instance.version}`,
+        signal
+      )
+    );
+  }
+
+  function updateApp(instance: RobotAppInstance, target: AppLaunch) {
+    return act(instance, "updating", "Failed to update app.", async (connection, signal) =>
+      replaced(
+        connection,
+        await updateInstance(connection, instance.id, { version: target.version, image: target.image }),
+        `${target.name} ${target.version}`,
+        signal
+      )
+    );
   }
 
   return (
@@ -168,10 +234,12 @@ function ProjectSession({ connection, children }: { connection: Connection | nul
         actionError,
         notice,
         pendingRuns,
-        stoppingIds,
+        busy,
         refresh,
         startApp,
         stopApp,
+        restartApp,
+        updateApp,
       }}
     >
       {children}

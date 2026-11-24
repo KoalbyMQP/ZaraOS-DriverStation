@@ -17,10 +17,13 @@ import {
   FunnelIcon,
   MagnifyingGlassIcon,
   PackageIcon,
+  SlidersHorizontalIcon,
   WarningCircleIcon,
 } from "@repo/ui/icons";
+import { LaunchOptionsDialog } from "@/components/LaunchOptionsDialog";
 import { useConnection } from "@/contexts/ConnectionContext";
-import { appSlug, useProject, type AppLaunch } from "@/contexts/ProjectContext";
+import { appSlug, isLive, useProject, type AppLaunch } from "@/contexts/ProjectContext";
+import { hasLaunchOptions, useLaunchOptions } from "@/lib/launch-options";
 import {
   getCombinedReleases,
   getComponentsReleases,
@@ -52,7 +55,19 @@ type CatalogApp = {
   installed?: boolean;
   installationKnown?: boolean;
   channel?: string | null;
+  /** Versions are releases, newest first, so a running older version can be offered an update. */
+  released?: boolean;
 };
+
+/** Split an image reference into the app it runs and its version, or null if it is not one. */
+function parseImage(image: string): { name: string; app: string; version: string } | null {
+  const [repository = "", digest] = image.split("@");
+  // Read the tag from the last path segment so registry ports stay intact.
+  const [name = "", tag] = (repository.split("/").at(-1) ?? "").split(":");
+  const app = appSlug(name);
+  if (!app || /\s|:\/\//.test(image) || tag === "" || digest === "") return null;
+  return { name, app, version: digest ?? tag ?? "latest" };
+}
 
 function DirectImageForm() {
   const labelId = useId();
@@ -60,73 +75,98 @@ function DirectImageForm() {
   const { startApp, pendingRuns } = useProject();
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const image = value.trim();
   const url = `image:${image}`;
   const pending = pendingRuns.includes(url);
+  const parsed = parseImage(image);
+  const customized = hasLaunchOptions(useLaunchOptions(parsed?.app ?? ""));
 
   function runImage() {
     if (!connection || !image || pending) return;
-    const [repository = "", digest] = image.split("@");
-    // Read the tag from the last path segment so registry ports stay intact.
-    const [name = "", tag] = (repository.split("/").at(-1) ?? "").split(":");
-    const app = appSlug(name);
-    if (!app || /\s|:\/\//.test(image) || tag === "" || digest === "") {
+    if (!parsed) {
       setError("Enter an image reference such as ghcr.io/koalbymqp/python-example:test-1, without https://.");
       return;
     }
     setError(null);
-    void startApp({ url, name, app, version: digest ?? tag ?? "latest", image });
+    void startApp({ url, ...parsed, image });
   }
 
   return (
-    <form
-      aria-label="Run container image"
-      onSubmit={(event) => {
-        event.preventDefault();
-        runImage();
-      }}
-    >
-      <Field
-        label={<span id={labelId}>Container image</span>}
-        description={
-          connection ? "Run an image directly on the connected robot." : "Connect to a robot to run an image."
-        }
-        error={error ? { message: <span role="alert">{error}</span>, match: true } : undefined}
+    <>
+      <form
+        aria-label="Run container image"
+        onSubmit={(event) => {
+          event.preventDefault();
+          runImage();
+        }}
       >
-        <InputGroup disabled={pending}>
-          <InputGroup.Input
-            name="image"
-            aria-labelledby={labelId}
-            placeholder="ghcr.io/koalbymqp/python-example:test-1"
-            value={value}
-            onChange={(event) => {
-              setValue(event.target.value);
-              setError(null);
-            }}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            aria-invalid={!!error}
-          />
-          <InputGroup.Button
-            type="submit"
-            variant="primary"
-            icon={pending ? <Spinner /> : undefined}
-            disabled={!connection || !image || pending}
-          >
-            {pending ? "Starting…" : "Run image"}
-          </InputGroup.Button>
-        </InputGroup>
-      </Field>
-    </form>
+        <Field
+          label={<span id={labelId}>Container image</span>}
+          description={
+            !connection
+              ? "Connect to a robot to run an image."
+              : customized
+                ? `Runs on the connected robot with your launch options for ${parsed!.app}.`
+                : "Run an image directly on the connected robot."
+          }
+          error={error ? { message: <span role="alert">{error}</span>, match: true } : undefined}
+        >
+          <InputGroup disabled={pending}>
+            <InputGroup.Input
+              name="image"
+              aria-labelledby={labelId}
+              placeholder="ghcr.io/koalbymqp/python-example:test-1"
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+                setError(null);
+              }}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              aria-invalid={!!error}
+            />
+            <InputGroup.Addon align="end">
+              <InputGroup.Button
+                type="button"
+                shape="square"
+                icon={SlidersHorizontalIcon}
+                aria-label="Launch options"
+                title={parsed ? `Launch options for ${parsed.app}` : "Enter an image to set its launch options"}
+                disabled={!parsed || pending}
+                onClick={() => setOptionsOpen(true)}
+              />
+            </InputGroup.Addon>
+            <InputGroup.Button
+              type="submit"
+              variant="primary"
+              icon={pending ? <Spinner /> : undefined}
+              disabled={!connection || !image || pending}
+            >
+              {pending ? "Starting…" : "Run image"}
+            </InputGroup.Button>
+          </InputGroup>
+        </Field>
+      </form>
+      {/* Outside the form: the dialog has its own, and its submit would bubble into this one. */}
+      {parsed && (
+        <LaunchOptionsDialog app={parsed.app} name={parsed.name} open={optionsOpen} onOpenChange={setOptionsOpen} />
+      )}
+    </>
   );
 }
 
 function AppRow({ app }: { app: CatalogApp }) {
   const { connection } = useConnection();
-  const { startApp, pendingRuns } = useProject();
+  const { startApp, updateApp, pendingRuns, instances, busy } = useProject();
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const latest = app.versions[0];
   const pending = app.versions.some((v) => pendingRuns.includes(v.url));
+  const customized = hasLaunchOptions(useLaunchOptions(latest?.app ?? ""));
+  const running = latest && instances.find((instance) => instance.app === latest.app && isLive(instance));
+  const outdated = app.released && running && running.version !== latest.version ? running : null;
+  const updating = !!outdated && busy[outdated.id] === "updating";
   const channel =
     app.channel ?? (latest ? getReleaseChannel({ name: app.name, tag_name: latest.version, prerelease: false }) : null);
   return (
@@ -152,7 +192,20 @@ function AppRow({ app }: { app: CatalogApp }) {
             {app.installed ? "Installed" : "Not installed"}
           </span>
         )}
+        {customized && <Badge variant="outline">Custom options</Badge>}
       </div>
+      {outdated && (
+        <Button
+          size="sm"
+          icon={updating ? <Spinner size={12} /> : undefined}
+          disabled={!connection || !!busy[outdated.id]}
+          aria-label={`Update ${app.name} to ${latest.version}`}
+          title={`Running ${outdated.version}. Replace it with ${latest.version}, keeping its options.`}
+          onClick={() => void updateApp(outdated, latest)}
+        >
+          {updating ? "Updating…" : "Update"}
+        </Button>
+      )}
       <DropdownMenu>
         <DropdownMenu.Trigger>
           <Button
@@ -178,8 +231,15 @@ function AppRow({ app }: { app: CatalogApp }) {
               </DropdownMenu.Item>
             ))}
           </DropdownMenu.Group>
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item icon={SlidersHorizontalIcon} onClick={() => setOptionsOpen(true)}>
+            Launch options…
+          </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu>
+      {latest && (
+        <LaunchOptionsDialog app={latest.app} name={app.name} open={optionsOpen} onOpenChange={setOptionsOpen} />
+      )}
     </li>
   );
 }
@@ -284,6 +344,7 @@ export default function AppsPage() {
               id: `${source}:${group.groupName}`,
               name: group.groupName,
               source: label,
+              released: true,
               channel: getReleaseChannel(versions[0]),
               installed: images.some(
                 (image) =>

@@ -70,6 +70,8 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
   const [isPaused, setIsPaused] = useState(false);
   const [copyLabel, setCopyLabel] = useState("Copy");
   const [pendingWhilePaused, setPendingWhilePaused] = useState(0);
+  /** The instance's state once Cortex has said it will send no more lines. */
+  const [endedState, setEndedState] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   /** When true, new lines while Live will keep the viewport pinned to the bottom. */
   const stickToBottomRef = useRef(true);
@@ -94,11 +96,7 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
     }
   };
 
-  const handleError = (errorMsg: string) => {
-    setError(errorMsg);
-  };
-
-  useLogStream(connection, instanceId, handleLog, handleError);
+  useLogStream(connection, instanceId, { onLog: handleLog, onError: setError, onEnd: setEndedState });
 
   const handleScrollContainer = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -259,8 +257,14 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
           <Empty
             size="sm"
             className="border-0 bg-transparent"
-            title={logs.length ? "No matching logs" : "Waiting for logs…"}
-            description={logs.length ? "Try another search or severity filter." : "New output will appear here."}
+            title={logs.length ? "No matching logs" : endedState ? "No logs" : "Waiting for logs…"}
+            description={
+              logs.length
+                ? "Try another search or severity filter."
+                : endedState
+                  ? "This instance is not running, and its logs are gone."
+                  : "New output will appear here."
+            }
           />
         ) : (
           <div className="font-mono text-(length:--kumo-font-size-xs)/[var(--tw-leading,var(--kumo-line-height-xs))] leading-relaxed">
@@ -291,7 +295,9 @@ export function LogViewer({ connection, instanceId }: { connection: Connection |
           ? pendingWhilePaused
             ? `${pendingWhilePaused} new entries while paused`
             : "Paused"
-          : "Streaming live"}
+          : endedState
+            ? `Stream ended, the instance is ${endedState}`
+            : "Streaming live"}
       </p>
     </LayerCard>
   );

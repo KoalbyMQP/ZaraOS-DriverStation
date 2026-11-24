@@ -206,7 +206,8 @@ test("App Store lists versions and installed images; launched apps update the si
   const right = await installed.boundingBox();
   expect(right!.x).toBeGreaterThan(left!.x + left!.width);
   await online.getByRole("button", { name: "Run Face", exact: true }).click();
-  await expect(page.getByRole("menuitem")).toHaveCount(2);
+  // Two versions, then the app's launch options.
+  await expect(page.getByRole("menuitem")).toHaveCount(3);
   await expect(page.getByRole("menu")).toHaveCSS("opacity", "1");
   await page.screenshot({ animations: "disabled", path: testInfo.outputPath("app-store.png") });
   await page.getByRole("menuitem", { name: "v1.0.0", exact: true }).click();
@@ -400,4 +401,145 @@ test("sidebar app links select the right log stream and severity filters work", 
   await apps.getByRole("button", { name: "Motor Tester: running", exact: true }).click();
   await apps.getByRole("link", { name: "v1 · Logs", exact: true }).click();
   await expect(page.getByText("Motor Tester is running", { exact: true }).first()).toBeVisible();
+});
+
+test("launch options are saved per app and sent on launch; an older running version can be updated", async ({
+  page,
+}, testInfo) => {
+  await page.route("https://api.github.com/repos/KoalbyMQP/Core/releases?*", (route) =>
+    route.fulfill({ json: [release(1, "Face", "v2.0.0-alpha"), release(2, "Face", "v1.0.0")] })
+  );
+  const launches: unknown[] = [];
+  const updates: unknown[] = [];
+  let instances: { id: string; app: string; version: string; state: string }[] = [];
+  await page.route("http://127.0.0.1:8080/instances", (route) => {
+    if (route.request().method() !== "POST") return route.fulfill({ json: { instances } });
+    const launch = route.request().postDataJSON();
+    launches.push(launch);
+    instances = [{ id: "face-1", app: launch.app, version: launch.version, state: "running" }];
+    return route.fulfill({ status: 201, json: instances[0] });
+  });
+  await page.route("http://127.0.0.1:8080/instances/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/instances/face-1/update") {
+      const target = route.request().postDataJSON();
+      updates.push(target);
+      instances = [
+        { ...instances[0]!, state: "stopped" },
+        { id: "face-2", app: "face", version: target.version, state: "running" },
+      ];
+      return route.fulfill({ status: 201, json: { old_id: "face-1", new_id: "face-2" } });
+    }
+    return route.fulfill({ json: instances.find((i) => path.endsWith(i.id)) });
+  });
+  await page.goto("/appstore");
+  await connectDev(page);
+  const row = page.getByRole("region", { name: "Online apps", exact: true }).getByRole("listitem");
+  await row.getByRole("button", { name: "Run Face", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Launch options…", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Launch options for Face" });
+  await dialog.getByRole("textbox", { name: "Environment variables" }).fill("LOG_LEVEL=debug\nnot a variable");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog.getByText("Write each one as NAME=value.")).toBeVisible();
+  await dialog.getByRole("textbox", { name: "Environment variables" }).fill("LOG_LEVEL=debug\nGREETING=hi=there");
+  await dialog.getByRole("textbox", { name: "Volumes" }).fill("/home/robot/maps:/maps");
+  await dialog.getByRole("textbox", { name: "Devices" }).fill("/dev/ttyUSB0\n\n/dev/video0");
+  await dialog.getByRole("switch", { name: "Privileged" }).click();
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("launch-options.png") });
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row.getByText("Custom options", { exact: true })).toBeVisible();
+  expect(launches).toHaveLength(0);
+
+  await row.getByRole("button", { name: "Run Face", exact: true }).click();
+  await page.getByRole("menuitem", { name: "v1.0.0", exact: true }).click();
+  await expect.poll(() => launches.length).toBe(1);
+  expect(launches[0]).toEqual({
+    app: "face",
+    version: "v1.0.0",
+    image: "ghcr.io/koalbymqp/face:v1.0.0",
+    privileged: true,
+    devices: ["/dev/ttyUSB0", "/dev/video0"],
+    volumes: ["/home/robot/maps:/maps"],
+    env: { LOG_LEVEL: "debug", GREETING: "hi=there" },
+  });
+
+  // The saved options reopen for editing, and clearing them removes the badge.
+  await row.getByRole("button", { name: "Run Face", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Launch options…", exact: true }).click();
+  await expect(dialog.getByRole("textbox", { name: "Devices" })).toHaveValue("/dev/ttyUSB0\n/dev/video0");
+  await expect(dialog.getByRole("switch", { name: "Privileged" })).toBeChecked();
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+
+  // v1.0.0 is running and v2.0.0-alpha is newer: Cortex replaces it and keeps its options.
+  await row.getByRole("button", { name: "Update Face to v2.0.0-alpha", exact: true }).click();
+  await expect.poll(() => updates.length).toBe(1);
+  expect(updates[0]).toEqual({ version: "v2.0.0-alpha", image: "ghcr.io/koalbymqp/face:v2.0.0-alpha" });
+  await expect(row.getByRole("button", { name: /^Update Face/ })).toHaveCount(0);
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("app-store-options.png") });
+});
+
+test("the logs page restarts and stops an instance, and an ended log stream is not reopened", async ({
+  page,
+}, testInfo) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "driver-station-connection",
+      JSON.stringify({ name: "Dev Mode", ip: "127.0.0.1", devMode: true })
+    )
+  );
+  await page.route("http://127.0.0.1:8080/health", (route) => route.fulfill({ json: { status: "ok" } }));
+  await page.route("http://127.0.0.1:8080/images", (route) =>
+    route.fulfill({ json: { images: [{ repository: "local/face", tags: ["v2"] }] } })
+  );
+  let instances = [{ id: "face-1", app: "face", version: "v2", state: "running" }];
+  const calls: string[] = [];
+  await page.route("http://127.0.0.1:8080/instances", (route) => route.fulfill({ json: { instances } }));
+  await page.route("http://127.0.0.1:8080/instances/**", (route) => {
+    const [, , id, action] = new URL(route.request().url()).pathname.split("/");
+    const instance = instances.find((i) => i.id === id)!;
+    calls.push(`${route.request().method()} ${id}${action ? ` ${action}` : ""}`);
+    if (action === "logs") {
+      const line = { ts: "2026-09-29T12:00:00Z", seq: 1, stream: "stdout", content: `${id} says hello` };
+      // A stopped instance has nothing to send; a running one logs, then exits here.
+      const log = instance.state === "running" ? `event: log\ndata: ${JSON.stringify(line)}\n\n` : "";
+      return route.fulfill({
+        contentType: "text/event-stream",
+        body: `${log}event: end\ndata: ${JSON.stringify({ ts: line.ts, state: "stopped" })}\n\n`,
+      });
+    }
+    if (action === "restart") {
+      instances = [
+        { ...instance, state: "stopped" },
+        { id: "face-2", app: "face", version: "v2", state: "running" },
+      ];
+      return route.fulfill({ status: 201, json: { old_id: id, new_id: "face-2" } });
+    }
+    if (route.request().method() === "DELETE") {
+      instances = instances.map((i) => (i.id === id ? { ...i, state: "stopped" } : i));
+      return route.fulfill({ json: { id, state: "stopped" } });
+    }
+    return route.fulfill({ json: instance });
+  });
+  const logRequests = (id: string) => calls.filter((call) => call === `GET ${id} logs`).length;
+
+  await page.goto("/logs?instance=face-1");
+  await expect(page.getByText("face-1 says hello", { exact: true })).toBeVisible();
+  await expect(page.getByText("Stream ended, the instance is stopped", { exact: true })).toBeVisible();
+  // Before, a finished stream was reopened every two seconds.
+  const opened = logRequests("face-1");
+  await page.waitForTimeout(2500);
+  expect(logRequests("face-1")).toBe(opened);
+  await expect(page.getByText("face-1 says hello", { exact: true })).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  await expect(page).toHaveURL("/logs?instance=face-2");
+  expect(calls).toContain("POST face-1 restart");
+  await expect(page.getByText("face-2 says hello", { exact: true })).toBeVisible();
+  await page.screenshot({ animations: "disabled", path: testInfo.outputPath("logs-actions.png") });
+
+  await page.getByRole("button", { name: "Stop", exact: true }).click();
+  await expect.poll(() => calls).toContain("DELETE face-2");
+  await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Start again", exact: true })).toBeEnabled();
 });
