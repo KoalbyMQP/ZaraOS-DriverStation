@@ -1,5 +1,6 @@
 {
   "$schema": "https://turborepo.dev/schema.json",
+  "ui": "tui",
   "tasks": {
     "dev": {
       "persistent": true,
@@ -15,6 +16,10 @@
     },
     "test:auth": {
       "dependsOn": ["^test:auth"]
+    },
+    "test:app-ui": {
+      "cache": false,
+      "env": ["APP_UI_TEST_PRODUCTION"]
     },
     "lint": {
       "dependsOn": ["^lint"],
@@ -41,5 +46,5 @@
     "//#typecheck:root": {}
   },
   "globalEnv": ["AUTH_BYPASS_LOCAL", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "NEXT_PUBLIC_*", "NODE_ENV"],
-  "globalPassThroughEnv": ["CI", "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
+  "globalPassThroughEnv": ["CI", "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH", "NEXT_DIST_DIR"]
 }

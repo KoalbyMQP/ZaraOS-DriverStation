@@ -1,28 +1,39 @@
-import type { ReactNode } from "react";
-import { Geist, Source_Serif_4, JetBrains_Mono } from "next/font/google";
+import type { ComponentProps } from "react";
+import { Geist, Inter, Source_Serif_4, JetBrains_Mono } from "next/font/google";
 import "../styles/globals.css";
+import { cn } from "../lib/utils";
+
+const fontInterface = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 const fontSans = Geist({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-geist-sans",
 });
 
 const fontSerif = Source_Serif_4({
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-source-serif",
 });
 
 const fontMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-jetbrains-mono",
 });
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: ReactNode;
-}>) {
+export function UI({ children, className, ...props }: ComponentProps<"div">) {
   return (
-    <div className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}>{children}</div>
+    <div
+      className={cn(
+        fontInterface.variable,
+        fontSans.variable,
+        fontSerif.variable,
+        fontMono.variable,
+        "font-sans antialiased",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
   );
 }

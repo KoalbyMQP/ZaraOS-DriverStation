@@ -16,6 +16,7 @@ export default defineConfig({
     url: "http://localhost:3101",
     timeout: 120_000,
     env: {
+      NEXT_DIST_DIR: ".next/ui-tests",
       NEXT_PUBLIC_AUTH_BYPASS_LOCAL: "false",
       NEXT_PUBLIC_AZURE_CLIENT_ID: "11111111-1111-1111-1111-111111111111",
       NEXT_PUBLIC_AZURE_TENANT_ID: "22222222-2222-2222-2222-222222222222",

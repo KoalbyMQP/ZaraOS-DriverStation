@@ -15,4 +15,5 @@ export default defineConfig([
   },
   ...repo.json,
   ...repo.markdown,
+  ...repo.css,
 ]);

@@ -11,10 +11,11 @@ export type LogEntry = {
   content: string;
 };
 
-export type LogEvent = {
-  type: "log" | "heartbeat" | "error";
-  timestamp: string;
-  data: LogEntry | { message?: string };
+export type LogStreamHandlers = {
+  onLog: (entry: LogEntry) => void;
+  onError: (error: string) => void;
+  /** The instance is not running, so no more lines will come. `state` is the instance's state. */
+  onEnd: (state: string) => void;
 };
 
 /**
@@ -24,29 +25,26 @@ export type LogEvent = {
  * sent on the streaming request — the browser EventSource API cannot do this,
  * which caused 401s on non-localhost connections.
  *
- * Uses callback refs so that changing `onLog`/`onError` references does NOT
+ * Uses a ref for the handlers so that changing their references does NOT
  * tear down and re-open the stream.  The connection is only restarted when
  * `connection`, `instanceId`, or `tailCount` actually change.
  *
- * Reconnects automatically with the `since` query-param to avoid duplicate
- * log lines after a network hiccup.
+ * One request stays open and Cortex pushes lines as the app logs them. The
+ * stream is only reopened (with the `since` query-param) after it breaks while
+ * the instance is still running. Once Cortex says the instance has ended, or
+ * no longer knows it, nothing more is requested.
  */
 export function useLogStream(
   connection: Connection | null,
   instanceId: string | null,
-  onLog: (entry: LogEntry) => void,
-  onError: (error: string) => void,
+  handlers: LogStreamHandlers,
   tailCount: number = 100
 ) {
-  // Stable refs for callbacks — avoids tearing down the stream on every render
-  const onLogRef = useRef(onLog);
-  const onErrorRef = useRef(onError);
+  // Stable ref for the handlers — avoids tearing down the stream on every render
+  const handlersRef = useRef(handlers);
   useEffect(() => {
-    onLogRef.current = onLog;
-  }, [onLog]);
-  useEffect(() => {
-    onErrorRef.current = onError;
-  }, [onError]);
+    handlersRef.current = handlers;
+  }, [handlers]);
 
   useEffect(() => {
     if (!connection || !instanceId) return;
@@ -81,8 +79,13 @@ export function useLogStream(
           signal: controller.signal,
         });
 
+        if (res.status === 404) {
+          // Cortex forgets instances when it restarts; asking again will not bring this one back.
+          if (alive) handlersRef.current.onError("The robot no longer has this instance.");
+          return;
+        }
         if (!res.ok || !res.body) {
-          if (alive) onErrorRef.current(`Log stream failed: HTTP ${res.status}`);
+          if (alive) handlersRef.current.onError(`Log stream failed: HTTP ${res.status}`);
           scheduleReconnect();
           return;
         }
@@ -120,11 +123,24 @@ export function useLogStream(
             if (event === "log" && data) {
               try {
                 const entry = JSON.parse(data) as LogEntry;
+                // A reopened stream starts with the lines stamped exactly `since`, which were already shown.
+                if (entry.ts === since) continue;
                 lastTs = entry.ts;
-                if (alive) onLogRef.current(entry);
+                if (alive) handlersRef.current.onLog(entry);
               } catch {
                 /* skip malformed JSON */
               }
+            } else if (event === "end") {
+              let state = "stopped";
+              try {
+                state = (JSON.parse(data) as { state?: string }).state || state;
+              } catch {
+                /* keep the default */
+              }
+              if (alive) handlersRef.current.onEnd(state);
+              // Nothing more will come: close the request and do not reopen it.
+              controller.abort();
+              return;
             } else if (event === "heartbeat") {
               // Connection alive — cancel any pending reconnect
               if (reconnectTimer) {
@@ -134,9 +150,9 @@ export function useLogStream(
             } else if (event === "error") {
               try {
                 const errData = JSON.parse(data) as { message?: string };
-                if (alive) onErrorRef.current(errData.message || "Stream ended");
+                if (alive) handlersRef.current.onError(errData.message || "Stream ended");
               } catch {
-                if (alive) onErrorRef.current("Stream ended");
+                if (alive) handlersRef.current.onError("Stream ended");
               }
             }
           }
@@ -144,11 +160,11 @@ export function useLogStream(
       } catch (e) {
         // AbortError is expected when we intentionally close the stream
         if ((e as Error).name !== "AbortError" && alive) {
-          onErrorRef.current("Connection lost");
+          handlersRef.current.onError("Connection lost");
         }
       }
 
-      // Stream ended (container stopped, network error, etc.) — try again
+      // Stream broke without Cortex ending it (network error, older Cortex) — try again
       scheduleReconnect();
     };
 

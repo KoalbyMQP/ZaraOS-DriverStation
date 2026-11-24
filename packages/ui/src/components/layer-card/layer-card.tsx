@@ -1,0 +1,175 @@
+import {
+  Children,
+  Fragment,
+  forwardRef,
+  isValidElement,
+  type ComponentPropsWithoutRef,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+
+// Kumo, packages/kumo/src/components/layer-card/layer-card.tsx from https://github.com/cloudflare/kumo
+// (release cloudflare/kumo@2.19.0), copied by the kumo-shadcn registry (https://github.com/tom-ricci/kumo-shadcn).
+// Changes from Kumo's file: import paths.
+// Also changed: Kumo's type scale classes (text-xs, text-sm, text-base, text-lg) read --kumo-font-size-* and --kumo-line-height-*, not your theme's --text-*.
+// Also changed: cn comes from your shadcn utils (@/lib/utils).
+// Also changed: KumoLayerCardVariantsProps is Record<never, never> instead of an empty interface.
+// Unofficial; not affiliated with or endorsed by Cloudflare.
+//
+// MIT License Copyright (c) 2026 Cloudflare, Inc.
+//
+// Permission is hereby granted, free of
+// charge, to any person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the Software without
+// restriction, including without limitation the rights to use, copy, modify, merge,
+// publish, distribute, sublicense, and/or sell copies of the Software, and to
+// permit persons to whom the Software is furnished to do so, subject to the
+// following conditions:
+//
+// The above copyright notice and this permission notice
+// (including the next paragraph) shall be included in all copies or substantial
+// portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+// EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+// FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
+import { cn } from "@repo/ui/lib/utils";
+
+const LAYER_CARD_SURFACE_CLASSES = "overflow-hidden rounded-lg bg-kumo-base shadow-xs ring ring-kumo-line";
+const LAYER_CARD_LAYERED_ROOT_CLASSES =
+  "flex w-full flex-col overflow-hidden rounded-lg bg-kumo-elevated text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] ring ring-kumo-hairline";
+// Sections are flex items of the layered root. Keep their natural height when
+// the root is height-capped (e.g. inside Dialog); `overflow-hidden` would
+// otherwise let them shrink and clip. Override per section with `flex-1 min-h-0`.
+const LAYER_CARD_SECONDARY_CLASSES =
+  "-my-2 flex shrink-0 items-center gap-2 bg-kumo-elevated p-4 text-(length:--kumo-font-size-base)/[var(--tw-leading,var(--kumo-line-height-base))] font-medium text-kumo-subtle";
+const LAYER_CARD_PRIMARY_CLASSES =
+  "relative flex shrink-0 flex-col gap-2 overflow-hidden rounded-lg bg-kumo-base p-4 pr-3 text-inherit no-underline ring ring-kumo-fill";
+
+/** LayerCard variant definitions (currently empty, reserved for future additions). */
+export const KUMO_LAYER_CARD_VARIANTS = {
+  // LayerCard currently has no variant options but structure is ready for future additions
+} as const;
+
+export const KUMO_LAYER_CARD_DEFAULT_VARIANTS = {} as const;
+
+// Derived types from KUMO_LAYER_CARD_VARIANTS
+export type KumoLayerCardVariantsProps = Record<never, never>;
+
+export function layerCardVariants(_props: KumoLayerCardVariantsProps = {}) {
+  return cn(LAYER_CARD_SURFACE_CLASSES);
+}
+
+function hasLayerCardSections(children: ReactNode): boolean {
+  return Children.toArray(children).some((child): boolean => {
+    if (!isValidElement(child)) {
+      return false;
+    }
+
+    if (child.type === LayerCardPrimary || child.type === LayerCardSecondary) {
+      return true;
+    }
+
+    if (child.type === Fragment) {
+      const fragmentChild = child as ReactElement<{ children?: ReactNode }>;
+      return hasLayerCardSections(fragmentChild.props.children);
+    }
+
+    return false;
+  });
+}
+
+/**
+ * LayerCard component props.
+ *
+ * @example
+ * ```tsx
+ * <LayerCard className="p-4">
+ *   Get started with Kumo
+ * </LayerCard>
+ *
+ * <LayerCard>
+ *   <LayerCard.Secondary>Next Steps</LayerCard.Secondary>
+ *   <LayerCard.Primary>Get started with Kumo</LayerCard.Primary>
+ * </LayerCard>
+ * ```
+ */
+export type LayerCardProps = useRender.ComponentProps<"div"> & KumoLayerCardVariantsProps;
+
+export type LayerCardSectionProps = ComponentPropsWithoutRef<"div">;
+
+/**
+ * Card container for both simple surfaces and layered layouts.
+ *
+ * Render children directly for a single-surface card, or use
+ * `LayerCard.Secondary` and `LayerCard.Primary` for the layered card treatment.
+ *
+ * @example
+ * ```tsx
+ * <LayerCard className="rounded-lg p-4">Card content</LayerCard>
+ * ```
+ *
+ * @example
+ * ```tsx
+ * <LayerCard>
+ *   <LayerCard.Secondary>Getting Started</LayerCard.Secondary>
+ *   <LayerCard.Primary>Quick start guide</LayerCard.Primary>
+ * </LayerCard>
+ * ```
+ */
+const LayerCardRoot = forwardRef<HTMLDivElement, LayerCardProps>(function LayerCard(
+  { children, className, render, ...props },
+  ref
+) {
+  const hasStructuredLayers = hasLayerCardSections(children);
+
+  const defaultProps: useRender.ElementProps<"div"> = {
+    className: cn(hasStructuredLayers ? LAYER_CARD_LAYERED_ROOT_CLASSES : layerCardVariants(), className),
+  };
+
+  return useRender({
+    defaultTagName: "div",
+    render,
+    ref,
+    props: mergeProps<"div">(defaultProps, props, { children }),
+  });
+});
+
+function LayerCardSecondary({ children, className, ...props }: LayerCardSectionProps) {
+  return (
+    <div className={cn(LAYER_CARD_SECONDARY_CLASSES, className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+function LayerCardPrimary({ children, className, ...props }: LayerCardSectionProps) {
+  return (
+    <div className={cn(LAYER_CARD_PRIMARY_CLASSES, className)} {...props}>
+      {children}
+    </div>
+  );
+}
+
+LayerCardRoot.displayName = "LayerCard";
+LayerCardSecondary.displayName = "LayerCard.Secondary";
+LayerCardPrimary.displayName = "LayerCard.Primary";
+
+type LayerCardComponent = typeof LayerCardRoot & {
+  Primary: typeof LayerCardPrimary;
+  Secondary: typeof LayerCardSecondary;
+};
+
+const LayerCard = Object.assign(LayerCardRoot, {
+  Primary: LayerCardPrimary,
+  Secondary: LayerCardSecondary,
+}) as LayerCardComponent;
+
+export { LayerCard };
